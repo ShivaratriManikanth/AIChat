@@ -822,15 +822,17 @@
             </div>
           </div>
           <div class="header-actions">
-            ${CONFIG.handoff && CONFIG.handoff.enabled ? `<button class="header-btn handoff-btn" id="btn-handoff" title="${CONFIG.handoff.buttonText || 'Talk to Agent'}">👤 Agent</button>` : ''}
-            <button class="header-btn" id="btn-clear" title="Clear chat">🗑️</button>
-            <button class="header-btn" id="btn-search" title="Search (Ctrl+F)">🔍</button>
-            <button class="header-btn" id="btn-fullscreen" title="${t('fullscreen')}">⛶</button>
-            <button class="header-btn" id="btn-complaint" title="Raise a Complaint">📝</button>
-            <button class="header-btn" id="btn-darkmode" title="${isDarkMode ? t('light') : t('dark')}">
-              ${isDarkMode ? '☀️' : '🌙'}
-            </button>
-            <button class="header-btn" id="btn-export" title="${t('export')}">📥</button>
+            <div id="chatbot-advanced-features" style="display: ${!emailVerified && CONFIG.emailCapture ? 'none' : 'flex'}; align-items: center; gap: 4px;">
+              ${CONFIG.handoff && CONFIG.handoff.enabled ? `<button class="header-btn handoff-btn" id="btn-handoff" title="${CONFIG.handoff.buttonText || 'Talk to Agent'}">👤 Agent</button>` : ''}
+              <button class="header-btn" id="btn-clear" title="Clear chat">🗑️</button>
+              <button class="header-btn" id="btn-search" title="Search (Ctrl+F)">🔍</button>
+              <button class="header-btn" id="btn-fullscreen" title="${t('fullscreen')}">⛶</button>
+              <button class="header-btn" id="btn-complaint" title="Raise a Complaint">📝</button>
+              <button class="header-btn" id="btn-darkmode" title="${isDarkMode ? t('light') : t('dark')}">
+                ${isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <button class="header-btn" id="btn-export" title="${t('export')}">📥</button>
+            </div>
             <button class="header-btn" id="chatbot-close">&times;</button>
           </div>
 
@@ -1625,6 +1627,8 @@
     document.getElementById('chatbot-suggestions').style.display = '';
     document.getElementById('chatbot-input-area').style.display = 'flex';
     document.getElementById('chatbot-shortcuts-hint').style.display = '';
+    const advancedFeatures = document.getElementById('chatbot-advanced-features');
+    if (advancedFeatures) advancedFeatures.style.display = 'flex';
 
     // Show welcome message
     const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - AI Chatbot</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    
+    .login-container {
+      background: white;
+      padding: 40px 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .login-header {
+      margin-bottom: 32px;
+    }
+    
+    .login-header .logo {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: white;
+      margin: 0 auto 16px;
+    }
+    
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    
+    .login-header p {
+      font-size: 14px;
+      color: #666;
+      margin-top: 6px;
+    }
+    
+    .form-group {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 8px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #fafafa;
+    }
+    
+    .form-group input:focus {
+      border-color: #4F46E5;
+      background: white;
+    }
+    
+    /* Password wrapper styles */
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .password-input-wrapper input {
+      padding-right: 44px; /* Space for the toggle button */
+    }
+    
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s ease;
+      font-size: 16px;
+    }
+    
+    .password-toggle-btn:hover {
+      color: #111827;
+    }
+    
+    .password-error-message {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 6px;
+      font-weight: 500;
+      display: none;
+    }
+    
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #4F46E5;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    
+    .btn-login:hover {
+      background: #4338CA;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-header">
+      <div class="logo">🤖</div>
+      <h1>Admin Login</h1>
+      <p>Please enter your credentials to continue</p>
+    </div>
+    
+    <form id="login-form">
+      <div class="form-group">
+        <label for="admin-username">Username</label>
+        <input type="text" id="admin-username" placeholder="Enter username" required value="admin">
+      </div>
+      
+      <div class="form-group">
+        <label for="admin-password">Password</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="admin-password" placeholder="Enter password" required>
+          <button type="button" class="password-toggle-btn" id="toggle-password" aria-label="Toggle password visibility">
+            <i class="fas fa-eye" id="toggle-icon"></i>
+          </button>
+        </div>
+        <div id="password-error-msg" class="password-error-message">Invalid password</div>
+      </div>
+      
+      <button type="submit" class="btn-login">Login</button>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('login-form');
+      const usernameInput = document.getElementById('admin-username');
+      const passwordInput = document.getElementById('admin-password');
+      const toggleBtn = document.getElementById('toggle-password');
+      const toggleIcon = document.getElementById('toggle-icon');
+      const errorMsg = document.getElementById('password-error-msg');
+
+      // Password Visibility Toggle
+      toggleBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        
+        if (isPassword) {
+          toggleIcon.classList.remove('fa-eye');
+          toggleIcon.classList.add('fa-eye-slash');
+        } else {
+          toggleIcon.classList.remove('fa-eye-slash');
+          toggleIcon.classList.add('fa-eye');
+        }
+      });
+
+      // Hide error on typing
+      passwordInput.addEventListener('input', () => {
+        errorMsg.style.display = 'none';
+      });
+      usernameInput.addEventListener('input', () => {
+        errorMsg.style.display = 'none';
+      });
+
+      // Handle Submit
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        const b64 = btoa(username + ':' + password);
+        
+        // Verify credentials with server
+        fetch('/admin/', {
+          headers: {
+            'Authorization': 'Basic ' + b64,
+            'Accept': 'application/json' // to force server to return 401 instead of HTML on failure
+          }
+        }).then(res => {
+          if (res.ok) {
+            // Success: set cookie and reload
+            document.cookie = `admin_auth=${b64}; path=/; max-age=86400`;
+            window.location.reload();
+          } else {
+            // Failure: show error
+            errorMsg.style.display = 'block';
+          }
+        }).catch(err => {
+          console.error('Login error:', err);
+          errorMsg.textContent = 'Connection error. Please try again.';
+          errorMsg.style.display = 'block';
+        });
+      });
+    });
+  </script>
+</body>
+</html>

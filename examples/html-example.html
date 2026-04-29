@@ -73,8 +73,16 @@
     <p>&copy; 2026 My Website. All rights reserved.</p>
   </footer>
 
-  <!-- CHATBOT WIDGET — Just this one line! -->
-  <script src="http://localhost:4000/widget/chatbot.js?v=3.6.1" data-server="http://localhost:4000"></script>
+  <script>
+    window.chatbotConfig = {
+      serverUrl: 'https://aichat-production-7401.up.railway.app',
+      botName: 'AI Assistant',
+      themeColor: '#4F46E5',
+      position: 'right'
+    };
+  </script>
+  
+  <script src="https://aichat-production-7401.up.railway.app/widget/chatbot.js"></script>
 
 </body>
 </html>

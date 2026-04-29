@@ -27,7 +27,7 @@ function adminAuth(req, res, next) {
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
-  if (login === 'admin' && password === 'admin123') {
+  if (login === 'admin' && password === 'Admin@2001') {
     return next();
   }
 

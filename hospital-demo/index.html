@@ -221,18 +221,13 @@
   <!-- ============================================== -->
   <!-- 🤖 AI CHATBOT WIDGET INTEGRATION                 -->
   <!-- ============================================== -->
-  <script>
-    // 1. Configure the chatbot to point to your live Railway app
-    window.chatbotConfig = {
-      serverUrl: 'https://aichat-production-e0ec.up.railway.app',
-      botName: 'CityCare Medical Assistant',
-      themeColor: '#0284c7', // Matches the hospital's blue theme
-      position: 'right'
-    };
-  </script>
   
-  <!-- 2. Load the chatbot script from your live server -->
-  <script src="https://aichat-production-e0ec.up.railway.app/widget/chatbot.js"></script>
+  <!-- Load the chatbot script from your live server -->
+  <script 
+    src="https://aichat-production-e0ec.up.railway.app/widget/chatbot.js"
+    data-server="https://aichat-production-e0ec.up.railway.app"
+    defer>
+  </script>
 
 </body>
 </html>

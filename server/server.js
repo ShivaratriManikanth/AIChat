@@ -25,6 +25,9 @@ app.use('/widget', express.static(path.join(__dirname, '..', 'widget')));
 // Serve admin dashboard
 app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 
+// Serve demo website
+app.use('/demo', express.static(path.join(__dirname, '..', 'hospital-demo')));
+
 // ---- Config ------------------------------------------------
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 

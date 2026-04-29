@@ -1,0 +1,893 @@
+// ============================================================
+//  AI CHATBOT WIDGET — Backend Server
+//  Express + OpenAI + SQLite for chat history
+// ============================================================
+
+require('dotenv').config();
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const fs         = require('fs');
+const OpenAI     = require('openai');
+const nodemailer = require('nodemailer');
+
+const app  = express();
+const PORT = process.env.PORT || 4000;
+
+// ---- Middleware --------------------------------------------
+app.use(cors());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ limit: '25mb', extended: true }));
+
+// Serve widget files
+app.use('/widget', express.static(path.join(__dirname, '..', 'widget')));
+
+// Serve admin dashboard
+app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+
+// ---- Config ------------------------------------------------
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+function loadConfig() {
+  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+}
+
+function saveConfig(config) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+// ---- SQLite Database for Chat History ----------------------
+let db;
+try {
+  const Database = require('better-sqlite3');
+  db = new Database(path.join(__dirname, 'chatbot.db'));
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_history (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      role       TEXT NOT NULL,
+      content    TEXT NOT NULL,
+      timestamp  DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_data TEXT DEFAULT ''`); } catch (e) {}
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_name TEXT DEFAULT ''`); } catch (e) {}
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_type TEXT DEFAULT ''`); } catch (e) {}
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN source TEXT DEFAULT ''`); } catch (e) {}
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN response_ms INTEGER DEFAULT 0`); } catch (e) {}
+
+  // Leads table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      name       TEXT DEFAULT '',
+      email      TEXT DEFAULT '',
+      phone      TEXT DEFAULT '',
+      page_url   TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      session_id TEXT PRIMARY KEY,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      metadata   TEXT DEFAULT '{}'
+    )
+  `);
+  // Users table for email capture
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      email      TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(email, session_id)
+    )
+  `);
+  // Add email column to sessions if not exists
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN email TEXT DEFAULT ''`);
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN bot_id TEXT DEFAULT 'default'`);
+    db.exec(`ALTER TABLE sessions ADD COLUMN widget_version TEXT DEFAULT ''`);
+    db.exec(`ALTER TABLE sessions ADD COLUMN last_user_msg_at DATETIME`);
+    db.exec(`ALTER TABLE sessions ADD COLUMN abandoned INTEGER DEFAULT 0`);
+  } catch (e) {}
+
+  // Bots table for multi-tenant
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bots (
+      bot_id     TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      api_key    TEXT NOT NULL,
+      config     TEXT DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Complaints table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS complaints (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      email      TEXT DEFAULT '',
+      name       TEXT DEFAULT '',
+      category   TEXT DEFAULT 'other',
+      subject    TEXT DEFAULT '',
+      message    TEXT NOT NULL,
+      status     TEXT DEFAULT 'open',
+      page_url   TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  try { db.exec(`ALTER TABLE complaints ADD COLUMN phone TEXT DEFAULT ''`); } catch (e) {}
+  console.log('SQLite database connected');
+} catch (err) {
+  console.warn('SQLite not available — chat history will use in-memory storage');
+  db = null;
+}
+
+// In-memory fallback
+const memoryStore = {};
+
+function saveMessage(sessionId, role, content, file, meta = {}) {
+  if (db) {
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id) VALUES (?)').run(sessionId);
+    db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = ?').run(sessionId);
+    db.prepare('INSERT INTO chat_history (session_id, role, content, file_data, file_name, file_type, source, response_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      sessionId, role, content,
+      file?.dataUrl || '', file?.name || '', file?.type || '',
+      meta.source || '', meta.responseMs || 0
+    );
+  } else {
+    if (!memoryStore[sessionId]) memoryStore[sessionId] = [];
+    memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), ...meta });
+  }
+}
+
+function getHistory(sessionId, limit = 20) {
+  if (db) {
+    return db.prepare(
+      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? ORDER BY id DESC LIMIT ?'
+    ).all(sessionId, limit).reverse();
+  }
+  return (memoryStore[sessionId] || []).slice(-limit);
+}
+
+function getAllSessions() {
+  if (db) {
+    return db.prepare(`
+      SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+             COUNT(c.id) as message_count
+      FROM sessions s
+      LEFT JOIN chat_history c ON s.session_id = c.session_id
+      GROUP BY s.session_id
+      ORDER BY s.updated_at DESC
+    `).all();
+  }
+  return Object.keys(memoryStore).map(id => ({
+    session_id: id,
+    message_count: memoryStore[id].length,
+    created_at: memoryStore[id][0]?.timestamp,
+    updated_at: memoryStore[id][memoryStore[id].length - 1]?.timestamp
+  }));
+}
+
+// ---- OpenAI Client -----------------------------------------
+let openai;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here') {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+
+// ---- Rate Limiting & Sanitization --------------------------
+const rateMap = new Map();
+function rateLimit(req, res, next) {
+  const config = loadConfig();
+  const limit = config.rateLimitPerMinute || 20;
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  const record = rateMap.get(ip) || { count: 0, reset: now + 60_000 };
+  if (now > record.reset) { record.count = 0; record.reset = now + 60_000; }
+  record.count++;
+  rateMap.set(ip, record);
+  if (record.count > limit) {
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
+  next();
+}
+
+function sanitize(text) {
+  if (typeof text !== 'string') return '';
+  // Strip HTML tags and scripts — keep emojis and normal chars
+  return text
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .slice(0, 2000);
+}
+
+// Domain restriction middleware
+function restrictDomain(req, res, next) {
+  const config = loadConfig();
+  const allowed = config.allowedDomains || [];
+  if (!allowed.length) return next(); // no restriction
+
+  const origin = req.headers.origin || req.headers.referer || '';
+  const isAllowed = allowed.some(d => {
+    const clean = d.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return origin.includes(clean);
+  });
+
+  if (!isAllowed) {
+    return res.status(403).json({ error: 'Domain not authorized to use this chatbot' });
+  }
+  next();
+}
+
+// Email notification helper
+async function sendLeadEmail(lead) {
+  try {
+    const config = loadConfig();
+    const emailCfg = config.emailNotifications || {};
+    if (!emailCfg.enabled || !emailCfg.smtpUser || !emailCfg.adminEmail) return;
+
+    const transporter = nodemailer.createTransport({
+      host: emailCfg.smtpHost,
+      port: emailCfg.smtpPort || 587,
+      secure: emailCfg.smtpPort === 465,
+      auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass }
+    });
+
+    await transporter.sendMail({
+      from: `"${config.companyName || 'Chatbot'}" <${emailCfg.smtpUser}>`,
+      to: emailCfg.adminEmail,
+      subject: `🎯 New Lead Captured: ${lead.name || lead.email}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:${config.themeColor || '#4F46E5'};">New Lead from ${config.companyName}</h2>
+          <table style="border-collapse:collapse;width:100%;margin-top:16px;">
+            <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Name:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.name || '-'}</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Email:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.email || '-'}</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Phone:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.phone || '-'}</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Page:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.pageUrl || '-'}</td></tr>
+            <tr><td style="padding:8px;"><b>Time:</b></td><td style="padding:8px;">${new Date().toLocaleString()}</td></tr>
+          </table>
+          <p style="margin-top:20px;color:#888;font-size:12px;">Captured by ${config.botName} AI Chatbot</p>
+        </div>
+      `
+    });
+    console.log('Lead email sent to', emailCfg.adminEmail);
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+  }
+}
+
+// Generate default API key if not set
+(function ensureApiKey() {
+  const config = loadConfig();
+  if (!config.apiKey) {
+    config.apiKey = 'bot_' + require('crypto').randomBytes(16).toString('hex');
+    saveConfig(config);
+    console.log('Generated default API key:', config.apiKey);
+  }
+})();
+
+// API key middleware
+function checkApiKey(req, res, next) {
+  const config = loadConfig();
+  if (!config.enforceApiKey) return next(); // Disabled
+  const provided = req.headers['x-bot-key'] || req.body?.apiKey || req.query?.apiKey;
+  if (!provided || provided !== config.apiKey) {
+    return res.status(401).json({ error: 'Invalid or missing API key' });
+  }
+  next();
+}
+
+// ---- Semantic (TF-IDF style) FAQ Search --------------------
+function tokenize(text) {
+  return (text || '').toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+}
+
+function cosineSimilarity(a, b) {
+  const wordsA = tokenize(a);
+  const wordsB = tokenize(b);
+  const freqA = {}, freqB = {};
+  wordsA.forEach(w => freqA[w] = (freqA[w] || 0) + 1);
+  wordsB.forEach(w => freqB[w] = (freqB[w] || 0) + 1);
+  const all = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
+  let dot = 0, magA = 0, magB = 0;
+  all.forEach(w => {
+    const x = freqA[w] || 0, y = freqB[w] || 0;
+    dot += x * y; magA += x * x; magB += y * y;
+  });
+  return magA && magB ? dot / Math.sqrt(magA * magB) : 0;
+}
+
+function semanticFaqMatch(query, faqs, threshold = 0.25) {
+  let best = null, bestScore = 0;
+  for (const faq of faqs) {
+    const score = Math.max(
+      cosineSimilarity(query, faq.question),
+      cosineSimilarity(query, (faq.question || '') + ' ' + (faq.answer || ''))
+    );
+    if (score > bestScore) { bestScore = score; best = faq; }
+  }
+  return bestScore >= threshold ? { faq: best, score: bestScore } : null;
+}
+
+// ---- Website URL scraper -----------------------------------
+async function scrapeUrl(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? require('https') : require('http');
+    lib.get(url, { timeout: 15000, headers: { 'User-Agent': 'Mozilla/5.0 ChatbotTrainer' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return scrapeUrl(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error('HTTP ' + res.statusCode + ' — Site may be blocking bots. Try a public/docs URL instead.'));
+      }
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        // Strip scripts/styles, then tags
+        let text = body
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/\s+/g, ' ')
+          .trim();
+        resolve(text);
+      });
+    }).on('error', reject).on('timeout', () => reject(new Error('Timeout')));
+  });
+}
+
+// ---- API Routes --------------------------------------------
+
+// GET /api/config — Widget loads config on init
+app.get('/api/config', (req, res) => {
+  const config = loadConfig();
+  // Don't expose sensitive data to widget
+  const { aiModel, systemPrompt, ...safeConfig } = config;
+  res.json(safeConfig);
+});
+
+// POST /api/register — Register user email with session
+app.post('/api/register', (req, res) => {
+  const { email, sessionId } = req.body;
+  if (!email || !sessionId) {
+    return res.status(400).json({ error: 'email and sessionId are required' });
+  }
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  if (db) {
+    db.prepare('INSERT OR IGNORE INTO users (email, session_id) VALUES (?, ?)').run(email, sessionId);
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, email) VALUES (?, ?)').run(sessionId, email);
+    db.prepare('UPDATE sessions SET email = ? WHERE session_id = ?').run(email, sessionId);
+  } else {
+    if (!memoryStore._users) memoryStore._users = {};
+    memoryStore._users[sessionId] = email;
+  }
+
+  res.json({ success: true });
+});
+
+// GET /api/users — Admin: list all users with email
+app.get('/api/users', (req, res) => {
+  if (db) {
+    const users = db.prepare(`
+      SELECT u.email, u.session_id, u.created_at,
+             COUNT(c.id) as message_count,
+             MAX(c.timestamp) as last_message
+      FROM users u
+      LEFT JOIN chat_history c ON u.session_id = c.session_id
+      GROUP BY u.email, u.session_id
+      ORDER BY u.created_at DESC
+    `).all();
+    return res.json(users);
+  }
+  const users = Object.entries(memoryStore._users || {}).map(([sid, email]) => ({
+    email, session_id: sid,
+    message_count: (memoryStore[sid] || []).length
+  }));
+  res.json(users);
+});
+
+// GET /api/stats — Admin: dashboard stats
+app.get('/api/stats', (req, res) => {
+  if (db) {
+    const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users').get().count;
+    const totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history').get().count;
+    const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+    const activeSessions = db.prepare(
+      "SELECT COUNT(*) as count FROM sessions WHERE updated_at > datetime('now', '-30 minutes')"
+    ).get().count;
+    const recentUsers = db.prepare(`
+      SELECT u.email, u.created_at, COUNT(c.id) as message_count
+      FROM users u
+      LEFT JOIN chat_history c ON u.session_id = c.session_id
+      GROUP BY u.email
+      ORDER BY u.created_at DESC LIMIT 5
+    `).all();
+    return res.json({ totalUsers, totalChats, totalSessions, activeSessions, recentUsers });
+  }
+  res.json({
+    totalUsers: Object.keys(memoryStore._users || {}).length,
+    totalChats: Object.values(memoryStore).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0),
+    totalSessions: Object.keys(memoryStore).filter(k => k !== '_users').length,
+    activeSessions: 0,
+    recentUsers: []
+  });
+});
+
+// POST /api/chat — Main chat endpoint
+app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
+  let { message, sessionId, file, pageUrl, botId, widgetVersion } = req.body;
+
+  if (!message || !sessionId) {
+    return res.status(400).json({ error: 'message and sessionId are required' });
+  }
+
+  // Sanitize input
+  message = sanitize(message);
+  if (!message.trim() && !file) {
+    return res.status(400).json({ error: 'Empty message' });
+  }
+
+  const config = loadConfig();
+  const startTime = Date.now();
+
+  // Track bot_id, widget version, last user msg time
+  if (db) {
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id) VALUES (?)').run(sessionId);
+    db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP WHERE session_id = ?')
+      .run(botId || 'default', widgetVersion || '', sessionId);
+  }
+
+  // Save user message with optional file
+  saveMessage(sessionId, 'user', message, file);
+
+  // Try semantic (TF-IDF) match first if enabled
+  let faqMatch = null;
+  if (config.semanticSearch !== false && config.faqs && config.faqs.length) {
+    const result = semanticFaqMatch(message, config.faqs, 0.30);
+    if (result) faqMatch = result.faq;
+  }
+
+  // Fallback: keyword match
+  if (!faqMatch) {
+    faqMatch = config.faqs.find(f =>
+      message.toLowerCase().includes(f.question.toLowerCase().replace(/[?]/g, '')) ||
+      f.question.toLowerCase().includes(message.toLowerCase().replace(/[?]/g, ''))
+    );
+  }
+
+  if (faqMatch) {
+    const responseMs = Date.now() - startTime;
+    saveMessage(sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
+    return res.json({ reply: faqMatch.answer, source: 'faq' });
+  }
+
+  // Page context hint
+  const contextHint = pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '';
+
+  // Use OpenAI if available
+  if (openai) {
+    try {
+      const history = getHistory(sessionId, 10);
+      const messages = [
+        { role: 'system', content: (config.systemPrompt || '') + contextHint },
+        ...history.map(h => ({ role: h.role, content: h.content })),
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: config.aiModel || 'gpt-3.5-turbo',
+        messages,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const reply = completion.choices[0].message.content;
+      const responseMs = Date.now() - startTime;
+
+      // Low confidence fallback - if reply contains uncertainty markers
+      const lowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
+      const finalReply = lowConfidence ? (config.fallbackMessage || reply) : reply;
+
+      saveMessage(sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
+      return res.json({ reply: finalReply, source: 'ai', lowConfidence });
+    } catch (err) {
+      console.error('OpenAI error:', err.message);
+      const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+      saveMessage(sessionId, 'assistant', fallback, null, { source: 'error' });
+      return res.json({ reply: fallback, source: 'error' });
+    }
+  }
+
+  // Fallback: simple keyword matching
+  const reply = generateFallbackReply(message, config);
+  const responseMs = Date.now() - startTime;
+  saveMessage(sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
+  res.json({ reply, source: 'fallback' });
+});
+
+// POST /api/lead — Capture lead (name, phone, email)
+app.post('/api/lead', (req, res) => {
+  const { sessionId, name, email, phone, pageUrl } = req.body;
+  if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
+  if (!email && !phone) return res.status(400).json({ error: 'Provide email or phone' });
+
+  const safeName  = sanitize(name  || '');
+  const safeEmail = sanitize(email || '');
+  const safePhone = sanitize(phone || '');
+  const safeUrl   = sanitize(pageUrl || '');
+
+  // Validate email if present
+  if (safeEmail) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(safeEmail)) return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  if (db) {
+    db.prepare('INSERT INTO leads (session_id, name, email, phone, page_url) VALUES (?, ?, ?, ?, ?)')
+      .run(sessionId, safeName, safeEmail, safePhone, safeUrl);
+  }
+
+  // Send email notification to admin (async, non-blocking)
+  sendLeadEmail({ name: safeName, email: safeEmail, phone: safePhone, pageUrl: safeUrl });
+
+  res.json({ success: true });
+});
+
+// POST /api/knowledge/pdf — Upload PDF to extract knowledge
+app.post('/api/knowledge/pdf', async (req, res) => {
+  const { fileName, fileData } = req.body;
+  if (!fileData) return res.status(400).json({ error: 'fileData required (base64)' });
+
+  try {
+    const pdfParse = require('pdf-parse');
+    const base64 = fileData.replace(/^data:application\/pdf;base64,/, '');
+    const buffer = Buffer.from(base64, 'base64');
+    const data   = await pdfParse(buffer);
+    const text   = (data.text || '').trim();
+
+    if (!text) return res.status(400).json({ error: 'No text extracted from PDF' });
+
+    // Split into Q&A chunks — simple heuristic: split by double newlines
+    const config = loadConfig();
+    const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
+    const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
+      question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
+      answer: chunk.trim().slice(0, 500)
+    }));
+
+    config.faqs = [...(config.faqs || []), ...newFaqs];
+    saveConfig(config);
+
+    res.json({ success: true, added: newFaqs.length, totalChars: text.length });
+  } catch (err) {
+    console.error('PDF parse error:', err.message);
+    res.status(500).json({ error: 'Failed to parse PDF: ' + err.message });
+  }
+});
+
+// POST /api/logo — Upload logo (base64 image)
+app.post('/api/logo', (req, res) => {
+  const { logo } = req.body;
+  if (!logo) return res.status(400).json({ error: 'logo required' });
+  const config = loadConfig();
+  config.logo = logo;
+  saveConfig(config);
+  res.json({ success: true });
+});
+
+// POST /api/test-email — Test email configuration
+app.post('/api/test-email', async (req, res) => {
+  try {
+    await sendLeadEmail({ name: 'Test User', email: 'test@test.com', phone: '1234567890', pageUrl: 'http://test.com' });
+    res.json({ success: true, message: 'Test email sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/leads — Admin: list all leads
+app.get('/api/leads', (req, res) => {
+  if (db) {
+    return res.json(db.prepare('SELECT * FROM leads ORDER BY created_at DESC').all());
+  }
+  res.json([]);
+});
+
+// GET /api/leads/csv — Admin: download leads as CSV
+app.get('/api/leads/csv', (req, res) => {
+  if (!db) return res.status(500).send('DB not available');
+  const leads = db.prepare('SELECT name, email, phone, page_url, created_at FROM leads ORDER BY created_at DESC').all();
+  const csvRows = [
+    ['Name', 'Email', 'Phone', 'Page URL', 'Captured At'],
+    ...leads.map(l => [l.name, l.email, l.phone, l.page_url, l.created_at])
+  ];
+  const csv = csvRows.map(r => r.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="leads-${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send(csv);
+});
+
+// GET /api/analytics — advanced analytics
+app.get('/api/analytics', (req, res) => {
+  if (!db) return res.json({});
+  const avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0").get().avg || 0;
+  const sourceBreakdown = db.prepare(
+    "SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' GROUP BY source"
+  ).all();
+  const totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads').get().count;
+  const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users').get().count;
+  const conversionRate = totalUsers > 0 ? ((totalLeads / totalUsers) * 100).toFixed(1) : 0;
+
+  res.json({
+    avgResponseMs: Math.round(avgResponse),
+    sourceBreakdown,
+    totalLeads,
+    conversionRate: parseFloat(conversionRate)
+  });
+});
+
+function generateFallbackReply(message, config) {
+  const msg = message.toLowerCase();
+
+  if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
+    return `Hello! Welcome to ${config.companyName}. How can I help you?`;
+  }
+  if (msg.includes('help')) {
+    return `I'd be happy to help! You can ask me about our services, pricing, or contact info. Here are some things I can help with:\n${config.suggestedQuestions.map(q => `• ${q}`).join('\n')}`;
+  }
+  if (msg.includes('thank')) {
+    return "You're welcome! Is there anything else I can help you with?";
+  }
+  if (msg.includes('bye') || msg.includes('goodbye')) {
+    return "Goodbye! Have a great day! Feel free to come back anytime.";
+  }
+  if (msg.includes('price') || msg.includes('cost') || msg.includes('plan')) {
+    return "For pricing details, please visit our pricing page or contact our sales team. Would you like me to help with something else?";
+  }
+  if (msg.includes('contact') || msg.includes('support') || msg.includes('email')) {
+    return `You can reach our support team at support@${config.companyName.toLowerCase().replace(/\s/g, '')}.com. Is there anything else?`;
+  }
+  return `Thank you for your message. I understand you're asking about "${message}". For the most accurate answer, our team will get back to you shortly. Meanwhile, you can try asking:\n${config.suggestedQuestions.slice(0, 2).map(q => `• ${q}`).join('\n')}`;
+}
+
+// GET /api/history — Get chat history for a session
+app.get('/api/history/:sessionId', (req, res) => {
+  const history = getHistory(req.params.sessionId, 50);
+  res.json(history);
+});
+
+// GET /api/sessions — Admin: list all sessions
+app.get('/api/sessions', (req, res) => {
+  res.json(getAllSessions());
+});
+
+// GET /api/session/:id — Admin: get session messages
+app.get('/api/session/:sessionId', (req, res) => {
+  const history = getHistory(req.params.sessionId, 100);
+  res.json(history);
+});
+
+// PUT /api/config — Admin: update config
+app.put('/api/config', (req, res) => {
+  try {
+    const current  = loadConfig();
+    const updated  = { ...current, ...req.body };
+    saveConfig(updated);
+    res.json({ success: true, config: updated });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save config' });
+  }
+});
+
+// GET /api/config/full — Admin: full config including sensitive fields
+app.get('/api/config/full', (req, res) => {
+  res.json(loadConfig());
+});
+
+// POST /api/knowledge/url — Auto-train from website URL
+app.post('/api/knowledge/url', async (req, res) => {
+  const { url } = req.body;
+  if (!url || !/^https?:\/\//.test(url)) {
+    return res.status(400).json({ error: 'Valid URL required (http:// or https://)' });
+  }
+
+  try {
+    const text = await scrapeUrl(url);
+    if (!text || text.length < 50) {
+      return res.status(400).json({ error: 'No usable text found at URL' });
+    }
+
+    // Split text into chunks and add as FAQs
+    const config = loadConfig();
+    const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
+    const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
+
+    const urlLabel = new URL(url).hostname;
+    const newFaqs = usefulChunks.map((chunk, i) => ({
+      question: `[From ${urlLabel}] Section ${i + 1}`,
+      answer: chunk.trim().slice(0, 500)
+    }));
+
+    config.faqs = [...(config.faqs || []), ...newFaqs];
+    saveConfig(config);
+
+    res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
+  } catch (err) {
+    res.status(500).json({ error: 'Scrape failed: ' + err.message });
+  }
+});
+
+// GET /api/bots — List all bots (multi-tenant)
+app.get('/api/bots', (req, res) => {
+  if (!db) return res.json([]);
+  const bots = db.prepare('SELECT bot_id, name, api_key, created_at FROM bots ORDER BY created_at DESC').all();
+  res.json(bots);
+});
+
+// POST /api/bots — Create a new bot
+app.post('/api/bots', (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Bot name required' });
+  const bot_id = 'bot_' + require('crypto').randomBytes(6).toString('hex');
+  const api_key = 'key_' + require('crypto').randomBytes(20).toString('hex');
+  const defaultConfig = JSON.stringify({ botName: name, themeColor: '#4F46E5' });
+  if (db) {
+    db.prepare('INSERT INTO bots (bot_id, name, api_key, config) VALUES (?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig);
+  }
+  res.json({ success: true, bot_id, api_key, name });
+});
+
+// DELETE /api/bots/:id
+app.delete('/api/bots/:id', (req, res) => {
+  if (db) db.prepare('DELETE FROM bots WHERE bot_id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// POST /api/apikey/regenerate — Regenerate default API key
+app.post('/api/apikey/regenerate', (req, res) => {
+  const config = loadConfig();
+  config.apiKey = 'bot_' + require('crypto').randomBytes(16).toString('hex');
+  saveConfig(config);
+  res.json({ success: true, apiKey: config.apiKey });
+});
+
+// GET /api/dropoff — Drop-off analytics
+app.get('/api/dropoff', (req, res) => {
+  if (!db) return res.json({});
+
+  // Mark sessions as abandoned if last user msg was > 30 min ago and no recent assistant reply
+  db.prepare(`
+    UPDATE sessions SET abandoned = 1
+    WHERE last_user_msg_at IS NOT NULL
+      AND last_user_msg_at < datetime('now', '-30 minutes')
+      AND abandoned = 0
+  `).run();
+
+  const buckets = db.prepare(`
+    SELECT
+      CASE
+        WHEN msg_count = 0 THEN '0 messages'
+        WHEN msg_count BETWEEN 1 AND 3 THEN '1-3 messages'
+        WHEN msg_count BETWEEN 4 AND 10 THEN '4-10 messages'
+        ELSE '10+ messages'
+      END as bucket,
+      COUNT(*) as count
+    FROM (
+      SELECT s.session_id, COUNT(c.id) as msg_count
+      FROM sessions s
+      LEFT JOIN chat_history c ON s.session_id = c.session_id AND c.role = 'user'
+      GROUP BY s.session_id
+    )
+    GROUP BY bucket
+  `).all();
+
+  const abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1').get().count;
+  const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+  const abandonRate = totalSessions > 0 ? ((abandonedCount / totalSessions) * 100).toFixed(1) : 0;
+
+  // Widget version distribution
+  const versions = db.prepare(`
+    SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
+    FROM sessions
+    WHERE widget_version IS NOT NULL AND widget_version != ''
+    GROUP BY widget_version
+  `).all();
+
+  res.json({ buckets, abandonedCount, abandonRate: parseFloat(abandonRate), versions });
+});
+
+// ==============================================
+// COMPLAINTS API
+// ==============================================
+
+// POST /api/complaint — Submit a complaint
+app.post('/api/complaint', (req, res) => {
+  const { sessionId, email, name, phone, category, subject, message, pageUrl } = req.body;
+  if (!sessionId || !message) {
+    return res.status(400).json({ error: 'sessionId and message required' });
+  }
+  const safeEmail    = sanitize(email || '');
+  const safeName     = sanitize(name || '');
+  const safePhone    = sanitize(phone || '');
+  const safeCategory = sanitize(category || 'other');
+  const safeSubject  = sanitize(subject || '');
+  const safeMessage  = sanitize(message);
+  const safeUrl      = sanitize(pageUrl || '');
+
+  if (db) {
+    db.prepare(
+      'INSERT INTO complaints (session_id, email, name, phone, category, subject, message, page_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(sessionId, safeEmail, safeName, safePhone, safeCategory, safeSubject, safeMessage, safeUrl);
+  }
+
+  // Send notification email (reuse sendLeadEmail-like path)
+  try {
+    const config = loadConfig();
+    const emailCfg = config.emailNotifications || {};
+    if (emailCfg.enabled && emailCfg.smtpUser && emailCfg.adminEmail) {
+      const transporter = nodemailer.createTransport({
+        host: emailCfg.smtpHost,
+        port: emailCfg.smtpPort || 587,
+        secure: emailCfg.smtpPort === 465,
+        auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass }
+      });
+      transporter.sendMail({
+        from: `"${config.companyName || 'Chatbot'}" <${emailCfg.smtpUser}>`,
+        to: emailCfg.adminEmail,
+        subject: `⚠️ New Complaint: ${safeSubject || safeCategory}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+            <h2 style="color:#EF4444;">⚠️ New Complaint Received</h2>
+            <table style="border-collapse:collapse;width:100%;margin-top:16px;">
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Name:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeName || '-'}</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Mobile:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safePhone || '-'}</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Email:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeEmail || '-'}</td></tr>
+              <tr><td style="padding:8px;"><b>Issue:</b></td><td style="padding:8px;">${safeMessage}</td></tr>
+            </table>
+          </div>`
+      }).catch(e => console.error('Complaint email failed:', e.message));
+    }
+  } catch (e) { /* email optional */ }
+
+  res.json({ success: true, ticketId: 'CMP-' + Date.now().toString(36).toUpperCase() });
+});
+
+// GET /api/complaints — Admin: list all
+app.get('/api/complaints', (req, res) => {
+  if (!db) return res.json([]);
+  res.json(db.prepare('SELECT * FROM complaints ORDER BY created_at DESC').all());
+});
+
+// PUT /api/complaint/:id/status — Admin: update status
+app.put('/api/complaint/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!['open', 'in_progress', 'resolved'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  if (db) db.prepare('UPDATE complaints SET status = ? WHERE id = ?').run(status, req.params.id);
+  res.json({ success: true });
+});
+
+// ---- Start Server ------------------------------------------
+app.listen(PORT, () => {
+  console.log(`\n  AI Chatbot Server running on http://localhost:${PORT}`);
+  console.log(`  Widget URL:  http://localhost:${PORT}/widget/chatbot.js`);
+  console.log(`  Admin Panel: http://localhost:${PORT}/admin\n`);
+});

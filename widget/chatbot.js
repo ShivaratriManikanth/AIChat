@@ -49,11 +49,8 @@
   // ---- Translations -----------------------------------------
   const LANGS = {
     en: { placeholder: 'Type your message...', welcome: 'Hi! How can I help?', send: 'Send', voice: 'Voice input', dark: 'Dark mode', light: 'Light mode', export: 'Export chat', rate: 'Rate this conversation', thankRate: 'Thanks for your feedback!', upload: 'Attach file', langLabel: 'Language', search: 'Search messages...', fullscreen: 'Fullscreen', noResults: 'No messages found' },
-    es: { placeholder: 'Escribe tu mensaje...', welcome: 'Hola! Como puedo ayudarte?', send: 'Enviar', voice: 'Entrada de voz', dark: 'Modo oscuro', light: 'Modo claro', export: 'Exportar chat', rate: 'Califica esta conversacion', thankRate: 'Gracias por tus comentarios!', upload: 'Adjuntar archivo', langLabel: 'Idioma', search: 'Buscar mensajes...', fullscreen: 'Pantalla completa', noResults: 'No se encontraron mensajes' },
-    fr: { placeholder: 'Tapez votre message...', welcome: 'Bonjour! Comment puis-je aider?', send: 'Envoyer', voice: 'Saisie vocale', dark: 'Mode sombre', light: 'Mode clair', export: 'Exporter le chat', rate: 'Evaluez cette conversation', thankRate: 'Merci pour votre avis!', upload: 'Joindre un fichier', langLabel: 'Langue', search: 'Rechercher des messages...', fullscreen: 'Plein ecran', noResults: 'Aucun message trouve' },
     hi: { placeholder: 'अपना संदेश लिखें...', welcome: 'नमस्ते! मैं कैसे मदद कर सकता हूं?', send: 'भेजें', voice: 'आवाज इनपुट', dark: 'डार्क मोड', light: 'लाइट मोड', export: 'चैट निर्यात', rate: 'इस बातचीत को रेट करें', thankRate: 'आपकी प्रतिक्रिया के लिए धन्यवाद!', upload: 'फ़ाइल संलग्न करें', langLabel: 'भाषा', search: 'संदेश खोजें...', fullscreen: 'पूर्ण स्क्रीन', noResults: 'कोई संदेश नहीं मिला' },
-    te: { placeholder: 'మీ సందేశాన్ని టైప్ చేయండి...', welcome: 'హాయ్! నేను ఎలా సహాయపడగలను?', send: 'పంపండి', voice: 'వాయిస్ ఇన్‌పుట్', dark: 'డార్క్ మోడ్', light: 'లైట్ మోడ్', export: 'చాట్ ఎగుమతి', rate: 'ఈ సంభాషణకు రేట్ ఇవ్వండి', thankRate: 'మీ అభిప్రాయానికి ధన్యవాదాలు!', upload: 'ఫైల్ జతచేయండి', langLabel: 'భాష', search: 'సందేశాలను వెతకండి...', fullscreen: 'పూర్తి స్క్రీన్', noResults: 'సందేశాలు కనుగొనబడలేదు' },
-    ar: { placeholder: 'اكتب رسالتك...', welcome: 'مرحبا! كيف يمكنني المساعدة؟', send: 'إرسال', voice: 'إدخال صوتي', dark: 'الوضع الداكن', light: 'الوضع الفاتح', export: 'تصدير الدردشة', rate: 'قيم هذه المحادثة', thankRate: 'شكرا لملاحظاتك!', upload: 'إرفاق ملف', langLabel: 'اللغة', search: 'البحث في الرسائل...', fullscreen: 'ملء الشاشة', noResults: 'لم يتم العثور على رسائل' }
+    te: { placeholder: 'మీ సందేశాన్ని టైప్ చేయండి...', welcome: 'హాయ్! నేను ఎలా సహాయపడగలను?', send: 'పంపండి', voice: 'వాయిస్ ఇన్‌పుట్', dark: 'డార్క్ మోడ్', light: 'లైట్ మోడ్', export: 'చాట్ ఎగుమతి', rate: 'ఈ సంభాషణకు రేట్ ఇవ్వండి', thankRate: 'మీ అభిప్రాయానికి ధన్యవాదాలు!', upload: 'ఫైల్ జతచేయండి', langLabel: 'భాష', search: 'సందేశాలను వెతకండి...', fullscreen: 'పూర్తి స్క్రీన్', noResults: 'సందేశాలు కనుగొనబడలేదు' }
   };
 
   function t(key) { return (LANGS[currentLang] || LANGS.en)[key] || LANGS.en[key]; }
@@ -796,8 +793,9 @@
     const container = document.createElement('div');
     container.id = 'chatbot-widget-container';
 
+    const langNames = { en: 'English (EN)', hi: 'Hindi (HI)', te: 'Telugu (TE)' };
     const langOptions = Object.keys(LANGS).map(l =>
-      `<option value="${l}" ${l === currentLang ? 'selected' : ''}>${l.toUpperCase()}</option>`
+      `<option value="${l}" ${l === currentLang ? 'selected' : ''}>${langNames[l]}</option>`
     ).join('');
 
     container.innerHTML = `

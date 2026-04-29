@@ -455,7 +455,7 @@ app.get('/api/stats', (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, file, pageUrl, botId, widgetVersion } = req.body;
+  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });
@@ -501,8 +501,11 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     return res.json({ reply: faqMatch.answer, source: 'faq' });
   }
 
-  // Page context hint
-  const contextHint = pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '';
+  // Page context and language hint
+  const langNames = { en: 'English', hi: 'Hindi', te: 'Telugu' };
+  const languageName = langNames[lang] || 'English';
+  const langHint = `\n\nIMPORTANT: You must generate your response entirely in ${languageName}. Do not use any other language.`;
+  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint;
 
   // Use OpenAI if available
   if (openai) {

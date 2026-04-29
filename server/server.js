@@ -22,8 +22,21 @@ app.use(express.urlencoded({ limit: '25mb', extended: true }));
 // Serve widget files
 app.use('/widget', express.static(path.join(__dirname, '..', 'widget')));
 
+// Basic Auth Middleware for Admin
+function adminAuth(req, res, next) {
+  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+  if (login === 'admin' && password === 'admin123') {
+    return next();
+  }
+
+  res.set('WWW-Authenticate', 'Basic realm="Admin Dashboard"');
+  res.status(401).send('Authentication required.');
+}
+
 // Serve admin dashboard
-app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+app.use('/admin', adminAuth, express.static(path.join(__dirname, '..', 'admin')));
 
 // Serve demo website
 app.use('/demo', express.static(path.join(__dirname, '..', 'hospital-demo')));

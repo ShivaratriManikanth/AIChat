@@ -308,11 +308,12 @@ function checkApiKey(req, res, next) {
 }
 
 // ---- Semantic (TF-IDF style) FAQ Search --------------------
+const stopWords = new Set(['what', 'are', 'your', 'is', 'the', 'how', 'can', 'you', 'my', 'do', 'does', 'did', 'to', 'for', 'of', 'and', 'in', 'on', 'with', 'a', 'an', 'this', 'that', 'about', 'tell', 'me']);
 function tokenize(text) {
   return (text || '').toLowerCase()
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length > 2);
+    .filter(w => w.length > 2 && !stopWords.has(w));
 }
 
 function cosineSimilarity(a, b) {

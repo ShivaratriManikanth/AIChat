@@ -779,10 +779,87 @@
       /* Handoff menu — complaint option */
       .handoff-option.complaint .handoff-icon { background: #EF4444; color: white; }
 
-      /* ---- Mobile ---- */
+      /* ---- Breakpoints & Responsive Design ---- */
+      /* Desktop (769px and above) */
+      @media (min-width: 769px) {
+        #chatbot-window { 
+          width: 400px; 
+          height: 600px; 
+        }
+      }
+
+      /* Tablet (481px - 768px) */
+      @media (min-width: 481px) and (max-width: 768px) {
+        #chatbot-window { 
+          width: 360px; 
+          height: 520px; 
+          bottom: 100px; 
+          right: 24px; 
+        }
+        #chatbot-toggle { 
+          width: 58px; 
+          height: 58px; 
+        }
+        .chatbot-msg { max-width: 85%; }
+      }
+
+      /* Mobile (max-width: 480px) */
       @media (max-width: 480px) {
-        #chatbot-window { width: calc(100vw - 16px); height: calc(100vh - 120px); bottom: 84px; right: 8px; border-radius: 14px; }
-        #chatbot-toggle { bottom: 16px; right: 16px; width: 56px; height: 56px; }
+        #chatbot-window { 
+          width: calc(100vw - 24px) !important; 
+          height: calc(100vh - 110px) !important; 
+          bottom: 85px !important; 
+          right: 12px !important; 
+          left: 12px !important; 
+          border-radius: 16px !important; 
+        }
+        #chatbot-toggle { 
+          bottom: 16px !important; 
+          right: 16px !important; 
+          width: 54px !important; 
+          height: 54px !important; 
+        }
+        /* Mobile layout adjustments */
+        #chatbot-header { 
+          padding: 12px 14px; 
+        }
+        .header-actions { 
+          gap: 2px; 
+        }
+        .header-btn { 
+          width: 34px; 
+          height: 34px; /* Larger touch target */
+          font-size: 14px;
+        }
+        .chatbot-msg { 
+          max-width: 90%; /* Utilize more space */
+          padding: 10px 12px;
+          font-size: 14px;
+        }
+        #chatbot-input-area { 
+          padding: 8px 10px; 
+          gap: 6px; 
+        }
+        #chatbot-input { 
+          font-size: 16px; /* Prevents iOS auto-zoom on input focus */
+          padding: 10px 14px;
+        }
+        #chatbot-send, .input-btn {
+          width: 40px; 
+          height: 40px; /* Better touch targets */
+        }
+        .chatbot-lead-form {
+          width: 100%;
+        }
+        /* Hide advanced features text to save space */
+        .header-btn.handoff-btn {
+          padding: 0 8px;
+          font-size: 0; 
+        }
+        .header-btn.handoff-btn::before {
+          content: "👤";
+          font-size: 14px;
+        }
       }
     `;
     document.head.appendChild(style);

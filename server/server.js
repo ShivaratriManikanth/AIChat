@@ -62,7 +62,9 @@ function saveConfig(config) {
 let db;
 try {
   const Database = require('better-sqlite3');
-  db = new Database(path.join(__dirname, 'chatbot.db'));
+  // Use DB_PATH from environment if provided, otherwise default to local file
+  const dbPath = process.env.DB_PATH || path.join(__dirname, 'chatbot.db');
+  db = new Database(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS chat_history (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,

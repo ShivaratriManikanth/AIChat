@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Super Admin | SaaS Platform</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto 20px; }
+    h2 { margin-top: 0; }
+    input, select, button { padding: 10px; margin: 5px 0; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { background: #4F46E5; color: white; border: none; cursor: pointer; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #eee; padding: 10px; text-align: left; }
+    th { background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>SaaS Super Admin</h2>
+    <p>Create new clients and assign plans.</p>
+    <input type="text" id="companyName" placeholder="Company Name">
+    <input type="email" id="clientEmail" placeholder="Client Email">
+    <select id="planId">
+      <option value="1">Basic Plan</option>
+      <option value="2">Standard Plan</option>
+      <option value="3">Premium Plan</option>
+    </select>
+    <button onclick="createClient()">Create Client & Send Email</button>
+  </div>
+
+  <div class="card" style="max-width: 800px;">
+    <h2>Active Clients</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Company</th><th>Email</th><th>Plan</th><th>Payment Status</th></tr>
+      </thead>
+      <tbody id="clientTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadClients() {
+      const res = await fetch('/api/super/clients');
+      const clients = await res.json();
+      document.getElementById('clientTable').innerHTML = clients.map(c => 
+        `<tr><td>${c.id}</td><td>${c.company_name}</td><td>${c.email}</td><td>${c.plan_id}</td><td>${c.payment_status}</td></tr>`
+      ).join('');
+    }
+
+    async function createClient() {
+      const company = document.getElementById('companyName').value;
+      const email = document.getElementById('clientEmail').value;
+      const planId = document.getElementById('planId').value;
+      
+      const res = await fetch('/api/super/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_name: company, email, plan_id: planId })
+      });
+      if(res.ok) {
+        alert('Client created! Email dispatched.');
+        loadClients();
+      } else {
+        alert('Failed to create client.');
+      }
+    }
+    
+    loadClients();
+  </script>
+</body>
+</html>

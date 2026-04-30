@@ -18,6 +18,7 @@
   const SERVER_URL = scriptTag?.getAttribute('data-server') || 'http://localhost:4000';
   const BOT_ID     = scriptTag?.getAttribute('data-bot-id') || 'default';
   const API_KEY    = scriptTag?.getAttribute('data-api-key') || '';
+  const CLIENT_ID  = scriptTag?.getAttribute('data-client-id') || 'default_client';
   const SESSION_ID = getSessionId();
 
   let CONFIG = {
@@ -1248,6 +1249,7 @@
         body: JSON.stringify({
           message: sendText,
           sessionId: SESSION_ID,
+          clientId: CLIENT_ID,
           lang: currentLang,
           email: userEmail,
           file: fileToSend,

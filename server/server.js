@@ -148,7 +148,70 @@ try {
     )
   `);
   try { db.exec(`ALTER TABLE complaints ADD COLUMN phone TEXT DEFAULT ''`); } catch (e) {}
-  console.log('SQLite database connected');
+
+  // SaaS Multi-tenant extensions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS super_admins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE,
+      password TEXT
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      features TEXT
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE,
+      password TEXT,
+      company_name TEXT,
+      plan_id INTEGER,
+      payment_status TEXT DEFAULT 'COD_PENDING',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bot_configs (
+      client_id TEXT PRIMARY KEY,
+      bot_name TEXT DEFAULT 'AI Assistant',
+      theme_color TEXT DEFAULT '#4F46E5',
+      logo_url TEXT,
+      position TEXT DEFAULT 'bottom-right'
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id TEXT NOT NULL,
+      url TEXT NOT NULL
+    )
+  `);
+
+  // Alter existing tables for multi-tenancy
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE leads ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE complaints ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+
+  // Default super admin & client if empty
+  const hasSuperAdmin = db.prepare("SELECT COUNT(*) as count FROM super_admins").get();
+  if (hasSuperAdmin.count === 0) {
+    db.prepare("INSERT INTO super_admins (email, password) VALUES ('superadmin@example.com', 'super123')").run();
+  }
+  const hasClient = db.prepare("SELECT COUNT(*) as count FROM clients").get();
+  if (hasClient.count === 0) {
+    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('default_client', 'client@example.com', 'client123', 'Default Company')").run();
+    db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
+  }
+
+  console.log('SQLite database connected and SaaS schema initialized');
 } catch (err) {
   console.warn('SQLite not available — chat history will use in-memory storage');
   db = null;
@@ -157,12 +220,12 @@ try {
 // In-memory fallback
 const memoryStore = {};
 
-function saveMessage(sessionId, role, content, file, meta = {}) {
+function saveMessage(clientId, sessionId, role, content, file, meta = {}) {
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id) VALUES (?)').run(sessionId);
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, clientId || 'default_client');
     db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = ?').run(sessionId);
-    db.prepare('INSERT INTO chat_history (session_id, role, content, file_data, file_name, file_type, source, response_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      sessionId, role, content,
+    db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      clientId || 'default_client', sessionId, role, content,
       file?.dataUrl || '', file?.name || '', file?.type || '',
       meta.source || '', meta.responseMs || 0
     );
@@ -458,7 +521,7 @@ app.get('/api/stats', (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang } = req.body;
+  let { message, sessionId, clientId, file, pageUrl, botId, widgetVersion, lang } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });
@@ -481,7 +544,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   }
 
   // Save user message with optional file
-  saveMessage(sessionId, 'user', message, file);
+  saveMessage(clientId, sessionId, 'user', message, file);
 
   // Try semantic (TF-IDF) match first if enabled
   let faqMatch = null;
@@ -500,7 +563,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
   if (faqMatch) {
     const responseMs = Date.now() - startTime;
-    saveMessage(sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
+    saveMessage(clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
     return res.json({ reply: faqMatch.answer, source: 'faq' });
   }
 
@@ -534,7 +597,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       // Low confidence fallback - if reply contains uncertainty markers
       openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
       if (!openaiLowConfidence) {
-        saveMessage(sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
+        saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
         return res.json({ reply, source: 'ai' });
       }
       openaiReply = reply;
@@ -590,7 +653,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       }
 
       const responseMs = Date.now() - startTime;
-      saveMessage(sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
+      saveMessage(clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
       return res.json({ reply: geminiReply, source: 'gemini' });
     } catch (err) {
       console.error('Gemini error:', err.message);
@@ -601,20 +664,20 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   if (openaiReply && openaiLowConfidence) {
     const finalReply = config.fallbackMessage || openaiReply;
     const responseMs = Date.now() - startTime;
-    saveMessage(sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
+    saveMessage(clientId, sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
     return res.json({ reply: finalReply, source: 'ai', lowConfidence: true });
   }
 
   if (openai) {
     const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
-    saveMessage(sessionId, 'assistant', fallback, null, { source: 'error' });
+    saveMessage(clientId, sessionId, 'assistant', fallback, null, { source: 'error' });
     return res.json({ reply: fallback, source: 'error' });
   }
 
   // Fallback: simple keyword matching
   const reply = generateFallbackReply(message, config);
   const responseMs = Date.now() - startTime;
-  saveMessage(sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
+  saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
   res.json({ reply, source: 'fallback' });
 });
 
@@ -979,6 +1042,41 @@ app.put('/api/complaint/:id/status', (req, res) => {
   }
   if (db) db.prepare('UPDATE complaints SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ success: true });
+});
+
+// ==========================================
+// SAAS SUPER ADMIN ENDPOINTS
+// ==========================================
+app.get('/api/super/clients', (req, res) => {
+  if (!db) return res.json([]);
+  const clients = db.prepare('SELECT id, email, company_name, plan_id, payment_status, created_at FROM clients').all();
+  res.json(clients);
+});
+
+app.post('/api/super/clients', (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { company_name, email, plan_id } = req.body;
+  const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
+  const tempPassword = Math.random().toString(36).substring(2, 10);
+  
+  try {
+    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+      clientId, email, tempPassword, company_name, plan_id || 1, 'COD_PENDING'
+    );
+    db.prepare('INSERT INTO bot_configs (client_id, bot_name) VALUES (?, ?)').run(
+      clientId, company_name + ' Bot'
+    );
+    
+    // In a real app, you would use nodemailer here:
+    console.log(`\n📧 EMAIL DISPATCHED TO: ${email}`);
+    console.log(`Thank you for subscribing. Your chatbot dashboard is ready.`);
+    console.log(`Login: ${email} | Password: ${tempPassword}`);
+    console.log(`Widget Code: <script src="http://localhost:${PORT}/widget/chatbot.js" data-client-id="${clientId}"></script>\n`);
+    
+    res.json({ success: true, clientId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ---- Start Server ------------------------------------------

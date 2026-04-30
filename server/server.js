@@ -509,6 +509,8 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint;
 
   // Use OpenAI if available
+  let openaiReply = null;
+  let openaiLowConfidence = false;
   if (openai) {
     try {
       const history = getHistory(sessionId, 10);
@@ -528,17 +530,69 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       const responseMs = Date.now() - startTime;
 
       // Low confidence fallback - if reply contains uncertainty markers
-      const lowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
-      const finalReply = lowConfidence ? (config.fallbackMessage || reply) : reply;
-
-      saveMessage(sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
-      return res.json({ reply: finalReply, source: 'ai', lowConfidence });
+      openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
+      if (!openaiLowConfidence) {
+        saveMessage(sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
+        return res.json({ reply, source: 'ai' });
+      }
+      openaiReply = reply;
     } catch (err) {
       console.error('OpenAI error:', err.message);
-      const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
-      saveMessage(sessionId, 'assistant', fallback, null, { source: 'error' });
-      return res.json({ reply: fallback, source: 'error' });
     }
+  }
+
+  // ---- Fallback: Gemini 2.5 Flash API ----
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const history = getHistory(sessionId, 10);
+      let contents = history.map(h => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.content || '' }]
+      }));
+      
+      // Ensure contents array starts with a 'user' role (Gemini requirement)
+      while (contents.length > 0 && contents[0].role !== 'user') {
+        contents.shift();
+      }
+      if (contents.length === 0) {
+        contents = [{ role: 'user', parts: [{ text: message }] }];
+      }
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: (config.systemPrompt || '') + contextHint }] },
+          contents: contents
+        })
+      });
+
+      const geminiData = await geminiRes.json();
+      if (geminiData.candidates && geminiData.candidates[0]?.content?.parts?.[0]?.text) {
+        const geminiReply = geminiData.candidates[0].content.parts[0].text;
+        const responseMs = Date.now() - startTime;
+        saveMessage(sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
+        return res.json({ reply: geminiReply, source: 'gemini' });
+      } else {
+        console.error('Gemini API returned unexpected structure:', geminiData);
+      }
+    } catch (err) {
+      console.error('Gemini error:', err.message);
+    }
+  }
+
+  // If both OpenAI and Gemini fail, fallback to original logic
+  if (openaiReply && openaiLowConfidence) {
+    const finalReply = config.fallbackMessage || openaiReply;
+    const responseMs = Date.now() - startTime;
+    saveMessage(sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
+    return res.json({ reply: finalReply, source: 'ai', lowConfidence: true });
+  }
+
+  if (openai) {
+    const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+    saveMessage(sessionId, 'assistant', fallback, null, { source: 'error' });
+    return res.json({ reply: fallback, source: 'error' });
   }
 
   // Fallback: simple keyword matching

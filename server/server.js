@@ -550,33 +550,42 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
         contents: [{ role: 'user', parts: [{ text: message }] }]
       });
 
-      const geminiReply = await new Promise((resolve, reject) => {
-        const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(payload)
-          }
-        }, (res) => {
-          let data = '';
-          res.on('data', chunk => data += chunk);
-          res.on('end', () => {
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
-                resolve(parsed.candidates[0].content.parts[0].text);
-              } else {
-                reject(new Error('Unexpected Gemini structure: ' + data));
+      let geminiReply = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          geminiReply = await new Promise((resolve, reject) => {
+            const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
               }
-            } catch (e) {
-              reject(e);
-            }
+            }, (res) => {
+              let data = '';
+              res.on('data', chunk => data += chunk);
+              res.on('end', () => {
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
+                    resolve(parsed.candidates[0].content.parts[0].text);
+                  } else {
+                    reject(new Error('Unexpected Gemini structure: ' + data));
+                  }
+                } catch (e) {
+                  reject(e);
+                }
+              });
+            });
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
           });
-        });
-        req.on('error', reject);
-        req.write(payload);
-        req.end();
-      });
+          break; // Success! Break out of loop
+        } catch (err) {
+          if (attempt === 3) throw err; // Fail completely after 3 attempts
+          await new Promise(r => setTimeout(r, 800)); // Wait 800ms before retrying
+        }
+      }
 
       const responseMs = Date.now() - startTime;
       saveMessage(sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });

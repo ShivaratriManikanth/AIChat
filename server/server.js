@@ -544,38 +544,43 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   // ---- Fallback: Gemini 2.5 Flash API ----
   if (process.env.GEMINI_API_KEY) {
     try {
-      const history = getHistory(sessionId, 10);
-      let contents = history.map(h => ({
-        role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.content || '' }]
-      }));
-      
-      // Ensure contents array starts with a 'user' role (Gemini requirement)
-      while (contents.length > 0 && contents[0].role !== 'user') {
-        contents.shift();
-      }
-      if (contents.length === 0) {
-        contents = [{ role: 'user', parts: [{ text: message }] }];
-      }
-
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: (config.systemPrompt || '') + contextHint }] },
-          contents: contents
-        })
+      const https = require('https');
+      const payload = JSON.stringify({
+        systemInstruction: { parts: [{ text: (config.systemPrompt || '') + contextHint }] },
+        contents: [{ role: 'user', parts: [{ text: message }] }]
       });
 
-      const geminiData = await geminiRes.json();
-      if (geminiData.candidates && geminiData.candidates[0]?.content?.parts?.[0]?.text) {
-        const geminiReply = geminiData.candidates[0].content.parts[0].text;
-        const responseMs = Date.now() - startTime;
-        saveMessage(sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
-        return res.json({ reply: geminiReply, source: 'gemini' });
-      } else {
-        console.error('Gemini API returned unexpected structure:', geminiData);
-      }
+      const geminiReply = await new Promise((resolve, reject) => {
+        const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+          }
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
+                resolve(parsed.candidates[0].content.parts[0].text);
+              } else {
+                reject(new Error('Unexpected Gemini structure: ' + data));
+              }
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+      });
+
+      const responseMs = Date.now() - startTime;
+      saveMessage(sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
+      return res.json({ reply: geminiReply, source: 'gemini' });
     } catch (err) {
       console.error('Gemini error:', err.message);
     }

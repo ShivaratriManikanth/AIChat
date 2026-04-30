@@ -1053,7 +1053,7 @@ app.get('/api/super/clients', (req, res) => {
   res.json(clients);
 });
 
-app.post('/api/super/clients', (req, res) => {
+app.post('/api/super/clients', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { company_name, email, plan_id } = req.body;
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
@@ -1067,14 +1067,67 @@ app.post('/api/super/clients', (req, res) => {
       clientId, company_name + ' Bot'
     );
     
-    // In a real app, you would use nodemailer here:
-    console.log(`\n📧 EMAIL DISPATCHED TO: ${email}`);
-    console.log(`Thank you for subscribing. Your chatbot dashboard is ready.`);
-    console.log(`Login: ${email} | Password: ${tempPassword}`);
-    console.log(`Widget Code: <script src="http://localhost:${PORT}/widget/chatbot.js" data-client-id="${clientId}"></script>\n`);
+    // Create NodeMailer transporter
+    if (process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_EMAIL,
+          pass: process.env.SMTP_PASSWORD
+        }
+      });
+
+      const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
+
+      // 1. Send Email to Client
+      const clientMailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: email,
+        subject: 'Welcome to AI Chatbot SaaS - Your Dashboard is Ready!',
+        html: `
+          <h2>Welcome, ${company_name}!</h2>
+          <p>Thank you for subscribing to the <strong>${planName} Plan</strong>.</p>
+          <p>Your chatbot dashboard is now ready. You can log in and customize your bot using the credentials below:</p>
+          <ul>
+            <li><strong>Dashboard Link:</strong> <a href="https://yourdomain.com/admin">https://yourdomain.com/admin</a></li>
+            <li><strong>Email/Username:</strong> ${email}</li>
+            <li><strong>Password:</strong> ${tempPassword}</li>
+          </ul>
+          <p><strong>Your Widget Embed Code:</strong></p>
+          <pre style="background:#f4f4f4;padding:10px;border-radius:5px;">&lt;script src="https://yourdomain.com/widget/chatbot.js" data-client-id="${clientId}"&gt;&lt;/script&gt;</pre>
+          <p>If you have any questions, feel free to reply to this email.</p>
+        `
+      };
+
+      // 2. Send Notification to Super Admin
+      const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || process.env.SMTP_EMAIL;
+      const adminMailOptions = {
+        from: process.env.SMTP_EMAIL,
+        to: superAdminEmail,
+        subject: `[SaaS Alert] New Client Subscribed: ${company_name}`,
+        html: `
+          <h2>New Client Registration</h2>
+          <ul>
+            <li><strong>Company:</strong> ${company_name}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Plan:</strong> ${planName} Plan</li>
+            <li><strong>Client ID:</strong> ${clientId}</li>
+            <li><strong>Payment Status:</strong> COD Pending</li>
+          </ul>
+        `
+      };
+
+      await transporter.sendMail(clientMailOptions);
+      await transporter.sendMail(adminMailOptions);
+      console.log(`\n📧 Real emails sent to client (${email}) and super admin (${superAdminEmail})`);
+    } else {
+      console.log(`\n⚠️ SMTP credentials not set in .env. Falling back to console log:`);
+      console.log(`📧 EMAIL TO CLIENT: Login: ${email} | Password: ${tempPassword}`);
+    }
     
     res.json({ success: true, clientId });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

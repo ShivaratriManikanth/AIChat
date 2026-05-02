@@ -42,7 +42,7 @@ function adminAuth(req, res, next) {
 }
 
 // Serve admin dashboard
-app.use('/admin', adminAuth, express.static(path.join(__dirname, '..', 'admin')));
+app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 
 // Serve demo website
 app.use('/demo', express.static(path.join(__dirname, '..', 'hospital-demo')));
@@ -1045,6 +1045,37 @@ app.put('/api/complaint/:id/status', (req, res) => {
 });
 
 // ==========================================
+// SAAS CLIENT AUTHENTICATION (JWT)
+// ==========================================
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_saas_key';
+
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+
+  const client = db.prepare('SELECT * FROM clients WHERE email = ? AND password = ?').get(email, password);
+  if (client) {
+    const token = jwt.sign({ clientId: client.id, role: 'client' }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ success: true, token, clientId: client.id });
+  }
+  
+  res.status(401).json({ error: 'Invalid credentials' });
+});
+
+function requireAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ error: 'Missing authorization header' });
+  
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ error: 'Invalid or expired token' });
+    req.clientId = decoded.clientId;
+    next();
+  });
+}
+
+// ==========================================
 // SAAS SUPER ADMIN ENDPOINTS
 // ==========================================
 app.get('/api/super/clients', (req, res) => {
@@ -1055,13 +1086,13 @@ app.get('/api/super/clients', (req, res) => {
 
 app.post('/api/super/clients', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  const { company_name, email, plan_id } = req.body;
+  const { company_name, email, plan_id, password } = req.body;
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
-  const tempPassword = Math.random().toString(36).substring(2, 10);
+  const finalPassword = password || Math.random().toString(36).substring(2, 10);
   
   try {
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, tempPassword, company_name, plan_id || 1, 'COD_PENDING'
+      clientId, email, finalPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     db.prepare('INSERT INTO bot_configs (client_id, bot_name) VALUES (?, ?)').run(
       clientId, company_name + ' Bot'
@@ -1122,7 +1153,7 @@ app.post('/api/super/clients', async (req, res) => {
       console.log(`\n📧 Real emails sent to client (${email}) and super admin (${superAdminEmail})`);
     } else {
       console.log(`\n⚠️ SMTP credentials not set in .env. Falling back to console log:`);
-      console.log(`📧 EMAIL TO CLIENT: Login: ${email} | Password: ${tempPassword}`);
+      console.log(`📧 EMAIL TO CLIENT: Login: ${email} | Password: ${finalPassword}`);
     }
     
     res.json({ success: true, clientId });

@@ -956,7 +956,13 @@ app.post('/api/bots', requireAuth, (req, res) => {
   if (!name) return res.status(400).json({ error: 'Bot name required' });
   const bot_id = 'bot_' + require('crypto').randomBytes(6).toString('hex');
   const api_key = 'key_' + require('crypto').randomBytes(20).toString('hex');
-  const defaultConfig = JSON.stringify({ botName: name, themeColor: '#4F46E5' });
+  const defaultConfig = JSON.stringify({ 
+    botName: name, 
+    themeColor: '#4F46E5',
+    emailCapture: true,
+    emailCaptureTitle: 'Welcome!',
+    emailCaptureSubtitle: 'Please enter your email to start.'
+  });
   if (db) {
     db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES (?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId);
   }
@@ -1173,7 +1179,14 @@ app.post('/api/super/clients', async (req, res) => {
     // Automatically generate a unique bot for this new client
     const botId = 'bot_' + require('crypto').randomBytes(6).toString('hex');
     const apiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
-    const defaultConfig = JSON.stringify({ botName: company_name + ' Bot', themeColor: '#4F46E5', apiKey });
+    const defaultConfig = JSON.stringify({ 
+      botName: company_name + ' Bot', 
+      themeColor: '#4F46E5', 
+      apiKey,
+      emailCapture: true,
+      emailCaptureTitle: 'Welcome!',
+      emailCaptureSubtitle: 'Please enter your email to start the conversation.'
+    });
     
     db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
       botId, company_name + ' Bot', clientId, apiKey, defaultConfig

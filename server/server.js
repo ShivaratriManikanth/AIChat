@@ -917,7 +917,12 @@ app.post('/api/knowledge/url', async (req, res) => {
 // GET /api/bots - List all bots (multi-tenant)
 app.get('/api/bots', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  const bots = db.prepare('SELECT bot_id, name, api_key, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  const botsRows = db.prepare('SELECT bot_id, name, config, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  const bots = botsRows.map(row => {
+    let apiKey = '';
+    try { apiKey = JSON.parse(row.config || '{}').apiKey || ''; } catch(e){}
+    return { bot_id: row.bot_id, name: row.name, api_key: apiKey, created_at: row.created_at };
+  });
   res.json(bots);
 });
 

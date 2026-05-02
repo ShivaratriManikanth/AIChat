@@ -177,6 +177,9 @@
 
       /* ---- Chat Window ---- */
       #chatbot-window {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         position: fixed; bottom: 100px; right: 24px;
         width: 400px; height: 560px;
         border-radius: 20px;
@@ -783,7 +786,10 @@
       /* ---- Breakpoints & Responsive Design ---- */
       /* Desktop (769px and above) */
       @media (min-width: 769px) {
-        #chatbot-window { 
+        #chatbot-window {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
           width: 400px; 
           height: 600px; 
         }
@@ -791,7 +797,10 @@
 
       /* Tablet (481px - 768px) */
       @media (min-width: 481px) and (max-width: 768px) {
-        #chatbot-window { 
+        #chatbot-window {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
           width: 360px; 
           height: 520px; 
           bottom: 100px; 
@@ -806,7 +815,10 @@
 
       /* Mobile (max-width: 480px) */
       @media (max-width: 480px) {
-        #chatbot-window { 
+        #chatbot-window {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
           width: calc(100vw - 24px) !important; 
           height: calc(100vh - 110px) !important; 
           bottom: 85px !important; 
@@ -2080,3 +2092,5 @@
     init();
   }
 })();
+
+

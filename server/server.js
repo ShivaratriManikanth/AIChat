@@ -440,11 +440,35 @@ async function scrapeUrl(url) {
   });
 }
 
+// ---- Helper functions for Multi-tenancy Config ----
+function loadClientBotConfig(clientId) {
+  if (!db) return loadConfig();
+  const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
+  if (!bot) return loadConfig();
+  try {
+    return JSON.parse(bot.config);
+  } catch(e) {
+    return loadConfig();
+  }
+}
+
+function saveClientBotConfig(clientId, config) {
+  if (!db) return saveConfig(config);
+  db.prepare('UPDATE bots SET config = ? WHERE client_id = ?').run(JSON.stringify(config), clientId);
+}
+
 // ---- API Routes --------------------------------------------
 
 // GET /api/config — Widget loads config on init
 app.get('/api/config', (req, res) => {
-  const config = loadConfig();
+  const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
+  let config;
+  if (apiKey && db) {
+    const bot = db.prepare('SELECT config FROM bots WHERE api_key = ?').get(apiKey);
+    config = bot ? JSON.parse(bot.config) : loadConfig();
+  } else {
+    config = loadConfig();
+  }
   // Don't expose sensitive data to widget
   const { aiModel, systemPrompt, ...safeConfig } = config;
   res.json(safeConfig);
@@ -865,11 +889,11 @@ app.get('/api/session/:sessionId', requireAuth, (req, res) => {
 });
 
 // PUT /api/config — Admin: update config
-app.put('/api/config', (req, res) => {
+app.put('/api/config', requireAuth, (req, res) => {
   try {
-    const current  = loadConfig();
-    const updated  = { ...current, ...req.body };
-    saveConfig(updated);
+    const current = loadClientBotConfig(req.clientId);
+    const updated = { ...current, ...req.body };
+    saveClientBotConfig(req.clientId, updated);
     res.json({ success: true, config: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save config' });
@@ -877,8 +901,8 @@ app.put('/api/config', (req, res) => {
 });
 
 // GET /api/config/full — Admin: full config including sensitive fields
-app.get('/api/config/full', (req, res) => {
-  res.json(loadConfig());
+app.get('/api/config/full', requireAuth, (req, res) => {
+  res.json(loadClientBotConfig(req.clientId));
 });
 
 // POST /api/knowledge/url — Auto-train from website URL
@@ -946,15 +970,24 @@ app.delete('/api/bots/:id', requireAuth, (req, res) => {
 });
 
 // POST /api/apikey/regenerate — Regenerate default API key
-app.post('/api/apikey/regenerate', (req, res) => {
-  const config = loadConfig();
-  config.apiKey = 'bot_' + require('crypto').randomBytes(16).toString('hex');
-  saveConfig(config);
-  res.json({ success: true, apiKey: config.apiKey });
+app.post('/api/apikey/regenerate', requireAuth, (req, res) => {
+  const config = loadClientBotConfig(req.clientId);
+  const newApiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
+  config.apiKey = newApiKey;
+  
+  // Update both the specific field and the JSON config in DB
+  if (db) {
+    db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ?')
+      .run(newApiKey, JSON.stringify(config), req.clientId);
+  } else {
+    saveConfig(config);
+  }
+  
+  res.json({ success: true, apiKey: newApiKey });
 });
 
 // GET /api/dropoff — Drop-off analytics
-app.get('/api/dropoff', checkApiKey, (req, res) => {
+app.get('/api/dropoff', requireAuth, (req, res) => {
   if (!db) return res.json({});
 
   // Mark sessions as abandoned if last user msg was > 30 min ago and no recent assistant reply

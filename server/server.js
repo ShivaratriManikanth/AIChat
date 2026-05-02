@@ -220,18 +220,18 @@ try {
 // In-memory fallback
 const memoryStore = {};
 
-function saveMessage(clientId, sessionId, role, content, file, meta = {}) {
+function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEmail = null) {
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, clientId || 'default_client');
-    db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = ?').run(sessionId);
-    db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
+    db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
+    db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
       clientId || 'default_client', sessionId, role, content,
       file?.dataUrl || '', file?.name || '', file?.type || '',
-      meta.source || '', meta.responseMs || 0
+      meta.source || '', meta.responseMs || 0, userEmail
     );
   } else {
     if (!memoryStore[sessionId]) memoryStore[sessionId] = [];
-    memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), ...meta });
+    memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), userEmail, ...meta });
   }
 }
 
@@ -550,7 +550,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang } = req.body;
+  const { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });
@@ -573,7 +573,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   }
 
   // Save user message with optional file
-  saveMessage(req.clientId, sessionId, 'user', message, file);
+  saveMessage(req.clientId, sessionId, 'user', message, file, null, email);
 
   // Try semantic (TF-IDF) match first if enabled
   let faqMatch = null;
@@ -592,7 +592,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
   if (faqMatch) {
     const responseMs = Date.now() - startTime;
-    saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
+    saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs }, email);
     return res.json({ reply: faqMatch.answer, source: 'faq' });
   }
 
@@ -626,7 +626,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       // Low confidence fallback - if reply contains uncertainty markers
       openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
       if (!openaiLowConfidence) {
-        saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
+        saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs }, email);
         return res.json({ reply, source: 'ai' });
       }
       openaiReply = reply;
@@ -682,7 +682,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       }
 
       const responseMs = Date.now() - startTime;
-      saveMessage(req.clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
+      saveMessage(req.clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs }, email);
       return res.json({ reply: geminiReply, source: 'gemini' });
     } catch (err) {
       console.error('Gemini error:', err.message);

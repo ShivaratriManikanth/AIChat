@@ -951,7 +951,7 @@
         </div>
 
         <!-- Email Capture Screen -->
-        <div id="chatbot-email-screen" style="${emailVerified || !CONFIG.emailCapture ? 'display:none' : ''}">
+        <div id="chatbot-email-screen" style="${emailVerified || CONFIG.emailCapture === false ? 'display:none' : ''}">
           <div class="email-icon">💬</div>
           <h3>${CONFIG.emailCaptureTitle || 'Start a Conversation'}</h3>
           <p class="email-subtitle">${CONFIG.emailCaptureSubtitle || 'Enter your email to begin chatting with us'}</p>
@@ -971,9 +971,9 @@
           <div class="intro-email-tag">Signed in as <span id="intro-email-display"></span></div>
         </div>
 
-        <div id="chatbot-messages" style="${!emailVerified && CONFIG.emailCapture ? 'display:none' : ''}"></div>
+        <div id="chatbot-messages" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}"></div>
 
-        <div id="chatbot-suggestions" style="${!emailVerified && CONFIG.emailCapture ? 'display:none' : ''}"></div>
+        <div id="chatbot-suggestions" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}"></div>
 
         <div id="chatbot-rating" style="display:none !important;"></div>
 
@@ -982,7 +982,7 @@
           <button class="remove-file" id="btn-remove-file">&times;</button>
         </div>
 
-        <div id="chatbot-input-area" style="${!emailVerified && CONFIG.emailCapture ? 'display:none' : ''}">
+        <div id="chatbot-input-area" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}">
           <input type="file" id="chatbot-file-input" style="display:none" accept="image/*,.pdf,.doc,.docx,.txt">
           <button class="input-btn" id="btn-upload" title="${t('upload')}">📎</button>
           <button class="input-btn" id="btn-voice" title="${t('voice')}">🎤</button>
@@ -992,7 +992,7 @@
           </button>
         </div>
 
-        <div id="chatbot-shortcuts-hint" style="${!emailVerified && CONFIG.emailCapture ? 'display:none' : ''}">ESC close &bull; Ctrl+F search &bull; Ctrl+Enter send</div>
+        <div id="chatbot-shortcuts-hint" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}">ESC close &bull; Ctrl+F search &bull; Ctrl+Enter send</div>
 
         ${CONFIG.showBranding ? '<div id="chatbot-branding">Powered by AI Chatbot Widget</div>' : ''}
       </div>
@@ -2073,8 +2073,8 @@
     renderSuggestions();
     attachEvents();
 
-    // If email already verified or email capture disabled, show chat directly
-    if (emailVerified || !CONFIG.emailCapture) {
+    // If email already verified or email capture is EXPLICITLY disabled, show chat directly
+    if (emailVerified || CONFIG.emailCapture === false) {
       loadFromLocal();
       const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
       if (history.length === 0) {

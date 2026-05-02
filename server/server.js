@@ -1164,7 +1164,7 @@ app.post('/api/super/clients', async (req, res) => {
 });
 
 // ---- Start Server ------------------------------------------
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  AI Chatbot Server running on http://localhost:${PORT}`);
   console.log(`  Widget URL:  http://localhost:${PORT}/widget/chatbot.js`);
   console.log(`  Admin Panel: http://localhost:${PORT}/admin\n`);

@@ -1769,15 +1769,22 @@ add_action('wp_footer', 'add_chatbot_widget');
     async function createBot() {
       const name = document.getElementById('new-bot-name').value.trim();
       if (!name) { alert('Enter a bot name'); return; }
-      const res = await fetchAuth(`${API}/api/bots`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
-      if (res.ok) {
-        document.getElementById('new-bot-name').value = '';
-        showToast('Bot created!');
-        loadBots();
+      try {
+        const res = await fetchAuth(`${API}/api/bots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (res.ok) {
+          document.getElementById('new-bot-name').value = '';
+          showToast('Bot created!');
+          loadBots();
+        } else {
+          const data = await res.json();
+          alert('Failed to create bot: ' + (data.error || res.statusText));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
       }
     }
 

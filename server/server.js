@@ -526,7 +526,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, req.clientId, file, pageUrl, botId, widgetVersion, lang } = req.body;
+  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });
@@ -543,13 +543,13 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
   // Track bot_id, widget version, last user msg time
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.req.clientId);
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
     db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
-      .run(botId || 'default', widgetVersion || '', req.req.clientId, sessionId);
+      .run(botId || 'default', widgetVersion || '', req.clientId, sessionId);
   }
 
   // Save user message with optional file
-  saveMessage(req.req.clientId, sessionId, 'user', message, file);
+  saveMessage(req.clientId, sessionId, 'user', message, file);
 
   // Try semantic (TF-IDF) match first if enabled
   let faqMatch = null;
@@ -682,7 +682,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   // Fallback: simple keyword matching
   const reply = generateFallbackReply(message, config);
   const responseMs = Date.now() - startTime;
-  saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
+  saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
   res.json({ reply, source: 'fallback' });
 });
 

@@ -1072,6 +1072,21 @@ app.put('/api/complaint/:id/status', (req, res) => {
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_saas_key';
 
+app.delete('/api/super/clients/:id', (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const clientId = req.params.id;
+  try {
+    db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
+    db.prepare('DELETE FROM bots WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM users WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM leads WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete client' });
+  }
+});
+
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });

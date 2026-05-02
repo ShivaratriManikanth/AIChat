@@ -363,11 +363,14 @@ async function sendLeadEmail(lead) {
 
 // API key middleware
 function checkApiKey(req, res, next) {
-  const config = loadConfig();
-  if (!config.enforceApiKey) return next(); // Disabled
   const provided = req.headers['x-bot-key'] || req.body?.apiKey || req.query?.apiKey;
-  if (!provided || provided !== config.apiKey) {
-    return res.status(401).json({ error: 'Invalid or missing API key' });
+  if (!provided) return res.status(401).json({ error: 'Missing API key' });
+
+  if (db) {
+    const bot = db.prepare('SELECT * FROM bots WHERE api_key = ?').get(provided);
+    if (!bot) return res.status(401).json({ error: 'Invalid API key' });
+    req.bot = bot;
+    req.clientId = bot.client_id;
   }
   next();
 }
@@ -472,7 +475,7 @@ app.post('/api/register', (req, res) => {
 });
 
 // GET /api/users — Admin: list all users with email
-app.get('/api/users', (req, res) => {
+app.get('/api/users', requireAuth, (req, res) => {
   if (db) {
     const users = db.prepare(`
       SELECT u.email, u.session_id, u.created_at,
@@ -480,9 +483,10 @@ app.get('/api/users', (req, res) => {
              MAX(c.timestamp) as last_message
       FROM users u
       LEFT JOIN chat_history c ON u.session_id = c.session_id
+      WHERE u.client_id = ?
       GROUP BY u.email, u.session_id
       ORDER BY u.created_at DESC
-    `).all();
+    `).all(req.clientId);
     return res.json(users);
   }
   const users = Object.entries(memoryStore._users || {}).map(([sid, email]) => ({
@@ -493,21 +497,22 @@ app.get('/api/users', (req, res) => {
 });
 
 // GET /api/stats — Admin: dashboard stats
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', requireAuth, (req, res) => {
   if (db) {
-    const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users').get().count;
-    const totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history').get().count;
-    const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+    const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+    const totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history WHERE client_id = ?').get(req.clientId).count;
+    const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
     const activeSessions = db.prepare(
-      "SELECT COUNT(*) as count FROM sessions WHERE updated_at > datetime('now', '-30 minutes')"
-    ).get().count;
+      "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND updated_at > datetime('now', '-30 minutes')"
+    ).get(req.clientId).count;
     const recentUsers = db.prepare(`
       SELECT u.email, u.created_at, COUNT(c.id) as message_count
       FROM users u
       LEFT JOIN chat_history c ON u.session_id = c.session_id
+      WHERE u.client_id = ?
       GROUP BY u.email
       ORDER BY u.created_at DESC LIMIT 5
-    `).all();
+    `).all(req.clientId);
     return res.json({ totalUsers, totalChats, totalSessions, activeSessions, recentUsers });
   }
   res.json({
@@ -762,9 +767,9 @@ app.post('/api/test-email', async (req, res) => {
 });
 
 // GET /api/leads — Admin: list all leads
-app.get('/api/leads', (req, res) => {
+app.get('/api/leads', requireAuth, (req, res) => {
   if (db) {
-    return res.json(db.prepare('SELECT * FROM leads ORDER BY created_at DESC').all());
+    return res.json(db.prepare('SELECT * FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
   }
   res.json([]);
 });
@@ -784,14 +789,14 @@ app.get('/api/leads/csv', (req, res) => {
 });
 
 // GET /api/analytics — advanced analytics
-app.get('/api/analytics', (req, res) => {
+app.get('/api/analytics', requireAuth, (req, res) => {
   if (!db) return res.json({});
-  const avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0").get().avg || 0;
+  const avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0 AND client_id = ?").get(req.clientId).avg || 0;
   const sourceBreakdown = db.prepare(
-    "SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' GROUP BY source"
-  ).all();
-  const totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads').get().count;
-  const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users').get().count;
+    "SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' AND client_id = ? GROUP BY source"
+  ).all(req.clientId);
+  const totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads WHERE client_id = ?').get(req.clientId).count;
+  const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
   const conversionRate = totalUsers > 0 ? ((totalLeads / totalUsers) * 100).toFixed(1) : 0;
 
   res.json({
@@ -833,14 +838,31 @@ app.get('/api/history/:sessionId', (req, res) => {
 });
 
 // GET /api/sessions — Admin: list all sessions
-app.get('/api/sessions', (req, res) => {
-  res.json(getAllSessions());
+app.get('/api/sessions', requireAuth, (req, res) => {
+  if (db) {
+    const sessions = db.prepare(`
+      SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+             COUNT(c.id) as message_count
+      FROM sessions s
+      LEFT JOIN chat_history c ON s.session_id = c.session_id
+      WHERE s.client_id = ?
+      GROUP BY s.session_id
+      ORDER BY s.updated_at DESC
+    `).all(req.clientId);
+    return res.json(sessions);
+  }
+  res.json([]);
 });
 
 // GET /api/session/:id — Admin: get session messages
-app.get('/api/session/:sessionId', (req, res) => {
-  const history = getHistory(req.params.sessionId, 100);
-  res.json(history);
+app.get('/api/session/:sessionId', requireAuth, (req, res) => {
+  if (db) {
+    const history = db.prepare(
+      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? AND client_id = ? ORDER BY id ASC LIMIT 100'
+    ).all(req.params.sessionId, req.clientId);
+    return res.json(history);
+  }
+  res.json([]);
 });
 
 // PUT /api/config — Admin: update config
@@ -893,29 +915,29 @@ app.post('/api/knowledge/url', async (req, res) => {
   }
 });
 
-// GET /api/bots — List all bots (multi-tenant)
-app.get('/api/bots', (req, res) => {
+// GET /api/bots - List all bots (multi-tenant)
+app.get('/api/bots', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  const bots = db.prepare('SELECT bot_id, name, api_key, created_at FROM bots ORDER BY created_at DESC').all();
+  const bots = db.prepare('SELECT bot_id, name, api_key, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
   res.json(bots);
 });
 
-// POST /api/bots — Create a new bot
-app.post('/api/bots', (req, res) => {
+// POST /api/bots - Create a new bot
+app.post('/api/bots', requireAuth, (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Bot name required' });
   const bot_id = 'bot_' + require('crypto').randomBytes(6).toString('hex');
   const api_key = 'key_' + require('crypto').randomBytes(20).toString('hex');
   const defaultConfig = JSON.stringify({ botName: name, themeColor: '#4F46E5' });
   if (db) {
-    db.prepare('INSERT INTO bots (bot_id, name, api_key, config) VALUES (?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig);
+    db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES (?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId);
   }
   res.json({ success: true, bot_id, api_key, name });
 });
 
 // DELETE /api/bots/:id
-app.delete('/api/bots/:id', (req, res) => {
-  if (db) db.prepare('DELETE FROM bots WHERE bot_id = ?').run(req.params.id);
+app.delete('/api/bots/:id', requireAuth, (req, res) => {
+  if (db) db.prepare('DELETE FROM bots WHERE bot_id = ? AND client_id = ?').run(req.params.id, req.clientId);
   res.json({ success: true });
 });
 

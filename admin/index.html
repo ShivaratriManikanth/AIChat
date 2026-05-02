@@ -1129,7 +1129,22 @@ add_action('wp_footer', 'add_chatbot_widget');
   </div>
 
   <script>
-    const API = window.location.origin;
+        const API = window.location.origin;
+    const token = localStorage.getItem('saas_token');
+    if (!token) {
+      window.location.href = '/admin/login.html';
+    }
+
+    async function fetchAuth(url, options = {}) {
+      if (!options.headers) options.headers = {};
+      options.headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(url, options);
+      if (res.status === 401) {
+        localStorage.removeItem('saas_token');
+        window.location.href = '/admin/login.html';
+      }
+      return res;
+    }
     let config = {};
     let allUsers = [];
     let allSessions = [];
@@ -1167,7 +1182,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Load Stats -----------------------------------------
     async function loadStats() {
       try {
-        const res = await fetch(`${API}/api/stats`);
+        const res = await fetchAuth(`${API}/api/stats`);
         const stats = await res.json();
         document.getElementById('stat-users').textContent = stats.totalUsers;
         document.getElementById('stat-chats').textContent = stats.totalChats;
@@ -1197,7 +1212,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Load Users -----------------------------------------
     async function loadUsers() {
       try {
-        const res = await fetch(`${API}/api/users`);
+        const res = await fetchAuth(`${API}/api/users`);
         allUsers = await res.json();
         renderUsers(allUsers);
       } catch (e) { console.error(e); }
@@ -1234,7 +1249,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Load Sessions/Chats --------------------------------
     async function loadSessions() {
       try {
-        const res = await fetch(`${API}/api/sessions`);
+        const res = await fetchAuth(`${API}/api/sessions`);
         allSessions = await res.json();
         renderSessions(allSessions);
       } catch (e) { console.error(e); }
@@ -1258,7 +1273,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     }
 
     async function viewSession(sessionId, email) {
-      const res = await fetch(`${API}/api/session/${sessionId}`);
+      const res = await fetchAuth(`${API}/api/session/${sessionId}`);
       const messages = await res.json();
 
       document.getElementById('chat-viewer-card').style.display = 'block';
@@ -1288,7 +1303,7 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     // ---- Load Config ----------------------------------------
     async function loadConfig() {
-      const res = await fetch(`${API}/api/config/full`);
+      const res = await fetchAuth(`${API}/api/config/full`);
       config = await res.json();
 
       document.getElementById('cfg-botName').value = config.botName || '';
@@ -1405,7 +1420,7 @@ add_action('wp_footer', 'add_chatbot_widget');
         }
       };
 
-      const res = await fetch(`${API}/api/config`, {
+      const res = await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
@@ -1443,7 +1458,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       config.faqs = config.faqs || [];
       config.faqs.push({ question: q, answer: a });
 
-      await fetch(`${API}/api/config`, {
+      await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ faqs: config.faqs })
@@ -1457,7 +1472,7 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     async function deleteFaq(index) {
       config.faqs.splice(index, 1);
-      await fetch(`${API}/api/config`, {
+      await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ faqs: config.faqs })
@@ -1513,7 +1528,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Leads ----------------------------------------------
     async function loadLeads() {
       try {
-        const res = await fetch(`${API}/api/leads`);
+        const res = await fetchAuth(`${API}/api/leads`);
         const leads = await res.json();
         document.getElementById('nav-lead-count').textContent = leads.length;
 
@@ -1542,7 +1557,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Analytics ------------------------------------------
     async function loadAnalytics() {
       try {
-        const res = await fetch(`${API}/api/analytics`);
+        const res = await fetchAuth(`${API}/api/analytics`);
         const data = await res.json();
         document.getElementById('stat-avg-response').innerHTML = `${data.avgResponseMs}<span style="font-size:14px;opacity:0.6;">ms</span>`;
         document.getElementById('stat-leads').textContent = data.totalLeads || 0;
@@ -1581,7 +1596,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       const reader = new FileReader();
       reader.onload = async () => {
         const dataUrl = reader.result;
-        const res = await fetch(`${API}/api/logo`, {
+        const res = await fetchAuth(`${API}/api/logo`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ logo: dataUrl })
@@ -1596,7 +1611,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     });
 
     async function removeLogo() {
-      await fetch(`${API}/api/logo`, {
+      await fetchAuth(`${API}/api/logo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logo: '' })
@@ -1617,7 +1632,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const res = await fetch(`${API}/api/knowledge/pdf`, {
+          const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName: file.name, fileData: reader.result })
@@ -1644,7 +1659,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     async function testEmail() {
       // Save current settings first so the server uses the fresh SMTP values
       await saveSettings();
-      const res = await fetch(`${API}/api/test-email`, { method: 'POST' });
+      const res = await fetchAuth(`${API}/api/test-email`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         showToast('Test email sent! Check inbox.');
@@ -1661,7 +1676,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       status.textContent = '⏳ Scraping website...';
       status.style.color = '#666';
       try {
-        const res = await fetch(`${API}/api/knowledge/url`, {
+        const res = await fetchAuth(`${API}/api/knowledge/url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url })
@@ -1694,7 +1709,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const res = await fetch(`${API}/api/knowledge/pdf`, {
+          const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName: file.name, fileData: reader.result })
@@ -1720,7 +1735,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Semantic toggle save -------------------------------
     async function saveSemanticToggle() {
       const enabled = document.getElementById('toggle-semanticSearch').classList.contains('on');
-      await fetch(`${API}/api/config`, {
+      await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ semanticSearch: enabled })
@@ -1730,7 +1745,7 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     // ---- Bots (Multi-tenant) --------------------------------
     async function loadBots() {
-      const res = await fetch(`${API}/api/bots`);
+      const res = await fetchAuth(`${API}/api/bots`);
       const bots = await res.json();
       const tbody = document.getElementById('bots-table-body');
       if (bots.length === 0) {
@@ -1754,7 +1769,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     async function createBot() {
       const name = document.getElementById('new-bot-name').value.trim();
       if (!name) { alert('Enter a bot name'); return; }
-      const res = await fetch(`${API}/api/bots`, {
+      const res = await fetchAuth(`${API}/api/bots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
@@ -1768,7 +1783,7 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     async function deleteBot(botId) {
       if (!confirm('Delete this bot?')) return;
-      await fetch(`${API}/api/bots/${botId}`, { method: 'DELETE' });
+      await fetchAuth(`${API}/api/bots/${botId}`, { method: 'DELETE' });
       showToast('Bot deleted');
       loadBots();
     }
@@ -1788,7 +1803,7 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     async function regenerateApiKey() {
       if (!confirm('Regenerate API key? Old key will stop working.')) return;
-      const res = await fetch(`${API}/api/apikey/regenerate`, { method: 'POST' });
+      const res = await fetchAuth(`${API}/api/apikey/regenerate`, { method: 'POST' });
       const data = await res.json();
       document.getElementById('cfg-apiKey').value = data.apiKey;
       showToast('New API key generated!');
@@ -1797,7 +1812,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Drop-off Analytics ---------------------------------
     async function loadDropoff() {
       try {
-        const res = await fetch(`${API}/api/dropoff`);
+        const res = await fetchAuth(`${API}/api/dropoff`);
         const data = await res.json();
         document.getElementById('stat-abandoned').textContent = data.abandonedCount || 0;
         document.getElementById('stat-abandon-rate').textContent = (data.abandonRate || 0) + '%';
@@ -1835,7 +1850,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     let allComplaints = [];
     async function loadComplaints() {
       try {
-        const res = await fetch(`${API}/api/complaints`);
+        const res = await fetchAuth(`${API}/api/complaints`);
         allComplaints = await res.json();
         document.getElementById('nav-complaint-count').textContent = allComplaints.length;
         renderComplaints(allComplaints);
@@ -1881,7 +1896,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     }
 
     async function updateComplaintStatus(id, status) {
-      await fetch(`${API}/api/complaint/${id}/status`, {
+      await fetchAuth(`${API}/api/complaint/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

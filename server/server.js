@@ -1117,7 +1117,7 @@ function requireAuth(req, res, next) {
 // ==========================================
 app.get('/api/super/clients', (req, res) => {
   if (!db) return res.json([]);
-  const clients = db.prepare('SELECT id, email, company_name, plan_id, payment_status, created_at FROM clients').all();
+  const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients').all();
   res.json(clients);
 });
 

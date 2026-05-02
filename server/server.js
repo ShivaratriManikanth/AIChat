@@ -446,7 +446,9 @@ function loadClientBotConfig(clientId) {
   const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
   if (!bot) return loadConfig();
   try {
-    return JSON.parse(bot.config);
+    const config = JSON.parse(bot.config);
+    if (config.emailCapture === undefined) config.emailCapture = true;
+    return config;
   } catch(e) {
     return loadConfig();
   }
@@ -470,6 +472,7 @@ app.get('/api/config', (req, res) => {
     config = loadConfig();
   }
   // Don't expose sensitive data to widget
+  if (config.emailCapture === undefined) config.emailCapture = true;
   const { aiModel, systemPrompt, ...safeConfig } = config;
   res.json(safeConfig);
 });

@@ -29,7 +29,8 @@
     position: 'bottom-right',
     placeholder: 'Type your message...',
     suggestedQuestions: [],
-    showBranding: true
+    showBranding: true,
+    emailCapture: true
   };
 
   let isDarkMode = localStorage.getItem('chatbot_dark') === 'true';

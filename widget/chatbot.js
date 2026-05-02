@@ -69,7 +69,7 @@
   // ---- Load Config ------------------------------------------
   async function loadConfig() {
     try {
-      const res = await fetch(`${SERVER_URL}/api/config`);
+      const res = await fetch(`${SERVER_URL}/api/config`, { headers: { 'x-bot-key': API_KEY } });
       if (res.ok) {
         const data = await res.json();
         CONFIG = { ...CONFIG, ...data };
@@ -1445,7 +1445,7 @@
 
         fetch(`${SERVER_URL}/api/chat`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bot-key': API_KEY },
           body: JSON.stringify({ message: `[RATING: ${val}/5 stars]`, sessionId: SESSION_ID })
         }).catch(() => {});
 
@@ -1687,7 +1687,7 @@
     try {
       await fetch(`${SERVER_URL}/api/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-bot-key': API_KEY },
         body: JSON.stringify({ email, sessionId: SESSION_ID })
       });
     } catch (e) { /* offline fallback */ }
@@ -1793,7 +1793,7 @@
       try {
         await fetch(`${SERVER_URL}/api/lead`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bot-key': API_KEY },
           body: JSON.stringify({
             sessionId: SESSION_ID, name, phone, email: userEmail, pageUrl
           })
@@ -1901,7 +1901,7 @@
       try {
         const res = await fetch(`${SERVER_URL}/api/complaint`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bot-key': API_KEY },
           body: JSON.stringify({
             sessionId: SESSION_ID,
             email: userEmail,

@@ -451,7 +451,7 @@ app.get('/api/config', (req, res) => {
 });
 
 // POST /api/register — Register user email with session
-app.post('/api/register', (req, res) => {
+app.post('/api/register', checkApiKey, (req, res) => {
   const { email, sessionId } = req.body;
   if (!email || !sessionId) {
     return res.status(400).json({ error: 'email and sessionId are required' });
@@ -463,9 +463,9 @@ app.post('/api/register', (req, res) => {
   }
 
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO users (email, session_id) VALUES (?, ?)').run(email, sessionId);
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, email) VALUES (?, ?)').run(sessionId, email);
-    db.prepare('UPDATE sessions SET email = ? WHERE session_id = ?').run(email, sessionId);
+    db.prepare('INSERT OR IGNORE INTO users (email, session_id, client_id) VALUES (?, ?, ?)').run(email, sessionId, req.clientId);
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, email, client_id) VALUES (?, ?, ?)').run(sessionId, email, req.clientId);
+    db.prepare('UPDATE sessions SET email = ? WHERE session_id = ? AND client_id = ?').run(email, sessionId, req.clientId);
   } else {
     if (!memoryStore._users) memoryStore._users = {};
     memoryStore._users[sessionId] = email;
@@ -687,10 +687,9 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 });
 
 // POST /api/lead — Capture lead (name, phone, email)
-app.post('/api/lead', (req, res) => {
+app.post('/api/lead', checkApiKey, (req, res) => {
   const { sessionId, name, email, phone, pageUrl } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
-  if (!email && !phone) return res.status(400).json({ error: 'Provide email or phone' });
 
   const safeName  = sanitize(name  || '');
   const safeEmail = sanitize(email || '');
@@ -704,8 +703,8 @@ app.post('/api/lead', (req, res) => {
   }
 
   if (db) {
-    db.prepare('INSERT INTO leads (session_id, name, email, phone, page_url) VALUES (?, ?, ?, ?, ?)')
-      .run(sessionId, safeName, safeEmail, safePhone, safeUrl);
+    db.prepare('INSERT INTO leads (session_id, name, email, phone, page_url, client_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(sessionId, safeName, safeEmail, safePhone, safeUrl, req.clientId);
   }
 
   // Send email notification to admin (async, non-blocking)
@@ -950,7 +949,7 @@ app.post('/api/apikey/regenerate', (req, res) => {
 });
 
 // GET /api/dropoff — Drop-off analytics
-app.get('/api/dropoff', (req, res) => {
+app.get('/api/dropoff', checkApiKey, (req, res) => {
   if (!db) return res.json({});
 
   // Mark sessions as abandoned if last user msg was > 30 min ago and no recent assistant reply
@@ -974,22 +973,23 @@ app.get('/api/dropoff', (req, res) => {
       SELECT s.session_id, COUNT(c.id) as msg_count
       FROM sessions s
       LEFT JOIN chat_history c ON s.session_id = c.session_id AND c.role = 'user'
+      WHERE s.client_id = ?
       GROUP BY s.session_id
     )
     GROUP BY bucket
-  `).all();
+  `).all(req.clientId);
 
-  const abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1').get().count;
-  const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+  const abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ?').get(req.clientId).count;
+  const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
   const abandonRate = totalSessions > 0 ? ((abandonedCount / totalSessions) * 100).toFixed(1) : 0;
 
   // Widget version distribution
   const versions = db.prepare(`
     SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
     FROM sessions
-    WHERE widget_version IS NOT NULL AND widget_version != ''
+    WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ?
     GROUP BY widget_version
-  `).all();
+  `).all(req.clientId);
 
   res.json({ buckets, abandonedCount, abandonRate: parseFloat(abandonRate), versions });
 });
@@ -999,7 +999,7 @@ app.get('/api/dropoff', (req, res) => {
 // ==============================================
 
 // POST /api/complaint — Submit a complaint
-app.post('/api/complaint', (req, res) => {
+app.post('/api/complaint', checkApiKey, (req, res) => {
   const { sessionId, email, name, phone, category, subject, message, pageUrl } = req.body;
   if (!sessionId || !message) {
     return res.status(400).json({ error: 'sessionId and message required' });
@@ -1014,8 +1014,8 @@ app.post('/api/complaint', (req, res) => {
 
   if (db) {
     db.prepare(
-      'INSERT INTO complaints (session_id, email, name, phone, category, subject, message, page_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(sessionId, safeEmail, safeName, safePhone, safeCategory, safeSubject, safeMessage, safeUrl);
+      'INSERT INTO complaints (session_id, email, name, phone, category, subject, message, page_url, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(sessionId, safeEmail, safeName, safePhone, safeCategory, safeSubject, safeMessage, safeUrl, req.clientId);
   }
 
   // Send notification email (reuse sendLeadEmail-like path)

@@ -1122,7 +1122,7 @@ app.post('/api/super/clients', async (req, res) => {
           <ul>
             <li><strong>Dashboard Link:</strong> <a href="https://yourdomain.com/admin">https://yourdomain.com/admin</a></li>
             <li><strong>Email/Username:</strong> ${email}</li>
-            <li><strong>Password:</strong> ${tempPassword}</li>
+            <li><strong>Password:</strong> ${finalPassword}</li>
           </ul>
           <p><strong>Your Widget Embed Code:</strong></p>
           <pre style="background:#f4f4f4;padding:10px;border-radius:5px;">&lt;script src="https://yourdomain.com/widget/chatbot.js" data-client-id="${clientId}"&gt;&lt;/script&gt;</pre>

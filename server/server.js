@@ -526,7 +526,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, clientId, file, pageUrl, botId, widgetVersion, lang } = req.body;
+  let { message, sessionId, req.clientId, file, pageUrl, botId, widgetVersion, lang } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });
@@ -543,13 +543,13 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
   // Track bot_id, widget version, last user msg time
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id) VALUES (?)').run(sessionId);
-    db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP WHERE session_id = ?')
-      .run(botId || 'default', widgetVersion || '', sessionId);
+    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.req.clientId);
+    db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
+      .run(botId || 'default', widgetVersion || '', req.req.clientId, sessionId);
   }
 
   // Save user message with optional file
-  saveMessage(clientId, sessionId, 'user', message, file);
+  saveMessage(req.req.clientId, sessionId, 'user', message, file);
 
   // Try semantic (TF-IDF) match first if enabled
   let faqMatch = null;
@@ -568,7 +568,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
   if (faqMatch) {
     const responseMs = Date.now() - startTime;
-    saveMessage(clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
+    saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs });
     return res.json({ reply: faqMatch.answer, source: 'faq' });
   }
 
@@ -602,7 +602,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       // Low confidence fallback - if reply contains uncertainty markers
       openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
       if (!openaiLowConfidence) {
-        saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
+        saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs });
         return res.json({ reply, source: 'ai' });
       }
       openaiReply = reply;
@@ -658,7 +658,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       }
 
       const responseMs = Date.now() - startTime;
-      saveMessage(clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
+      saveMessage(req.clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs });
       return res.json({ reply: geminiReply, source: 'gemini' });
     } catch (err) {
       console.error('Gemini error:', err.message);
@@ -669,20 +669,20 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   if (openaiReply && openaiLowConfidence) {
     const finalReply = config.fallbackMessage || openaiReply;
     const responseMs = Date.now() - startTime;
-    saveMessage(clientId, sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
+    saveMessage(req.clientId, sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
     return res.json({ reply: finalReply, source: 'ai', lowConfidence: true });
   }
 
   if (openai) {
     const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
-    saveMessage(clientId, sessionId, 'assistant', fallback, null, { source: 'error' });
+    saveMessage(req.clientId, sessionId, 'assistant', fallback, null, { source: 'error' });
     return res.json({ reply: fallback, source: 'error' });
   }
 
   // Fallback: simple keyword matching
   const reply = generateFallbackReply(message, config);
   const responseMs = Date.now() - startTime;
-  saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
+  saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
   res.json({ reply, source: 'fallback' });
 });
 

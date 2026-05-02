@@ -341,8 +341,8 @@
               <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
               <td style="color:#888;font-size:13px;">${date}</td>
               <td style="display:flex;gap:8px;">
-                <button class="btn-sm btn-sm-view" onclick="alert('Bot ID: ' + '${c.id}')">View</button>
-                <button class="btn-sm btn-sm-danger" onclick="deleteClient(${c.id})">Delete</button>
+                <button class="btn-sm btn-sm-view" onclick="alert('Bot ID: ${c.id}')">View</button>
+                <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
               </td>
             </tr>`;
         }).join('');
@@ -358,7 +358,7 @@
       const planId = document.getElementById('planId').value;
       const password = document.getElementById('clientPassword').value.trim();
       const msg = document.getElementById('statusMsg');
-      msg.className = ''; msg.style.display = 'none';
+      msg.className = ''; msg.style.display = '';
 
       if (!company || !email) {
         msg.textContent = '⚠️ Company name and email are required.';

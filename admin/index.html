@@ -466,6 +466,9 @@
       <div class="nav-item" data-page="embed">
         <span class="icon">📋</span> Embed Code
       </div>
+      <div class="nav-item" onclick="logout()" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; color: #fb7185;">
+        <span class="icon">🚪</span> Logout
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -1133,6 +1136,11 @@ add_action('wp_footer', 'add_chatbot_widget');
     const token = localStorage.getItem('saas_token');
     if (!token) {
       window.location.href = '/admin/login.html';
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
     }
 
     async function fetchAuth(url, options = {}) {

@@ -199,6 +199,7 @@ try {
   try { db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
 
   // Default super admin & client if empty
   const hasSuperAdmin = db.prepare("SELECT COUNT(*) as count FROM super_admins").get();
@@ -213,8 +214,7 @@ try {
 
   console.log('SQLite database connected and SaaS schema initialized');
 } catch (err) {
-  console.warn('SQLite not available — chat history will use in-memory storage');
-  db = null;
+  console.error('CRITICAL DATABASE ERROR:', err);
 }
 
 // In-memory fallback
@@ -1142,8 +1142,8 @@ app.post('/api/super/clients', async (req, res) => {
     const apiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
     const defaultConfig = JSON.stringify({ botName: company_name + ' Bot', themeColor: '#4F46E5', apiKey });
     
-    db.prepare('INSERT INTO bots (bot_id, name, client_id, config) VALUES (?, ?, ?, ?)').run(
-      botId, company_name + ' Bot', clientId, defaultConfig
+    db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
+      botId, company_name + ' Bot', clientId, apiKey, defaultConfig
     );
     
     // Create NodeMailer transporter

@@ -19,8 +19,7 @@
   const BOT_ID     = scriptTag?.getAttribute('data-bot-id') || 'default';
   const API_KEY    = scriptTag?.getAttribute('data-api-key') || '';
   const CLIENT_ID  = scriptTag?.getAttribute('data-client-id') || 'default_client';
-  const SESSION_ID = getSessionId();
-
+  
   let CONFIG = {
     botName: 'AI Assistant',
     companyName: 'My Company',
@@ -44,6 +43,8 @@
 
   let isDarkMode = localStorage.getItem(LS_DARK) === 'true';
   let currentLang = localStorage.getItem(LS_LANG) || 'en';
+  const SESSION_ID = getSessionId();
+  
   let isRecording = false;
   let messageCount = 0;
   let ratingGiven = false;

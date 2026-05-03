@@ -33,18 +33,27 @@
     emailCapture: true
   };
 
-  let isDarkMode = localStorage.getItem('chatbot_dark') === 'true';
-  let currentLang = localStorage.getItem('chatbot_lang') || 'en';
+  // ---- Bot-scoped localStorage keys (prevents cross-bot bleed) ----
+  const LS_EMAIL   = `chatbot_user_email_${BOT_ID}`;
+  const LS_HISTORY = `chatbot_history_${BOT_ID}`;
+  const LS_SESSION = `chatbot_session_id_${BOT_ID}`;
+  const LS_DARK    = `chatbot_dark_${BOT_ID}`;
+  const LS_LANG    = `chatbot_lang_${BOT_ID}`;
+  const LS_LEAD    = `chatbot_lead_captured_${BOT_ID}`;
+  const LS_INTER   = `chatbot_interactions_${BOT_ID}`;
+
+  let isDarkMode = localStorage.getItem(LS_DARK) === 'true';
+  let currentLang = localStorage.getItem(LS_LANG) || 'en';
   let isRecording = false;
   let messageCount = 0;
   let ratingGiven = false;
   let isFullscreen = false;
   let isSearchOpen = false;
   let chatIsOpen = false;
-  let userEmail = localStorage.getItem('chatbot_user_email') || '';
+  let userEmail = localStorage.getItem(LS_EMAIL) || '';
   let emailVerified = !!userEmail;
-  let userInteractions = parseInt(localStorage.getItem('chatbot_interactions') || '0');
-  let leadCaptured = localStorage.getItem('chatbot_lead_captured') === 'true';
+  let userInteractions = parseInt(localStorage.getItem(LS_INTER) || '0');
+  let leadCaptured = localStorage.getItem(LS_LEAD) === 'true';
   let pageUrl = window.location.href;
   let isOffline = false;
 
@@ -59,10 +68,10 @@
 
   // ---- Session Management -----------------------------------
   function getSessionId() {
-    let id = localStorage.getItem('chatbot_session_id');
+    let id = localStorage.getItem(LS_SESSION);
     if (!id) {
       id = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('chatbot_session_id', id);
+      localStorage.setItem(LS_SESSION, id);
     }
     return id;
   }
@@ -1167,16 +1176,16 @@
   // ---- Local Storage ----------------------------------------
   function saveToLocal(role, content) {
     try {
-      let history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
+      let history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       history.push({ role, content, time: Date.now() });
       if (history.length > 100) history = history.slice(-100);
-      localStorage.setItem('chatbot_history', JSON.stringify(history));
+      localStorage.setItem(LS_HISTORY, JSON.stringify(history));
     } catch (e) {}
   }
 
   function loadFromLocal() {
     try {
-      const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
+      const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       const messages = document.getElementById('chatbot-messages');
       history.forEach(h => {
         const time = new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1242,7 +1251,7 @@
     // Track interactions (only real user text messages)
     if (text.trim()) {
       userInteractions++;
-      localStorage.setItem('chatbot_interactions', userInteractions);
+      localStorage.setItem(LS_INTER, userInteractions);
     }
 
     // Offline mode
@@ -1351,7 +1360,7 @@
   function setupDarkMode() {
     document.getElementById('btn-darkmode').addEventListener('click', () => {
       isDarkMode = !isDarkMode;
-      localStorage.setItem('chatbot_dark', isDarkMode);
+      localStorage.setItem(LS_DARK, isDarkMode);
       const win = document.getElementById('chatbot-window');
       win.classList.toggle('dark', isDarkMode);
       win.classList.toggle('light', !isDarkMode);
@@ -1398,7 +1407,7 @@
   function setupExport() {
     document.getElementById('btn-export').addEventListener('click', () => {
       playSound('click');
-      const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
+      const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       if (history.length === 0) return;
 
       let html = `<html><head><title>Chat Export - ${CONFIG.botName}</title>
@@ -1462,7 +1471,7 @@
   function setupLanguage() {
     document.getElementById('chatbot-lang').addEventListener('change', (e) => {
       currentLang = e.target.value;
-      localStorage.setItem('chatbot_lang', currentLang);
+      localStorage.setItem(LS_LANG, currentLang);
       document.getElementById('chatbot-input').placeholder = t('placeholder');
       document.getElementById('btn-voice').title = t('voice');
       document.getElementById('btn-upload').title = t('upload');
@@ -1682,7 +1691,7 @@
     errorEl.textContent = '';
     userEmail = email;
     emailVerified = true;
-    localStorage.setItem('chatbot_user_email', email);
+    localStorage.setItem(LS_EMAIL, email);
 
     // Register email on server
     try {
@@ -1721,7 +1730,7 @@
     if (advancedFeatures) advancedFeatures.style.display = 'flex';
 
     // Show welcome message
-    const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
+    const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
     if (history.length === 0) {
       const greeting = getTimeGreeting();
       addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
@@ -1781,7 +1790,7 @@
 
     form.querySelector('.lead-skip').addEventListener('click', () => {
       leadCaptured = true;
-      localStorage.setItem('chatbot_lead_captured', 'true');
+      localStorage.setItem(LS_LEAD, 'true');
       form.remove();
     });
 
@@ -1800,7 +1809,7 @@
           })
         });
         leadCaptured = true;
-        localStorage.setItem('chatbot_lead_captured', 'true');
+        localStorage.setItem(LS_LEAD, 'true');
         form.remove();
         addMessage('Thanks! Our team will contact you soon. 🙌', 'bot', { noAnimate: false });
       } catch (e) {
@@ -2021,11 +2030,11 @@
     // Clear chat button
     document.getElementById('btn-clear').addEventListener('click', () => {
       if (confirm('Clear all chat history?')) {
-        localStorage.removeItem('chatbot_history');
-        localStorage.removeItem('chatbot_session_id');
-        localStorage.removeItem('chatbot_user_email');
-        localStorage.removeItem('chatbot_interactions');
-        localStorage.removeItem('chatbot_lead_captured');
+        localStorage.removeItem(LS_HISTORY);
+        localStorage.removeItem(LS_SESSION);
+        localStorage.removeItem(LS_EMAIL);
+        localStorage.removeItem(LS_INTER);
+        localStorage.removeItem(LS_LEAD);
         document.getElementById('chatbot-messages').innerHTML = '';
         messageCount = 0;
         ratingGiven = false;
@@ -2077,7 +2086,7 @@
     // If email already verified or email capture is EXPLICITLY disabled, show chat directly
     if (emailVerified || CONFIG.emailCapture === false) {
       loadFromLocal();
-      const history = JSON.parse(localStorage.getItem('chatbot_history') || '[]');
+      const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       if (history.length === 0) {
         const greeting = getTimeGreeting();
         addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {

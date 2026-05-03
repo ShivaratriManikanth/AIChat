@@ -235,25 +235,26 @@ function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEm
   }
 }
 
-function getHistory(sessionId, limit = 20) {
+function getHistory(sessionId, clientId, limit = 20) {
   if (db) {
     return db.prepare(
-      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? ORDER BY id DESC LIMIT ?'
-    ).all(sessionId, limit).reverse();
+      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? AND client_id = ? ORDER BY id DESC LIMIT ?'
+    ).all(sessionId, clientId || 'default_client', limit).reverse();
   }
   return (memoryStore[sessionId] || []).slice(-limit);
 }
 
-function getAllSessions() {
+function getAllSessions(clientId) {
   if (db) {
     return db.prepare(`
       SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
              COUNT(c.id) as message_count
       FROM sessions s
       LEFT JOIN chat_history c ON s.session_id = c.session_id
+      WHERE s.client_id = ?
       GROUP BY s.session_id
       ORDER BY s.updated_at DESC
-    `).all();
+    `).all(clientId || 'default_client');
   }
   return Object.keys(memoryStore).map(id => ({
     session_id: id,
@@ -565,7 +566,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     return res.status(400).json({ error: 'Empty message' });
   }
 
-  const config = loadConfig();
+  const config = loadClientBotConfig(req.clientId);
   const startTime = Date.now();
 
   // Track bot_id, widget version, last user msg time
@@ -801,9 +802,9 @@ app.get('/api/leads', requireAuth, (req, res) => {
 });
 
 // GET /api/leads/csv — Admin: download leads as CSV
-app.get('/api/leads/csv', (req, res) => {
+app.get('/api/leads/csv', requireAuth, (req, res) => {
   if (!db) return res.status(500).send('DB not available');
-  const leads = db.prepare('SELECT name, email, phone, page_url, created_at FROM leads ORDER BY created_at DESC').all();
+  const leads = db.prepare('SELECT name, email, phone, page_url, created_at FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
   const csvRows = [
     ['Name', 'Email', 'Phone', 'Page URL', 'Captured At'],
     ...leads.map(l => [l.name, l.email, l.phone, l.page_url, l.created_at])
@@ -1098,18 +1099,18 @@ app.post('/api/complaint', checkApiKey, (req, res) => {
 });
 
 // GET /api/complaints — Admin: list all
-app.get('/api/complaints', (req, res) => {
+app.get('/api/complaints', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  res.json(db.prepare('SELECT * FROM complaints ORDER BY created_at DESC').all());
+  res.json(db.prepare('SELECT * FROM complaints WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
 });
 
 // PUT /api/complaint/:id/status — Admin: update status
-app.put('/api/complaint/:id/status', (req, res) => {
+app.put('/api/complaint/:id/status', requireAuth, (req, res) => {
   const { status } = req.body;
   if (!['open', 'in_progress', 'resolved'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
-  if (db) db.prepare('UPDATE complaints SET status = ? WHERE id = ?').run(status, req.params.id);
+  if (db) db.prepare('UPDATE complaints SET status = ? WHERE id = ? AND client_id = ?').run(status, req.params.id, req.clientId);
   res.json({ success: true });
 });
 
@@ -1119,7 +1120,7 @@ app.put('/api/complaint/:id/status', (req, res) => {
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_saas_key';
 
-app.delete('/api/super/clients/:id', (req, res) => {
+app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   try {
@@ -1130,7 +1131,7 @@ app.delete('/api/super/clients/:id', (req, res) => {
     db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete client' });
+    res.status(500).json({ error: 'Deletion failed' });
   }
 });
 
@@ -1138,10 +1139,16 @@ app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });
 
+  // Super Admin Check
+  if (email === 'admin@aichat.com' && password === 'admin123') {
+    const token = jwt.sign({ role: 'super' }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ success: true, token, role: 'super' });
+  }
+
   const client = db.prepare('SELECT * FROM clients WHERE email = ? AND password = ?').get(email, password);
   if (client) {
     const token = jwt.sign({ clientId: client.id, role: 'client' }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, clientId: client.id });
+    return res.json({ success: true, token, clientId: client.id, role: 'client' });
   }
   
   res.status(401).json({ error: 'Invalid credentials' });
@@ -1150,11 +1157,21 @@ app.post('/api/login', (req, res) => {
 function requireAuth(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return res.status(401).json({ error: 'Missing authorization header' });
-  
   const token = authHeader.split(' ')[1];
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) return res.status(401).json({ error: 'Invalid or expired token' });
     req.clientId = decoded.clientId;
+    req.userRole = decoded.role;
+    next();
+  });
+}
+
+function requireSuperAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ error: 'Missing authorization header' });
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err || decoded.role !== 'super') return res.status(403).json({ error: 'Super Admin access required' });
     next();
   });
 }
@@ -1162,13 +1179,13 @@ function requireAuth(req, res, next) {
 // ==========================================
 // SAAS SUPER ADMIN ENDPOINTS
 // ==========================================
-app.get('/api/super/clients', (req, res) => {
+app.get('/api/super/clients', requireSuperAuth, (req, res) => {
   if (!db) return res.json([]);
   const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients').all();
   res.json(clients);
 });
 
-app.post('/api/super/clients', async (req, res) => {
+app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { company_name, email, plan_id, password } = req.body;
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);

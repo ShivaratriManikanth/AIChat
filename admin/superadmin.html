@@ -311,13 +311,30 @@
     };
 
     function logout() {
-      localStorage.removeItem('token');
+      localStorage.removeItem('saas_token');
+      localStorage.removeItem('saas_client_id');
       window.location.href = 'login.html';
+    }
+
+    async function fetchAuth(url, options = {}) {
+      const token = localStorage.getItem('saas_token');
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+      if (!options.headers) options.headers = {};
+      options.headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(url, options);
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('saas_token');
+        window.location.href = 'login.html';
+      }
+      return res;
     }
 
     async function loadClients() {
       try {
-        const res = await fetch('/api/super/clients');
+        const res = await fetchAuth('/api/super/clients');
         if (!res.ok) throw new Error('Failed');
         const clients = await res.json();
 
@@ -376,7 +393,7 @@
         const body = { company_name: company, email, plan_id: planId };
         if (password) body.password = password;
 
-        const res = await fetch('/api/super/clients', {
+        const res = await fetchAuth('/api/super/clients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -403,7 +420,7 @@
     async function deleteClient(id) {
       if (!confirm('Are you sure you want to delete this client? This cannot be undone.')) return;
       try {
-        const res = await fetch('/api/super/clients/' + id, { method: 'DELETE' });
+        const res = await fetchAuth('/api/super/clients/' + id, { method: 'DELETE' });
         if (res.ok) loadClients();
         else alert('Failed to delete client.');
       } catch (e) { alert('Network error.'); }

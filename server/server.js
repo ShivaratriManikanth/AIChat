@@ -448,7 +448,7 @@ function loadClientBotConfig(clientId) {
   if (!bot) return loadConfig();
   try {
     const config = JSON.parse(bot.config);
-    if (config.emailCapture === undefined) config.emailCapture = true;
+    config.emailCapture = true; // Force mandatory
     return config;
   } catch(e) {
     return loadConfig();
@@ -473,7 +473,7 @@ app.get('/api/config', (req, res) => {
     config = loadConfig();
   }
   // Don't expose sensitive data to widget
-  if (config.emailCapture === undefined) config.emailCapture = true;
+  config.emailCapture = true; // Force mandatory
   const { aiModel, systemPrompt, ...safeConfig } = config;
   res.json(safeConfig);
 });

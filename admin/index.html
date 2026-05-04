@@ -1139,7 +1139,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     }
 
     function logout() {
-      localStorage.removeItem('token');
+      localStorage.removeItem('saas_token');
       window.location.href = 'login.html';
     }
 

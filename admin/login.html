@@ -249,9 +249,16 @@
 
         if (res.ok && data.token) {
           localStorage.setItem('saas_token', data.token);
-          localStorage.setItem('saas_client_id', data.clientId);
+          localStorage.setItem('saas_role', data.role);
+          localStorage.setItem('saas_client_id', data.clientId || '');
           btn.textContent = '✅ Success!';
-          setTimeout(() => { window.location.href = '/admin/'; }, 500);
+          setTimeout(() => { 
+            if (data.role === 'super') {
+              window.location.href = '/admin/superadmin.html';
+            } else {
+              window.location.href = '/admin/';
+            }
+          }, 500);
         } else {
           errorEl.style.display = 'flex';
           btn.textContent = 'Sign In →';

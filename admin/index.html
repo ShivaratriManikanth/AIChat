@@ -1134,8 +1134,13 @@ add_action('wp_footer', 'add_chatbot_widget');
   <script>
         const API = window.location.origin;
     const token = localStorage.getItem('saas_token');
+    const role  = localStorage.getItem('saas_role');
     if (!token) {
       window.location.href = '/admin/login.html';
+    }
+    // Automatically redirect Super Admins to the Super Admin Console
+    if (role === 'super') {
+      window.location.href = '/admin/superadmin.html';
     }
 
     function logout() {

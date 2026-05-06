@@ -63,6 +63,7 @@ try {
   try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_type TEXT DEFAULT ''`); } catch (e) {}
   try { db.exec(`ALTER TABLE chat_history ADD COLUMN source TEXT DEFAULT ''`); } catch (e) {}
   try { db.exec(`ALTER TABLE chat_history ADD COLUMN response_ms INTEGER DEFAULT 0`); } catch (e) {}
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN user_email TEXT DEFAULT ''`); } catch (e) {}
 
   // Leads table
   db.exec(`
@@ -207,13 +208,17 @@ const memoryStore = {};
 function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEmail = null) {
   const safeMeta = meta || {};
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
-    db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
-    db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      clientId || 'default_client', sessionId, role, content,
-      file?.dataUrl || '', file?.name || '', file?.type || '',
-      safeMeta.source || '', safeMeta.responseMs || 0, userEmail
-    );
+    try {
+      db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
+      db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
+      db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+        clientId || 'default_client', sessionId, role, content,
+        file?.dataUrl || '', file?.name || '', file?.type || '',
+        safeMeta.source || '', safeMeta.responseMs || 0, userEmail
+      );
+    } catch (err) {
+      console.error('Database error in saveMessage:', err.message);
+    }
   } else {
     if (!memoryStore[sessionId]) memoryStore[sessionId] = [];
     memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), userEmail, ...safeMeta });

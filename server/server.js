@@ -1139,8 +1139,10 @@ app.post('/api/purchase', async (req, res) => {
       botId, company_name + ' Bot', clientId, apiKey, defaultConfig
     );
     
-    // Send Email via GAdigital (manikanthshivaratri@gmail.com)
-    await sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id });
+    // Send Email via GAdigital (non-blocking, fire-and-forget)
+    sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id })
+      .then(() => console.log(`📧 Welcome email sent to ${email}`))
+      .catch(err => console.error(`❌ Email failed for ${email}:`, err.message));
     
     res.json({ success: true, clientId });
   } catch (err) {

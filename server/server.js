@@ -1151,17 +1151,52 @@ app.post('/api/purchase', async (req, res) => {
   }
 });
 
-// TEST ENDPOINT: Check if SMTP is configured (remove in production)
-app.get('/api/test-smtp', (req, res) => {
+// TEST ENDPOINT: Actually try to send a test email and report errors
+app.get('/api/test-smtp', async (req, res) => {
   const smtpEmail = process.env.SMTP_EMAIL || 'NOT SET';
   const smtpPass = process.env.SMTP_PASSWORD ? '✅ SET (' + process.env.SMTP_PASSWORD.length + ' chars)' : '❌ NOT SET';
   const serverUrl = process.env.SERVER_URL || 'NOT SET';
-  res.json({
-    smtp_email: smtpEmail,
-    smtp_password_status: smtpPass,
-    server_url: serverUrl,
-    nodemailer_loaded: !!nodemailer
-  });
+  
+  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+    return res.json({ error: 'SMTP not configured', smtp_email: smtpEmail, smtp_password_status: smtpPass });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_EMAIL,
+        pass: process.env.SMTP_PASSWORD
+      }
+    });
+
+    // Verify connection
+    await transporter.verify();
+    
+    // Send a real test email to yourself
+    const info = await transporter.sendMail({
+      from: `"GAdigital Test" <${process.env.SMTP_EMAIL}>`,
+      to: process.env.SMTP_EMAIL,
+      subject: '✅ SMTP Test - GAdigital Solution',
+      text: 'If you receive this, your SMTP is working correctly!'
+    });
+
+    res.json({
+      success: true,
+      message: 'Test email sent!',
+      messageId: info.messageId,
+      smtp_email: smtpEmail,
+      smtp_password_status: smtpPass
+    });
+  } catch (err) {
+    res.json({
+      success: false,
+      error: err.message,
+      error_code: err.code,
+      smtp_email: smtpEmail,
+      smtp_password_status: smtpPass
+    });
+  }
 });
 
 // Helper for sending welcome email

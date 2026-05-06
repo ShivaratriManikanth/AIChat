@@ -734,7 +734,7 @@ app.post('/api/lead', checkApiKey, (req, res) => {
 });
 
 // POST /api/knowledge/pdf — Upload PDF to extract knowledge
-app.post('/api/knowledge/pdf', async (req, res) => {
+app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
   const { fileName, fileData } = req.body;
   if (!fileData) return res.status(400).json({ error: 'fileData required (base64)' });
 
@@ -748,7 +748,7 @@ app.post('/api/knowledge/pdf', async (req, res) => {
     if (!text) return res.status(400).json({ error: 'No text extracted from PDF' });
 
     // Split into Q&A chunks — simple heuristic: split by double newlines
-    const config = loadConfig();
+    const config = loadClientBotConfig(req.clientId);
     const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
     const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
       question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
@@ -756,7 +756,7 @@ app.post('/api/knowledge/pdf', async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveConfig(config);
+    saveClientBotConfig(req.clientId, config);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length });
   } catch (err) {
@@ -902,7 +902,7 @@ app.get('/api/config/full', requireAuth, (req, res) => {
 });
 
 // POST /api/knowledge/url — Auto-train from website URL
-app.post('/api/knowledge/url', async (req, res) => {
+app.post('/api/knowledge/url', requireAuth, async (req, res) => {
   const { url } = req.body;
   if (!url || !/^https?:\/\//.test(url)) {
     return res.status(400).json({ error: 'Valid URL required (http:// or https://)' });
@@ -915,7 +915,7 @@ app.post('/api/knowledge/url', async (req, res) => {
     }
 
     // Split text into chunks and add as FAQs
-    const config = loadConfig();
+    const config = loadClientBotConfig(req.clientId);
     const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
     const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
 
@@ -926,7 +926,7 @@ app.post('/api/knowledge/url', async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveConfig(config);
+    saveClientBotConfig(req.clientId, config);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
   } catch (err) {

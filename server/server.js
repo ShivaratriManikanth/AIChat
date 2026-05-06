@@ -205,17 +205,18 @@ try {
 const memoryStore = {};
 
 function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEmail = null) {
+  const safeMeta = meta || {};
   if (db) {
     db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
     db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
     db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
       clientId || 'default_client', sessionId, role, content,
       file?.dataUrl || '', file?.name || '', file?.type || '',
-      meta.source || '', meta.responseMs || 0, userEmail
+      safeMeta.source || '', safeMeta.responseMs || 0, userEmail
     );
   } else {
     if (!memoryStore[sessionId]) memoryStore[sessionId] = [];
-    memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), userEmail, ...meta });
+    memoryStore[sessionId].push({ role, content, file, timestamp: new Date().toISOString(), userEmail, ...safeMeta });
   }
 }
 

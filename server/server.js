@@ -19,27 +19,11 @@ app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
+// Serve GAdigital Solution Landing Page (at root)
+app.use(express.static(path.join(__dirname, '..', 'gadigital')));
+
 // Serve widget files
 app.use('/widget', express.static(path.join(__dirname, '..', 'widget')));
-
-// Basic Auth Middleware for Admin
-function adminAuth(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  const cookieMatch = req.headers.cookie ? req.headers.cookie.match(/admin_auth=([^;]+)/) : null;
-  const b64auth = authHeader.split(' ')[1] || (cookieMatch ? cookieMatch[1] : '');
-
-  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
-
-  if (login === 'admin' && password === 'Admin@2001') {
-    return next();
-  }
-
-  if (req.accepts('html')) {
-    return res.sendFile(path.join(__dirname, 'login.html'));
-  }
-  
-  res.status(401).send('Authentication required.');
-}
 
 // Serve admin dashboard
 app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
@@ -1120,6 +1104,115 @@ app.put('/api/complaint/:id/status', requireAuth, (req, res) => {
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_saas_key';
 
+// PUBLIC PURCHASE ENDPOINT (GAdigital Solution)
+app.post('/api/purchase', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { company_name, email, plan_id, password } = req.body;
+  
+  if (!company_name || !email || !password) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
+  
+  try {
+    // Check if user already exists
+    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    if (existing) return res.status(400).json({ error: 'Email already registered' });
+
+    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+      clientId, email, password, company_name, plan_id || 1, 'COD_PENDING'
+    );
+    
+    const botId = 'bot_' + require('crypto').randomBytes(6).toString('hex');
+    const apiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
+    const defaultConfig = JSON.stringify({ 
+      botName: company_name + ' Bot', 
+      themeColor: '#6366f1', 
+      apiKey,
+      emailCapture: true,
+      emailCaptureTitle: 'Welcome to ' + company_name,
+      emailCaptureSubtitle: 'Please enter your email to start the conversation.'
+    });
+    
+    db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
+      botId, company_name + ' Bot', clientId, apiKey, defaultConfig
+    );
+    
+    // Send Email via GAdigital (manikanthshivaratri@gmail.com)
+    await sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id });
+    
+    res.json({ success: true, clientId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper for sending welcome email
+async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
+  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+    console.log('⚠️ SMTP not configured. Logged creds:', { email, password, botId });
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASSWORD
+    }
+  });
+
+  const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
+  const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
+
+  const clientMailOptions = {
+    from: `"GAdigital Solution" <${process.env.SMTP_EMAIL}>`,
+    to: email,
+    subject: '🚀 Your AI Chatbot is Ready! - GAdigital Solution',
+    html: `
+      <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+        <div style="background: #6366f1; padding: 40px; border-radius: 20px 20px 0 0; text-align: center; color: white;">
+          <h1 style="margin: 0; font-size: 28px;">Welcome to the Future!</h1>
+          <p style="opacity: 0.9; margin-top: 10px;">GAdigital Solution has successfully activated your ${planName} Plan.</p>
+        </div>
+        <div style="padding: 40px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 0 20px 20px;">
+          <h2 style="font-size: 20px; color: #6366f1;">Hello ${company_name},</h2>
+          <p>Your AI Chatbot is now ready to be integrated into your website. Here are your access details:</p>
+          
+          <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 24px 0;">
+            <p style="margin: 0; font-size: 14px; color: #64748b;">DASHBOARD LOGIN</p>
+            <p style="margin: 8px 0;"><b>Link:</b> <a href="${serverUrl}/admin/login.html" style="color: #6366f1;">Click here to Login</a></p>
+            <p style="margin: 4px 0;"><b>Username:</b> ${email}</p>
+            <p style="margin: 4px 0;"><b>Password:</b> ${password}</p>
+          </div>
+
+          <h3 style="font-size: 16px;">How to Embed Your Chatbot</h3>
+          <p style="font-size: 14px;">Simply copy and paste the code below into your website's <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> tag:</p>
+          
+          <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 12px; font-family: monospace; font-size: 12px; overflow-x: auto;">
+            &lt;script <br>
+            &nbsp;&nbsp;src="${serverUrl}/widget/chatbot.js" <br>
+            &nbsp;&nbsp;data-server="${serverUrl}" <br>
+            &nbsp;&nbsp;data-bot-id="${botId}" <br>
+            &nbsp;&nbsp;data-api-key="${apiKey}"<br>
+            &gt;&lt;/script&gt;
+          </div>
+
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
+            <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
+            <p>Our team will reach out to you shortly for the payment collection.</p>
+            <p style="margin-top: 20px;">Best Regards,<br><b>GAdigital Solution Team</b></p>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  await transporter.sendMail(clientMailOptions);
+}
+
 app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
@@ -1212,63 +1305,8 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
       botId, company_name + ' Bot', clientId, apiKey, defaultConfig
     );
     
-    // Create NodeMailer transporter
-    if (process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_EMAIL,
-          pass: process.env.SMTP_PASSWORD
-        }
-      });
-
-      const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
-
-      // 1. Send Email to Client
-      const clientMailOptions = {
-        from: process.env.SMTP_EMAIL,
-        to: email,
-        subject: 'Welcome to AI Chatbot SaaS - Your Dashboard is Ready!',
-        html: `
-          <h2>Welcome, ${company_name}!</h2>
-          <p>Thank you for subscribing to the <strong>${planName} Plan</strong>.</p>
-          <p>Your chatbot dashboard is now ready. You can log in and customize your bot using the credentials below:</p>
-          <ul>
-            <li><strong>Dashboard Link:</strong> <a href="https://yourdomain.com/admin">https://yourdomain.com/admin</a></li>
-            <li><strong>Email/Username:</strong> ${email}</li>
-            <li><strong>Password:</strong> ${finalPassword}</li>
-          </ul>
-          <p><strong>Your Widget Embed Code:</strong></p>
-          <pre style="background:#f4f4f4;padding:10px;border-radius:5px;">&lt;script src="https://aichat-production-e0ec.up.railway.app/widget/chatbot.js" data-server="https://aichat-production-e0ec.up.railway.app" data-bot-id="${botId}" data-api-key="${apiKey}"&gt;&lt;/script&gt;</pre>
-          <p>If you have any questions, feel free to reply to this email.</p>
-        `
-      };
-
-      // 2. Send Notification to Super Admin
-      const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || process.env.SMTP_EMAIL;
-      const adminMailOptions = {
-        from: process.env.SMTP_EMAIL,
-        to: superAdminEmail,
-        subject: `[SaaS Alert] New Client Subscribed: ${company_name}`,
-        html: `
-          <h2>New Client Registration</h2>
-          <ul>
-            <li><strong>Company:</strong> ${company_name}</li>
-            <li><strong>Email:</strong> ${email}</li>
-            <li><strong>Plan:</strong> ${planName} Plan</li>
-            <li><strong>Client ID:</strong> ${clientId}</li>
-            <li><strong>Payment Status:</strong> COD Pending</li>
-          </ul>
-        `
-      };
-
-      await transporter.sendMail(clientMailOptions);
-      await transporter.sendMail(adminMailOptions);
-      console.log(`\n📧 Real emails sent to client (${email}) and super admin (${superAdminEmail})`);
-    } else {
-      console.log(`\n⚠️ SMTP credentials not set in .env. Falling back to console log:`);
-      console.log(`📧 EMAIL TO CLIENT: Login: ${email} | Password: ${finalPassword}`);
-    }
+    // Send Email to Client via the new helper
+    await sendWelcomeEmail({ company_name, email, password: finalPassword, botId, apiKey, plan_id });
     
     res.json({ success: true, clientId });
   } catch (err) {

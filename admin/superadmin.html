@@ -295,7 +295,7 @@
             </tr>
           </thead>
           <tbody id="clientTable">
-            <tr><td colspan="6"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
+            <tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -348,7 +348,7 @@
 
         if (clients.length === 0) {
           document.getElementById('clientTable').innerHTML =
-            `<tr><td colspan="6"><div class="empty-state"><span class="icon">🏢</span>No clients yet. Onboard your first client above!</div></td></tr>`;
+            `<tr><td colspan="7"><div class="empty-state"><span class="icon">🏢</span>No clients yet. Onboard your first client above!</div></td></tr>`;
           return;
         }
 
@@ -364,6 +364,7 @@
               <td><span class="badge ${planBadge}">${planName}</span></td>
               <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
               <td style="color:#888;font-size:13px;">${date}</td>
+              <td style="font-family:monospace;font-size:12px;color:#666;">${c.password || '****'}</td>
               <td style="display:flex;gap:8px;">
                 <button class="btn-sm btn-sm-view" onclick="alert('Bot ID: ${c.id}')">View</button>
                 <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
@@ -372,7 +373,7 @@
         }).join('');
       } catch (e) {
         document.getElementById('clientTable').innerHTML =
-          `<tr><td colspan="6"><div class="empty-state"><span class="icon">⚠️</span>Failed to load clients. Is the server running?</div></td></tr>`;
+          `<tr><td colspan="7"><div class="empty-state"><span class="icon">⚠️</span>Failed to load clients. Is the server running?</div></td></tr>`;
       }
     }
 

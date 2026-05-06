@@ -538,7 +538,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  const { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email } = req.body;
+  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email } = req.body;
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId are required' });

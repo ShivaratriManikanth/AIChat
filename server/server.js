@@ -1170,22 +1170,25 @@ app.get('/api/test-smtp', async (req, res) => {
       }
     });
 
+    const targetEmail = req.query.to || process.env.SMTP_EMAIL;
+
     // Verify connection
     await transporter.verify();
     
-    // Send a real test email to yourself
+    // Send a real test email to yourself or the specified client
     const info = await transporter.sendMail({
       from: `"GAdigital Test" <${process.env.SMTP_EMAIL}>`,
-      to: process.env.SMTP_EMAIL,
+      to: targetEmail,
       subject: '✅ SMTP Test - GAdigital Solution',
       text: 'If you receive this, your SMTP is working correctly!'
     });
 
     res.json({
       success: true,
-      message: 'Test email sent!',
+      message: `Test email sent to ${targetEmail}!`,
       messageId: info.messageId,
       smtp_email: smtpEmail,
+      target_email: targetEmail,
       smtp_password_status: smtpPass
     });
   } catch (err) {

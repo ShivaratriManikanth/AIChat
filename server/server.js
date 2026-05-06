@@ -1151,8 +1151,25 @@ app.post('/api/purchase', async (req, res) => {
   }
 });
 
+// TEST ENDPOINT: Check if SMTP is configured (remove in production)
+app.get('/api/test-smtp', (req, res) => {
+  const smtpEmail = process.env.SMTP_EMAIL || 'NOT SET';
+  const smtpPass = process.env.SMTP_PASSWORD ? '✅ SET (' + process.env.SMTP_PASSWORD.length + ' chars)' : '❌ NOT SET';
+  const serverUrl = process.env.SERVER_URL || 'NOT SET';
+  res.json({
+    smtp_email: smtpEmail,
+    smtp_password_status: smtpPass,
+    server_url: serverUrl,
+    nodemailer_loaded: !!nodemailer
+  });
+});
+
 // Helper for sending welcome email
 async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
+  console.log('📧 Attempting to send email to:', email);
+  console.log('📧 SMTP_EMAIL:', process.env.SMTP_EMAIL);
+  console.log('📧 SMTP_PASSWORD length:', process.env.SMTP_PASSWORD ? process.env.SMTP_PASSWORD.length : 0);
+  
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
     console.log('⚠️ SMTP not configured. Logged creds:', { email, password, botId });
     return;

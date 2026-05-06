@@ -571,11 +571,13 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   }
 
   // Fallback: keyword match
-  if (!faqMatch) {
-    faqMatch = config.faqs.find(f =>
-      message.toLowerCase().includes(f.question.toLowerCase().replace(/[?]/g, '')) ||
-      f.question.toLowerCase().includes(message.toLowerCase().replace(/[?]/g, ''))
-    );
+  if (!faqMatch && config.faqs && Array.isArray(config.faqs)) {
+    faqMatch = config.faqs.find(f => {
+      if (!f || typeof f.question !== 'string') return false;
+      const q = f.question.toLowerCase().replace(/[?]/g, '');
+      const m = message.toLowerCase().replace(/[?]/g, '');
+      return m.includes(q) || q.includes(m);
+    });
   }
 
   if (faqMatch) {

@@ -285,7 +285,10 @@
             <li>Login credentials for your Dashboard</li>
           </ul>
         </div>
-        <button class="btn-submit" onclick="location.href='/admin/login.html'">Go to Dashboard</button>
+        <div style="display:flex; gap:12px; justify-content:center;">
+          <button class="btn-submit" onclick="location.href='/admin/login.html'" style="flex:1;">Go to Dashboard</button>
+          <button class="btn-submit" onclick="closeModal()" style="flex:1; background:transparent; border:2px solid rgba(255,255,255,0.1);">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -296,6 +299,8 @@
 
   <script>
     function openModal(planName, price, planId) {
+      document.getElementById('form-container').style.display = 'block';
+      document.getElementById('successScreen').style.display = 'none';
       document.getElementById('modalTitle').textContent = planName;
       document.getElementById('modalSubtitle').textContent = `Total due: ₹${price}/mo via COD`;
       document.getElementById('selectedPlanId').value = planId;

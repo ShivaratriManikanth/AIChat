@@ -191,13 +191,19 @@ try {
   `);
 
   // Alter existing tables for multi-tenancy
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE leads ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE complaints ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
+
+  // Data Migration: Fix chat history messages that have 'default_client' but belong to a specific client's session
+  try {
+    const fixResult = db.prepare(`
+      UPDATE chat_history 
+      SET client_id = (SELECT client_id FROM sessions WHERE sessions.session_id = chat_history.session_id)
+      WHERE client_id = 'default_client' 
+      AND EXISTS (SELECT 1 FROM sessions WHERE sessions.session_id = chat_history.session_id AND client_id != 'default_client')
+    `).run();
+    if (fixResult.changes > 0) console.log(`Fixed ${fixResult.changes} chat_history client_id mismatches`);
+  } catch(e){}
 
   // Default super admin & client if empty
   const hasSuperAdmin = db.prepare("SELECT COUNT(*) as count FROM super_admins").get();
@@ -628,7 +634,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
   let openaiLowConfidence = false;
   if (enableAi && openai) {
     try {
-      const history = getHistory(sessionId, 10);
+      const history = getHistory(sessionId, req.clientId, 10);
       const messages = [
         { role: 'system', content: (config.systemPrompt || '') + contextHint },
         ...history.map(h => ({ role: h.role, content: h.content })),
@@ -900,9 +906,13 @@ function generateFallbackReply(message, config) {
   return `Thank you for your message. I understand you're asking about "${message}". For the most accurate answer, our team will get back to you shortly. Meanwhile, you can try asking:\n${config.suggestedQuestions.slice(0, 2).map(q => `• ${q}`).join('\n')}`;
 }
 
-// GET /api/history — Get chat history for a session
+// GET /api/history — Get chat history for a session (used by widget)
 app.get('/api/history/:sessionId', (req, res) => {
-  const history = getHistory(req.params.sessionId, 50);
+  if (!db) return res.json([]);
+  // Look up client for this session to ensure we get the right history
+  const session = db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
+  const clientId = session ? session.client_id : 'default_client';
+  const history = getHistory(req.params.sessionId, clientId, 50);
   res.json(history);
 });
 
@@ -926,9 +936,16 @@ app.get('/api/sessions', requireAuth, (req, res) => {
 // GET /api/session/:id — Admin: get session messages
 app.get('/api/session/:sessionId', requireAuth, (req, res) => {
   if (db) {
+    // 1. Verify session ownership first
+    const session = db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
+    if (!session || (req.userRole !== 'super' && session.client_id !== req.clientId)) {
+      return res.status(403).json({ error: 'Access denied or session not found' });
+    }
+    
+    // 2. Get history (now we can trust the sessionId)
     const history = db.prepare(
-      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? AND client_id = ? ORDER BY id ASC LIMIT 100'
-    ).all(req.params.sessionId, req.clientId);
+      'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? ORDER BY id ASC LIMIT 150'
+    ).all(req.params.sessionId);
     return res.json(history);
   }
   res.json([]);

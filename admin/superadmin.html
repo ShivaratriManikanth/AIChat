@@ -360,6 +360,10 @@
         <label>Email Address</label>
         <input type="email" id="editEmail">
       </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Subscription Plan</label>
+        <select id="editPlanId"></select>
+      </div>
       <div class="form-group" style="margin-bottom:20px;">
         <label>New Password <span style="font-weight:400;color:#aaa;font-size:11px;">(leave blank to keep current)</span></label>
         <div class="pw-wrap">
@@ -419,9 +423,10 @@
           <button class="btn-icon btn-save" onclick="savePlan(${p.id})">💾 Save</button>
           <button class="btn-icon btn-del" onclick="deletePlan(${p.id})">🗑️</button>
         </div>`).join('');
-      // Populate the plan dropdown in onboard form
-      const sel = document.getElementById('planId');
-      sel.innerHTML = PLANS.map(p => `<option value="${p.id}">${p.name} — ₹${p.price}/${p.duration}</option>`).join('');
+      // Populate the plan dropdowns
+      const planOptions = PLANS.map(p => `<option value="${p.id}">${p.name} — ₹${p.price}/${p.duration}</option>`).join('');
+      document.getElementById('planId').innerHTML = planOptions;
+      document.getElementById('editPlanId').innerHTML = planOptions;
     }
 
     async function addPlan() {
@@ -493,7 +498,7 @@
               <button onclick="togglePw('${pwId}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;" title="Show/hide password">👁️</button>
             </td>
             <td style="display:flex;gap:6px;">
-              <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}','${email}','${company}')">Edit</button>
+              <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}','${email}','${company}', '${c.plan_id}')">Edit</button>
               <button class="btn-sm btn-sm-view" onclick="alert('Client ID: ${c.id}')">View</button>
               <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
             </td>
@@ -565,10 +570,11 @@
 
     let currentEditId = null;
 
-    function editClient(id, oldEmail, oldCompany) {
+    function editClient(id, oldEmail, oldCompany, oldPlanId) {
       currentEditId = id;
       document.getElementById('editEmail').value = oldEmail;
       document.getElementById('editCompany').value = oldCompany;
+      document.getElementById('editPlanId').value = oldPlanId;
       document.getElementById('editPassword').value = '';
       document.getElementById('editModal').classList.add('show');
     }
@@ -587,12 +593,13 @@
       if (!currentEditId) return;
       const newEmail    = document.getElementById('editEmail').value.trim();
       const newCompany  = document.getElementById('editCompany').value.trim();
+      const newPlanId   = document.getElementById('editPlanId').value;
       const newPassword = document.getElementById('editPassword').value.trim();
       if (!newEmail) { alert('Email is required.'); return; }
       const btn = document.getElementById('saveEditBtn');
       btn.textContent = 'Saving...'; btn.disabled = true;
       try {
-        const body = { email: newEmail, company_name: newCompany };
+        const body = { email: newEmail, company_name: newCompany, plan_id: newPlanId };
         if (newPassword) body.password = newPassword;
         const res = await fetchAuth('/api/super/clients/' + currentEditId, {
           method: 'PUT',

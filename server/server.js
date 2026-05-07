@@ -1381,19 +1381,18 @@ app.post('/api/super/migrate-passwords', requireSuperAuth, async (req, res) => {
 });
 
 app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
-
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
-  const { email, password, company_name } = req.body;
+  const { email, password, company_name, plan_id } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   
   try {
     if (password && password.trim()) {
       // Hash the new password before storing
       const hashed = await bcrypt.hash(password.trim(), 10);
-      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name) WHERE id = ?').run(email, hashed, company_name || null, clientId);
+      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, hashed, company_name || null, plan_id || null, clientId);
     } else {
-      db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name) WHERE id = ?').run(email, company_name || null, clientId);
+      db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, company_name || null, plan_id || null, clientId);
     }
     res.json({ success: true });
   } catch (err) {

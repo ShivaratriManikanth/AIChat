@@ -1252,11 +1252,86 @@ app.get('/api/test-smtp', async (req, res) => {
 // Helper for sending welcome email
 async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
   console.log('📧 Attempting to send email to:', email);
-  console.log('📧 SMTP_EMAIL:', process.env.SMTP_EMAIL);
-  console.log('📧 SMTP_PASSWORD length:', process.env.SMTP_PASSWORD ? process.env.SMTP_PASSWORD.length : 0);
   
+  const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
+  const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
+  const subject = '🚀 Your AI Chatbot is Ready! - GAdigital Solution';
+
+  const htmlContent = `
+    <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+      <div style="background: #6366f1; padding: 40px; border-radius: 20px 20px 0 0; text-align: center; color: white;">
+        <h1 style="margin: 0; font-size: 28px;">Welcome to the Future!</h1>
+        <p style="opacity: 0.9; margin-top: 10px;">GAdigital Solution has successfully activated your ${planName} Plan.</p>
+      </div>
+      <div style="padding: 40px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 0 20px 20px;">
+        <h2 style="font-size: 20px; color: #6366f1;">Hello ${company_name},</h2>
+        <p>Your AI Chatbot is now ready to be integrated into your website. Here are your access details:</p>
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 24px 0;">
+          <p style="margin: 0; font-size: 14px; color: #64748b;">DASHBOARD LOGIN</p>
+          <p style="margin: 8px 0;"><b>Link:</b> <a href="${serverUrl}/admin/login.html" style="color: #6366f1;">Click here to Login</a></p>
+          <p style="margin: 4px 0;"><b>Username:</b> ${email}</p>
+          <p style="margin: 4px 0;"><b>Password:</b> ${password}</p>
+        </div>
+
+        <h3 style="font-size: 16px;">How to Embed Your Chatbot</h3>
+        <p style="font-size: 14px;">Simply copy and paste the code below into your website's <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> tag:</p>
+        
+        <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 12px; font-family: monospace; font-size: 12px; overflow-x: auto;">
+          &lt;script <br>
+          &nbsp;&nbsp;src="${serverUrl}/widget/chatbot.js" <br>
+          &nbsp;&nbsp;data-server="${serverUrl}" <br>
+          &nbsp;&nbsp;data-bot-id="${botId}" <br>
+          &nbsp;&nbsp;data-api-key="${apiKey}"<br>
+          &gt;&lt;/script&gt;
+        </div>
+
+        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
+          <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
+          <p>Our team will reach out to you shortly for the payment collection.</p>
+          <p style="margin-top: 20px;">Best Regards,<br><b>GAdigital Solution Team</b></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 1. Try Resend HTTP API
+  if (process.env.RESEND_API_KEY) {
+    console.log('📧 Using Resend API');
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'GAdigital Solution <onboarding@resend.dev>', // Change when domain is verified
+        to: email,
+        subject: subject,
+        html: htmlContent
+      })
+    });
+    if (!res.ok) throw new Error('Resend Error: ' + await res.text());
+    return;
+  }
+
+  // 2. Try SendGrid HTTP API
+  if (process.env.SENDGRID_API_KEY) {
+    console.log('📧 Using SendGrid API');
+    const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: email }] }],
+        from: { email: process.env.SMTP_EMAIL || 'manikanthshivaratri@gmail.com', name: 'GAdigital Solution' },
+        subject: subject,
+        content: [{ type: 'text/html', value: htmlContent }]
+      })
+    });
+    if (!res.ok) throw new Error('SendGrid Error: ' + await res.text());
+    return;
+  }
+
+  // 3. Fallback to Nodemailer SMTP
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log('⚠️ SMTP not configured. Logged creds:', { email, password, botId });
+    console.log('⚠️ No Email API or SMTP configured. Logged creds:', { email, password, botId });
     return;
   }
 
@@ -1270,53 +1345,12 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
     }
   });
 
-  const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
-  const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
-
-  const clientMailOptions = {
+  await transporter.sendMail({
     from: `"GAdigital Solution" <${process.env.SMTP_EMAIL}>`,
     to: email,
-    subject: '🚀 Your AI Chatbot is Ready! - GAdigital Solution',
-    html: `
-      <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
-        <div style="background: #6366f1; padding: 40px; border-radius: 20px 20px 0 0; text-align: center; color: white;">
-          <h1 style="margin: 0; font-size: 28px;">Welcome to the Future!</h1>
-          <p style="opacity: 0.9; margin-top: 10px;">GAdigital Solution has successfully activated your ${planName} Plan.</p>
-        </div>
-        <div style="padding: 40px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 0 20px 20px;">
-          <h2 style="font-size: 20px; color: #6366f1;">Hello ${company_name},</h2>
-          <p>Your AI Chatbot is now ready to be integrated into your website. Here are your access details:</p>
-          
-          <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 24px 0;">
-            <p style="margin: 0; font-size: 14px; color: #64748b;">DASHBOARD LOGIN</p>
-            <p style="margin: 8px 0;"><b>Link:</b> <a href="${serverUrl}/admin/login.html" style="color: #6366f1;">Click here to Login</a></p>
-            <p style="margin: 4px 0;"><b>Username:</b> ${email}</p>
-            <p style="margin: 4px 0;"><b>Password:</b> ${password}</p>
-          </div>
-
-          <h3 style="font-size: 16px;">How to Embed Your Chatbot</h3>
-          <p style="font-size: 14px;">Simply copy and paste the code below into your website's <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> tag:</p>
-          
-          <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 12px; font-family: monospace; font-size: 12px; overflow-x: auto;">
-            &lt;script <br>
-            &nbsp;&nbsp;src="${serverUrl}/widget/chatbot.js" <br>
-            &nbsp;&nbsp;data-server="${serverUrl}" <br>
-            &nbsp;&nbsp;data-bot-id="${botId}" <br>
-            &nbsp;&nbsp;data-api-key="${apiKey}"<br>
-            &gt;&lt;/script&gt;
-          </div>
-
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
-            <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
-            <p>Our team will reach out to you shortly for the payment collection.</p>
-            <p style="margin-top: 20px;">Best Regards,<br><b>GAdigital Solution Team</b></p>
-          </div>
-        </div>
-      </div>
-    `
-  };
-
-  await transporter.sendMail(clientMailOptions);
+    subject: subject,
+    html: htmlContent
+  });
 }
 app.put('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });

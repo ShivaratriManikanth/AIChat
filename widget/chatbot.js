@@ -1825,22 +1825,6 @@
     const hmenu = document.getElementById('chatbot-handoff-menu');
     if (hmenu) hmenu.classList.remove('open');
 
-    // Make sure the messages container is visible (even if email capture hasn't been done yet)
-    const msgContainer = document.getElementById('chatbot-messages');
-    const inputArea    = document.getElementById('chatbot-input-area');
-    const suggestions  = document.getElementById('chatbot-suggestions');
-    const emailScreen  = document.getElementById('chatbot-email-screen');
-    const hintBar      = document.getElementById('chatbot-shortcuts-hint');
-    if (msgContainer) {
-        msgContainer.style.display = 'flex';
-        msgContainer.style.overflowY = 'auto';
-    }
-    if (suggestions)  suggestions.style.display  = 'none';
-    if (emailScreen)  emailScreen.style.display   = 'none';
-    if (hintBar)      hintBar.style.display        = 'none';
-    // Hide input area – not needed while form is open
-    if (inputArea)    inputArea.style.display       = 'none';
-
     // If a form is already showing in chat, just scroll to it
     const existing = document.querySelector('.chatbot-complaint-card');
     if (existing) {
@@ -1868,12 +1852,6 @@
           <label>Number:</label>
           <div class="complaint-input-wrap">
             <input type="tel" data-cmp="phone" maxlength="20" placeholder="+91 9876543210">
-          </div>
-        </div>
-        <div class="complaint-field">
-          <label>Email:</label>
-          <div class="complaint-input-wrap">
-            <input type="email" data-cmp="email" maxlength="120" placeholder="you@example.com" value="${userEmail || ''}">
           </div>
         </div>
         <div class="complaint-field">
@@ -1905,12 +1883,10 @@
       el.addEventListener('input', () => { el.style.boxShadow = ''; });
     });
 
-    // Cancel — slide out and remove the form from chat, restore input area
+    // Cancel — slide out and remove the form from chat
     card.querySelector('[data-cmp-action="cancel"]').addEventListener('click', () => {
       card.style.animation = 'complaintSlide 0.2s ease reverse';
       setTimeout(() => card.remove(), 200);
-      // Restore input area
-      if (inputArea) inputArea.style.display = '';
       playSound('click');
     });
 
@@ -1918,19 +1894,15 @@
     card.querySelector('[data-cmp-action="submit"]').addEventListener('click', async () => {
       const nameEl    = card.querySelector('[data-cmp="name"]');
       const phoneEl   = card.querySelector('[data-cmp="phone"]');
-      const emailEl   = card.querySelector('[data-cmp="email"]');
       const messageEl = card.querySelector('[data-cmp="message"]');
       const name    = nameEl.value.trim();
       const phone   = phoneEl.value.trim();
-      const email   = emailEl.value.trim();
       const message = messageEl.value.trim();
 
       const invalidRing = '0 0 0 2px #EF4444';
       const phoneValid = phone.replace(/\D/g, '').length >= 7;
-      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       if (!name)       { nameEl.style.boxShadow    = invalidRing; nameEl.focus();    return; }
       if (!phoneValid) { phoneEl.style.boxShadow   = invalidRing; phoneEl.focus();   return; }
-      if (!emailValid) { emailEl.style.boxShadow   = invalidRing; emailEl.focus();   return; }
       if (!message)    { messageEl.style.boxShadow = invalidRing; messageEl.focus(); return; }
 
       const submitBtn = card.querySelector('[data-cmp-action="submit"]');
@@ -1943,7 +1915,7 @@
           headers: { 'Content-Type': 'application/json', 'x-bot-key': API_KEY },
           body: JSON.stringify({
             sessionId: SESSION_ID,
-            email: email || userEmail,
+            email: userEmail,
             name,
             phone,
             category: 'general',
@@ -1966,8 +1938,6 @@
             confirm.innerHTML = `<span class="dot"></span> Your complaint has been submitted successfully (Ticket <b>#${data.ticketId}</b>)`;
             card.querySelector('.complaint-body').appendChild(confirm);
           }
-          // Restore input area
-          if (inputArea) inputArea.style.display = '';
           card.scrollIntoView({ behavior: 'smooth', block: 'end' });
           playSound('receive');
         } else {

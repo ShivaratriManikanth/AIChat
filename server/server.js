@@ -10,6 +10,8 @@ const path       = require('path');
 const fs         = require('fs');
 const OpenAI     = require('openai');
 const nodemailer = require('nodemailer');
+const bcrypt     = require('bcryptjs');
+
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -146,9 +148,20 @@ try {
     CREATE TABLE IF NOT EXISTS plans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
+      price INTEGER DEFAULT 0,
+      duration TEXT DEFAULT '1 Month',
       features TEXT
     )
   `);
+  try { db.exec(`ALTER TABLE plans ADD COLUMN price INTEGER DEFAULT 0`); } catch(e){}
+  try { db.exec(`ALTER TABLE plans ADD COLUMN duration TEXT DEFAULT '1 Month'`); } catch(e){}
+  // Seed default plans if empty
+  const planCount = db.prepare('SELECT COUNT(*) as c FROM plans').get();
+  if (planCount.c === 0) {
+    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Basic', 1000, '1 Month', '')").run();
+    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Standard', 2000, '1 Month', '')").run();
+    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Premium', 3000, '1 Month', '')").run();
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
@@ -1352,14 +1365,20 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
     html: htmlContent
   });
 }
-app.put('/api/super/clients/:id', requireSuperAuth, (req, res) => {
+app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const { email, password, company_name } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
   
   try {
-    db.prepare('UPDATE clients SET email = ?, password = ? WHERE id = ?').run(email, password, clientId);
+    if (password && password.trim()) {
+      // Hash the new password before storing
+      const hashed = await bcrypt.hash(password.trim(), 10);
+      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name) WHERE id = ?').run(email, hashed, company_name || null, clientId);
+    } else {
+      db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name) WHERE id = ?').run(email, company_name || null, clientId);
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update failed: ' + err.message });
@@ -1381,22 +1400,33 @@ app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   }
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });
 
-  // Super Admin Check
+  // Super Admin Check (hardcoded credentials remain unchanged)
   if (email === 'admin@aichat.com' && password === 'admin123') {
     const token = jwt.sign({ role: 'super' }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ success: true, token, role: 'super' });
   }
 
-  const client = db.prepare('SELECT * FROM clients WHERE email = ? AND password = ?').get(email, password);
+  const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email);
   if (client) {
-    const token = jwt.sign({ clientId: client.id, role: 'client' }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ success: true, token, clientId: client.id, role: 'client' });
+    // Support both plain text (legacy) and hashed passwords
+    let passwordMatch = false;
+    if (client.password && client.password.startsWith('$2')) {
+      // Bcrypt hash
+      passwordMatch = await bcrypt.compare(password, client.password);
+    } else {
+      // Legacy plain text
+      passwordMatch = (client.password === password);
+    }
+    if (passwordMatch) {
+      const token = jwt.sign({ clientId: client.id, role: 'client' }, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ success: true, token, clientId: client.id, role: 'client' });
+    }
   }
-  
+
   res.status(401).json({ error: 'Invalid credentials' });
 });
 
@@ -1425,6 +1455,36 @@ function requireSuperAuth(req, res, next) {
 // ==========================================
 // SAAS SUPER ADMIN ENDPOINTS
 // ==========================================
+
+// ---- Plans CRUD ----
+app.get('/api/super/plans', requireSuperAuth, (req, res) => {
+  if (!db) return res.json([]);
+  res.json(db.prepare('SELECT * FROM plans ORDER BY id').all());
+});
+app.post('/api/super/plans', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { name, price, duration } = req.body;
+  if (!name) return res.status(400).json({ error: 'Plan name required' });
+  const result = db.prepare('INSERT INTO plans (name, price, duration, features) VALUES (?, ?, ?, ?)').run(
+    name, price || 0, duration || '1 Month', ''
+  );
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+app.put('/api/super/plans/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { name, price, duration } = req.body;
+  db.prepare('UPDATE plans SET name = ?, price = ?, duration = ? WHERE id = ?').run(
+    name, price || 0, duration || '1 Month', req.params.id
+  );
+  res.json({ success: true });
+});
+app.delete('/api/super/plans/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ---- Clients ----
 app.get('/api/super/clients', requireSuperAuth, (req, res) => {
   if (!db) return res.json([]);
   const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients').all();
@@ -1433,13 +1493,14 @@ app.get('/api/super/clients', requireSuperAuth, (req, res) => {
 
 app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  const { company_name, email, plan_id, password } = req.body;
+  const { company_name, email, plan_id, password, duration } = req.body;
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
-  const finalPassword = password || Math.random().toString(36).substring(2, 10);
+  const rawPassword = password || Math.random().toString(36).substring(2, 10);
+  const hashedPassword = await bcrypt.hash(rawPassword, 10);
   
   try {
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, finalPassword, company_name, plan_id || 1, 'COD_PENDING'
+      clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
     // Automatically generate a unique bot for this new client
@@ -1458,8 +1519,8 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
       botId, company_name + ' Bot', clientId, apiKey, defaultConfig
     );
     
-    // Send Email to Client via the new helper
-    await sendWelcomeEmail({ company_name, email, password: finalPassword, botId, apiKey, plan_id });
+    // Send Email to Client with the RAW (pre-hash) password so they can login
+    await sendWelcomeEmail({ company_name, email, password: rawPassword, botId, apiKey, plan_id });
     
     res.json({ success: true, clientId });
   } catch (err) {

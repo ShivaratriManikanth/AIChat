@@ -212,6 +212,20 @@
     }
     .modal-overlay.show .modal-content { transform: translateY(0); }
     .modal-header { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    /* Password toggle */
+    .pw-wrap { position: relative; display: flex; align-items: center; }
+    .pw-wrap input { flex: 1; padding-right: 38px; }
+    .eye-btn { position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888; padding: 0; line-height: 1; }
+    .eye-btn:hover { color: #4F46E5; }
+    /* Plans table */
+    .plans-grid { display: grid; grid-template-columns: 1fr 1fr auto auto auto; gap: 8px; align-items: center; }
+    .plans-grid input, .plans-grid select { padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; }
+    .plans-grid input:focus, .plans-grid select:focus { border-color: #4F46E5; }
+    .plan-row { display: contents; }
+    .btn-icon { padding: 6px 10px; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; }
+    .btn-save { background: #EEF2FF; color: #4F46E5; }
+    .btn-del  { background: #FEE2E2; color: #DC2626; }
+    .mono-pw { font-family: monospace; font-size: 11px; color: #666; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -258,11 +272,28 @@
       </div>
     </div>
 
+    <!-- Plans Management -->
+    <div class="card">
+      <div class="card-header"><h2>📋 Subscription Plans</h2></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:8px;align-items:center;font-size:11px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:6px;padding:0 4px">
+          <span>Plan Name</span><span>Price (₹/mo)</span><span>Duration</span><span></span><span></span>
+        </div>
+        <div id="plansContainer"></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0">
+          <input type="text" id="newPlanName" placeholder="Plan name e.g. Enterprise">
+          <input type="number" id="newPlanPrice" placeholder="Price" min="0">
+          <select id="newPlanDuration">
+            <option>1 Month</option><option>3 Months</option><option>6 Months</option><option>1 Year</option>
+          </select>
+          <button class="btn btn-primary" style="padding:9px 16px;font-size:13px;" onclick="addPlan()">➕ Add</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Create client -->
     <div class="card">
-      <div class="card-header">
-        <h2>➕ Onboard New Client</h2>
-      </div>
+      <div class="card-header"><h2>➕ Onboard New Client</h2></div>
       <div class="card-body">
         <div class="create-form">
           <div class="form-group">
@@ -275,18 +306,14 @@
           </div>
           <div class="form-group">
             <label>Subscription Plan</label>
-            <select id="planId">
-              <option value="1">🔵 Basic Plan — ₹1000/mo</option>
-              <option value="2">🟢 Standard Plan — ₹2000/mo</option>
-              <option value="3">🟠 Premium Plan — ₹3000/mo</option>
-            </select>
+            <select id="planId"></select>
           </div>
           <div class="form-group">
             <label>Temporary Password</label>
             <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" onclick="createClient()">🚀 Create Client & Send Email</button>
+            <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
             <div id="statusMsg"></div>
           </div>
         </div>
@@ -324,16 +351,23 @@
   <!-- Edit Modal -->
   <div class="modal-overlay" id="editModal">
     <div class="modal-content">
-      <div class="modal-header">✏️ Edit Client Credentials</div>
-      <div class="form-group" style="margin-bottom: 12px;">
+      <div class="modal-header">✏️ Edit Client</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Company Name</label>
+        <input type="text" id="editCompany" placeholder="Company name">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
         <label>Email Address</label>
         <input type="email" id="editEmail">
       </div>
-      <div class="form-group" style="margin-bottom: 20px;">
-        <label>Password</label>
-        <input type="text" id="editPassword">
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>New Password <span style="font-weight:400;color:#aaa;font-size:11px;">(leave blank to keep current)</span></label>
+        <div class="pw-wrap">
+          <input type="password" id="editPassword" placeholder="Enter new password">
+          <button type="button" class="eye-btn" onclick="toggleEditPw()" title="Show/hide password">👁️</button>
+        </div>
       </div>
-      <div class="form-actions" style="justify-content: flex-end;">
+      <div class="form-actions" style="justify-content:flex-end;">
         <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
         <button class="btn btn-primary" id="saveEditBtn">Save Changes</button>
       </div>
@@ -341,11 +375,12 @@
   </div>
 
   <script>
-    const PLAN_NAMES = { 1: 'Basic', 2: 'Standard', 3: 'Premium' };
-    const PLAN_PRICES = { 1: 1000, 2: 2000, 3: 3000 };
-    const PLAN_BADGES = {
-      1: 'badge-basic', 2: 'badge-standard', 3: 'badge-premium'
-    };
+    // Dynamic plans loaded from server
+    let PLANS = [];
+    const PLAN_BADGES = { 1: 'badge-basic', 2: 'badge-standard', 3: 'badge-premium' };
+    function planBadgeClass(planId) {
+      return PLAN_BADGES[planId] || 'badge-basic';
+    }
 
     function logout() {
       localStorage.removeItem('saas_token');
@@ -369,50 +404,110 @@
       return res;
     }
 
+    async function loadPlans() {
+      const res = await fetchAuth('/api/super/plans');
+      PLANS = await res.json();
+      // Render plans manager
+      const container = document.getElementById('plansContainer');
+      container.innerHTML = PLANS.map(p => `
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:6px;">
+          <input type="text" value="${p.name}" id="pname_${p.id}" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
+          <input type="number" value="${p.price}" id="pprice_${p.id}" min="0" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
+          <select id="pdur_${p.id}" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
+            ${['1 Month','3 Months','6 Months','1 Year'].map(d=>`<option ${p.duration===d?'selected':''}>${d}</option>`).join('')}
+          </select>
+          <button class="btn-icon btn-save" onclick="savePlan(${p.id})">💾 Save</button>
+          <button class="btn-icon btn-del" onclick="deletePlan(${p.id})">🗑️</button>
+        </div>`).join('');
+      // Populate the plan dropdown in onboard form
+      const sel = document.getElementById('planId');
+      sel.innerHTML = PLANS.map(p => `<option value="${p.id}">${p.name} — ₹${p.price}/${p.duration}</option>`).join('');
+    }
+
+    async function addPlan() {
+      const name = document.getElementById('newPlanName').value.trim();
+      const price = document.getElementById('newPlanPrice').value;
+      const duration = document.getElementById('newPlanDuration').value;
+      if (!name) return alert('Enter a plan name.');
+      await fetchAuth('/api/super/plans', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, price, duration}) });
+      document.getElementById('newPlanName').value = '';
+      document.getElementById('newPlanPrice').value = '';
+      loadPlans();
+    }
+
+    async function savePlan(id) {
+      const name = document.getElementById('pname_'+id).value.trim();
+      const price = document.getElementById('pprice_'+id).value;
+      const duration = document.getElementById('pdur_'+id).value;
+      if (!name) return alert('Plan name cannot be empty.');
+      await fetchAuth('/api/super/plans/'+id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, price, duration}) });
+      loadPlans(); loadClients();
+    }
+
+    async function deletePlan(id) {
+      if (!confirm('Delete this plan?')) return;
+      await fetchAuth('/api/super/plans/'+id, { method: 'DELETE' });
+      loadPlans();
+    }
+
     async function loadClients() {
       try {
         const res = await fetchAuth('/api/super/clients');
         if (!res.ok) throw new Error('Failed');
         const clients = await res.json();
 
-        // Stats
         document.getElementById('statTotal').textContent = clients.length;
         const active = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING').length;
         document.getElementById('statActive').textContent = active;
+        const planMap = {}; PLANS.forEach(p => planMap[p.id] = p);
         const rev = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING')
-          .reduce((sum, c) => sum + (PLAN_PRICES[c.plan_id] || 0), 0);
+          .reduce((sum, c) => sum + ((planMap[c.plan_id] || {}).price || 0), 0);
         document.getElementById('statRevenue').textContent = '₹' + rev.toLocaleString();
 
         if (clients.length === 0) {
-          document.getElementById('clientTable').innerHTML =
-            `<tr><td colspan="7"><div class="empty-state"><span class="icon">🏢</span>No clients yet. Onboard your first client above!</div></td></tr>`;
+          document.getElementById('clientTable').innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">🏢</span>No clients yet.</div></td></tr>`;
           return;
         }
 
+        const planMap2 = {}; PLANS.forEach(p => planMap2[p.id] = p);
         document.getElementById('clientTable').innerHTML = clients.map(c => {
-          const planName = PLAN_NAMES[c.plan_id] || 'Basic';
-          const planBadge = PLAN_BADGES[c.plan_id] || 'badge-basic';
-          const statusBadge = c.payment_status === 'active' ? 'badge-active' : 'badge-inactive';
+          const plan = planMap2[c.plan_id] || {};
+          const planName = plan.name || 'Basic';
+          const planBadge = planBadgeClass(c.plan_id);
+          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
           const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
-          return `
-            <tr>
-              <td><span class="client-company">${c.company_name || '–'}</span></td>
-              <td><span class="client-email">${c.email}</span></td>
-              <td><span class="badge ${planBadge}">${planName}</span></td>
-              <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
-              <td style="color:#888;font-size:13px;">${date}</td>
-              <td style="font-family:monospace;font-size:12px;color:#666;">${c.password || '****'}</td>
-              <td style="display:flex;gap:8px;">
-                <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}', '${c.email}', '${c.password}')">Edit</button>
-                <button class="btn-sm btn-sm-view" onclick="alert('Bot ID: ${c.id}')">View</button>
-                <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
-              </td>
-            </tr>`;
+          const isHashed = c.password && c.password.startsWith('$2');
+          const pwDisplay = isHashed ? '••••••••' : (c.password || '****');
+          const pwId = 'pw_' + c.id;
+          const company = (c.company_name || '').replace(/'/g, "\\'");
+          const email = (c.email || '').replace(/'/g, "\\'");
+          return `<tr>
+            <td><span class="client-company">${c.company_name || '–'}</span></td>
+            <td><span class="client-email">${c.email}</span></td>
+            <td><span class="badge ${planBadge}">${planName}</span></td>
+            <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
+            <td style="color:#888;font-size:13px;">${date}</td>
+            <td>
+              <span class="mono-pw" id="${pwId}" data-plain="${isHashed ? '' : (c.password||'')}" data-hashed="${isHashed}">${pwDisplay}</span>
+              <button onclick="togglePw('${pwId}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;" title="Toggle password">👁️</button>
+            </td>
+            <td style="display:flex;gap:6px;">
+              <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}','${email}','${company}')">Edit</button>
+              <button class="btn-sm btn-sm-view" onclick="alert('Client ID: ${c.id}')">View</button>
+              <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
+            </td>
+          </tr>`;
         }).join('');
       } catch (e) {
-        document.getElementById('clientTable').innerHTML =
-          `<tr><td colspan="7"><div class="empty-state"><span class="icon">⚠️</span>Failed to load clients. Is the server running?</div></td></tr>`;
+        document.getElementById('clientTable').innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">⚠️</span>Failed to load clients.</div></td></tr>`;
       }
+    }
+
+    function togglePw(pwId) {
+      const el = document.getElementById(pwId);
+      const isHashed = el.dataset.hashed === 'true';
+      if (isHashed) { el.textContent = el.textContent === '••••••••' ? '[hashed — not shown]' : '••••••••'; return; }
+      el.textContent = el.textContent === '••••••••' ? el.dataset.plain : '••••••••';
     }
 
     async function createClient() {
@@ -458,11 +553,17 @@
 
     let currentEditId = null;
 
-    function editClient(id, oldEmail, oldPassword) {
+    function editClient(id, oldEmail, oldCompany) {
       currentEditId = id;
       document.getElementById('editEmail').value = oldEmail;
-      document.getElementById('editPassword').value = oldPassword;
+      document.getElementById('editCompany').value = oldCompany;
+      document.getElementById('editPassword').value = '';
       document.getElementById('editModal').classList.add('show');
+    }
+
+    function toggleEditPw() {
+      const inp = document.getElementById('editPassword');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
     }
 
     function closeEditModal() {
@@ -472,37 +573,24 @@
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
       if (!currentEditId) return;
-      const newEmail = document.getElementById('editEmail').value.trim();
+      const newEmail    = document.getElementById('editEmail').value.trim();
+      const newCompany  = document.getElementById('editCompany').value.trim();
       const newPassword = document.getElementById('editPassword').value.trim();
-      
-      if (!newEmail || !newPassword) {
-        alert('Please fill out both fields.');
-        return;
-      }
-      
+      if (!newEmail) { alert('Email is required.'); return; }
       const btn = document.getElementById('saveEditBtn');
-      btn.textContent = 'Saving...';
-      btn.disabled = true;
-
+      btn.textContent = 'Saving...'; btn.disabled = true;
       try {
+        const body = { email: newEmail, company_name: newCompany };
+        if (newPassword) body.password = newPassword;
         const res = await fetchAuth('/api/super/clients/' + currentEditId, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: newEmail, password: newPassword })
+          body: JSON.stringify(body)
         });
-        if (!res.ok) {
-          const err = await res.json();
-          alert('Failed to update: ' + (err.error || res.statusText));
-        } else {
-          closeEditModal();
-          loadClients();
-        }
-      } catch (err) {
-        alert('Error updating client credentials.');
-      } finally {
-        btn.textContent = 'Save Changes';
-        btn.disabled = false;
-      }
+        if (!res.ok) { const err = await res.json(); alert('Failed: ' + (err.error || res.statusText)); }
+        else { closeEditModal(); loadClients(); }
+      } catch (err) { alert('Network error.'); }
+      finally { btn.textContent = 'Save Changes'; btn.disabled = false; }
     });
 
     async function deleteClient(id) {
@@ -514,7 +602,8 @@
       } catch (e) { alert('Network error.'); }
     }
 
-    loadClients();
+    // Init
+    loadPlans().then(() => loadClients());
   </script>
 </body>
 </html>

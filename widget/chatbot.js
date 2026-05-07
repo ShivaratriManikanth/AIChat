@@ -1286,7 +1286,7 @@
 
       if (res.ok) {
         const data = await res.json();
-        const qr = detectQuickReplies(data.reply);
+        const qr = (data.suggestions && data.suggestions.length > 0) ? data.suggestions : detectQuickReplies(data.reply);
         addMessage(data.reply, 'bot', { quickReplies: qr });
         // Show lead form after N interactions
         setTimeout(maybeShowLeadForm, 1500);

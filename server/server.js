@@ -596,7 +596,17 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   const langNames = { en: 'English', hi: 'Hindi', te: 'Telugu' };
   const languageName = langNames[lang] || 'English';
   const langHint = `\n\nIMPORTANT: You must generate your response entirely in ${languageName}. Do not use any other language.`;
-  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint;
+  
+  const advancedInstructions = `\n\nIMPORTANT FORMATTING:
+Your output MUST be a valid JSON object with EXACTLY the following structure:
+{
+  "reply": "Your main response to the user. Adjust tone: empathetic/supportive if negative, friendly if positive.",
+  "sentiment": "positive" | "neutral" | "negative",
+  "suggestions": ["Related Question 1?", "Related Question 2?"]
+}
+Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
+
+  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + advancedInstructions;
 
   // Use OpenAI if available
   let openaiReply = null;
@@ -616,16 +626,28 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
         temperature: 0.7,
       });
 
-      const reply = completion.choices[0].message.content;
+      const rawReply = completion.choices[0].message.content;
       const responseMs = Date.now() - startTime;
 
+      let replyText = rawReply;
+      let suggestions = [];
+      let sentiment = 'neutral';
+      try {
+        const parsed = JSON.parse(rawReply.replace(/```json/g, '').replace(/```/g, '').trim());
+        if (parsed.reply) {
+          replyText = parsed.reply;
+          suggestions = parsed.suggestions || [];
+          sentiment = parsed.sentiment || 'neutral';
+        }
+      } catch (e) {}
+
       // Low confidence fallback - if reply contains uncertainty markers
-      openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(reply);
+      openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(replyText);
       if (!openaiLowConfidence) {
-        saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'ai', responseMs }, email);
-        return res.json({ reply, source: 'ai' });
+        saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'ai', responseMs, sentiment }, email);
+        return res.json({ reply: replyText, source: 'ai', suggestions, sentiment });
       }
-      openaiReply = reply;
+      openaiReply = replyText;
     } catch (err) {
       console.error('OpenAI error:', err.message);
     }
@@ -678,8 +700,21 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       }
 
       const responseMs = Date.now() - startTime;
-      saveMessage(req.clientId, sessionId, 'assistant', geminiReply, null, { source: 'gemini', responseMs }, email);
-      return res.json({ reply: geminiReply, source: 'gemini' });
+
+      let replyText = geminiReply;
+      let suggestions = [];
+      let sentiment = 'neutral';
+      try {
+        const parsed = JSON.parse(geminiReply.replace(/```json/g, '').replace(/```/g, '').trim());
+        if (parsed.reply) {
+          replyText = parsed.reply;
+          suggestions = parsed.suggestions || [];
+          sentiment = parsed.sentiment || 'neutral';
+        }
+      } catch (e) {}
+
+      saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'gemini', responseMs, sentiment }, email);
+      return res.json({ reply: replyText, source: 'gemini', suggestions, sentiment });
     } catch (err) {
       console.error('Gemini error:', err.message);
     }

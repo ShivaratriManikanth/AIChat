@@ -1277,6 +1277,19 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
 
   await transporter.sendMail(clientMailOptions);
 }
+app.put('/api/super/clients/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const clientId = req.params.id;
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  
+  try {
+    db.prepare('UPDATE clients SET email = ?, password = ? WHERE id = ?').run(email, password, clientId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
+  }
+});
 
 app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });

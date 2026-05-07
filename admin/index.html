@@ -1163,10 +1163,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     if (!token) {
       window.location.href = '/admin/login.html';
     }
-    // Automatically redirect Super Admins to the Super Admin Console
-    if (role === 'super') {
-      window.location.href = '/admin/superadmin.html';
-    }
+
 
     function logout() {
       localStorage.removeItem('saas_token');

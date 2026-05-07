@@ -926,7 +926,7 @@
               <button class="header-btn" id="btn-clear" title="Clear chat">🗑️</button>
               <button class="header-btn" id="btn-search" title="Search (Ctrl+F)">🔍</button>
               <button class="header-btn" id="btn-fullscreen" title="${t('fullscreen')}">⛶</button>
-              <button class="header-btn" id="btn-complaint" title="Raise a Complaint">📝</button>
+
               <button class="header-btn" id="btn-darkmode" title="${isDarkMode ? t('light') : t('dark')}">
                 ${isDarkMode ? '☀️' : '🌙'}
               </button>
@@ -2025,8 +2025,6 @@
       introContinue.addEventListener('click', handleIntroContinue);
     }
 
-    // Raise-complaint header button
-    document.getElementById('btn-complaint').addEventListener('click', showComplaintForm);
 
     // Clear chat button
     document.getElementById('btn-clear').addEventListener('click', () => {

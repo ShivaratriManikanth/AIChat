@@ -452,16 +452,17 @@
       <div class="nav-item" data-page="bots">
         <span class="icon">🤖</span> Bots
       </div>
+      <div class="nav-section">Bot Setup</div>
       <div class="nav-item" data-page="knowledge">
-        <span class="icon">📚</span> Knowledge
+        <span class="icon">🧠</span> 1. AI Chatbot
+      </div>
+      <div class="nav-item" data-page="faqs">
+        <span class="icon">✍️</span> 2. Manual Setup
       </div>
 
       <div class="nav-section">Configuration</div>
       <div class="nav-item" data-page="settings">
         <span class="icon">⚙️</span> Settings
-      </div>
-      <div class="nav-item" data-page="faqs">
-        <span class="icon">❓</span> FAQs
       </div>
       <div class="nav-item" data-page="embed">
         <span class="icon">📋</span> Embed Code
@@ -779,8 +780,12 @@
         </div>
       </div>
 
-      <!-- ======== KNOWLEDGE PAGE ======== -->
+      <!-- ======== KNOWLEDGE PAGE (AI Chatbot) ======== -->
       <div class="panel" id="page-knowledge">
+        <div style="margin-bottom:20px;">
+          <h2 style="font-size:22px;color:#1a1a2e;">1. AI Chatbot</h2>
+          <p style="color:#666;font-size:14px;margin-top:4px;">Train your AI by uploading files or adding links. The AI will read them and answer intelligently.</p>
+        </div>
         <div class="card">
           <div class="card-header"><h2>🌐 Auto-Train from Website URL</h2></div>
           <div class="card-body">
@@ -799,6 +804,16 @@
             <input type="file" id="pdf-input-kb" accept="application/pdf" style="display:none">
             <button class="btn btn-primary" onclick="document.getElementById('pdf-input-kb').click()">📄 Choose PDF</button>
             <div id="pdf-status-kb" style="margin-top:12px;font-size:13px;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2>📝 Paste Text Content</h2></div>
+          <div class="card-body">
+            <p style="color:#666;font-size:13px;margin-bottom:14px;">Paste raw text content here (e.g. company info, return policies, product details).</p>
+            <textarea id="knowledge-text" rows="5" placeholder="Paste your text here..." style="width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;margin-bottom:10px;resize:vertical;"></textarea>
+            <button class="btn btn-primary" onclick="addTextToKnowledge()">➕ Train with Text</button>
+            <div id="text-status-kb" style="margin-top:12px;font-size:13px;"></div>
           </div>
         </div>
 
@@ -1071,10 +1086,15 @@
         <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:4px;">Save All Settings</button>
       </div>
 
-      <!-- ======== FAQS PAGE ======== -->
+      <!-- ======== FAQS PAGE (Manual Setup) ======== -->
       <div class="panel" id="page-faqs">
+        <div style="margin-bottom:20px;">
+          <h2 style="font-size:22px;color:#1a1a2e;">2. Manual Setup</h2>
+          <p style="color:#666;font-size:14px;margin-top:4px;">Manually add questions, answers, and custom responses here.</p>
+        </div>
+        
         <div class="card">
-          <div class="card-header"><h2>FAQ Management</h2></div>
+          <div class="card-header"><h2>Current FAQs & Responses</h2></div>
           <div class="card-body" id="faq-list"></div>
         </div>
 
@@ -1744,6 +1764,56 @@ add_action('wp_footer', 'add_chatbot_widget');
       };
       reader.readAsDataURL(file);
     });
+
+    // ---- Text Training --------------------------------------
+    async function addTextToKnowledge() {
+      const text = document.getElementById('knowledge-text').value.trim();
+      if (!text) { alert('Enter some text to train the bot.'); return; }
+      
+      const status = document.getElementById('text-status-kb');
+      status.textContent = '⏳ Processing text...';
+      status.style.color = '#666';
+      
+      try {
+        const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
+        const usefulChunks = chunks.filter(c => c.trim().length > 20);
+        
+        if (usefulChunks.length === 0) {
+          status.textContent = '❌ Text is too short to extract knowledge.';
+          status.style.color = '#EF4444';
+          return;
+        }
+
+        const newFaqs = usefulChunks.map((chunk, i) => ({
+          question: `[Text Training] Part ${i + 1}`,
+          answer: chunk.trim()
+        }));
+
+        const resConf = await fetchAuth(`${API}/api/config`);
+        const config = await resConf.json();
+        const updatedFaqs = [...(config.faqs || []), ...newFaqs];
+
+        const resPut = await fetchAuth(`${API}/api/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faqs: updatedFaqs })
+        });
+
+        if (resPut.ok) {
+          status.innerHTML = `✅ Added ${newFaqs.length} chunks of knowledge.`;
+          status.style.color = '#10B981';
+          document.getElementById('knowledge-text').value = '';
+          showToast('Text training added!');
+          loadConfig();
+        } else {
+          status.textContent = '❌ Failed to save knowledge.';
+          status.style.color = '#EF4444';
+        }
+      } catch (err) {
+        status.textContent = '❌ ' + err.message;
+        status.style.color = '#EF4444';
+      }
+    }
 
     // ---- Semantic toggle save -------------------------------
     async function saveSemanticToggle() {

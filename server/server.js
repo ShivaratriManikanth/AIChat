@@ -1209,8 +1209,8 @@ app.get('/api/test-smtp', async (req, res) => {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465,
+      secure: true, // true for 465, false for other ports
       auth: {
         user: process.env.SMTP_EMAIL,
         pass: process.env.SMTP_PASSWORD
@@ -1262,8 +1262,8 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
+    port: 465,
+    secure: true,
     auth: {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD

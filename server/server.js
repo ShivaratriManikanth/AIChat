@@ -1365,7 +1365,23 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
     html: htmlContent
   });
 }
+// ---- ONE-TIME: Migrate plain-text passwords to bcrypt hashes ----
+app.post('/api/super/migrate-passwords', requireSuperAuth, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const clients = db.prepare('SELECT id, email, password FROM clients').all();
+  let migrated = 0;
+  for (const client of clients) {
+    if (client.password && client.password.startsWith('$2')) continue; // already hashed
+    const hashed = await bcrypt.hash(client.password || 'changeme123', 10);
+    db.prepare('UPDATE clients SET password = ? WHERE id = ?').run(hashed, client.id);
+    migrated++;
+    console.log(`🔒 Hashed password for: ${client.email}`);
+  }
+  res.json({ success: true, migrated, total: clients.length });
+});
+
 app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
+
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   const { email, password, company_name } = req.body;

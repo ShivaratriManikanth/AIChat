@@ -377,11 +377,11 @@
 
         // Stats
         document.getElementById('statTotal').textContent = clients.length;
-        const active = clients.filter(c => c.payment_status === 'active').length;
+        const active = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING').length;
         document.getElementById('statActive').textContent = active;
-        const rev = clients.filter(c => c.payment_status === 'active')
+        const rev = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING')
           .reduce((sum, c) => sum + (PLAN_PRICES[c.plan_id] || 0), 0);
-        document.getElementById('statRevenue').textContent = '$' + rev.toLocaleString();
+        document.getElementById('statRevenue').textContent = '₹' + rev.toLocaleString();
 
         if (clients.length === 0) {
           document.getElementById('clientTable').innerHTML =

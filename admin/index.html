@@ -782,9 +782,15 @@
 
       <!-- ======== KNOWLEDGE PAGE (AI Chatbot) ======== -->
       <div class="panel" id="page-knowledge">
-        <div style="margin-bottom:20px;">
-          <h2 style="font-size:22px;color:#1a1a2e;">1. AI Chatbot</h2>
-          <p style="color:#666;font-size:14px;margin-top:4px;">Train your AI by uploading files or adding links. The AI will read them and answer intelligently.</p>
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 style="font-size:22px;color:#1a1a2e;">1. AI Chatbot</h2>
+            <p style="color:#666;font-size:14px;margin-top:4px;">Train your AI by uploading files or adding links. The AI will read them and answer intelligently.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; background:white; padding:12px 18px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.06); border:1px solid #f0f0f0;">
+            <div style="font-weight:600; font-size:14px; color:#333;">Enable AI Features</div>
+            <div class="toggle-switch" id="toggle-enableAi" onclick="toggleAiFeatures()"></div>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><h2>🌐 Auto-Train from Website URL</h2></div>
@@ -1392,6 +1398,10 @@ add_action('wp_footer', 'add_chatbot_widget');
       const semToggle = document.getElementById('toggle-semanticSearch');
       if (semToggle) semToggle.classList.toggle('on', config.semanticSearch !== false);
 
+      // AI Features toggle
+      const aiToggle = document.getElementById('toggle-enableAi');
+      if (aiToggle) aiToggle.classList.toggle('on', config.enableAiChatbot !== false);
+
       // Email notifications
       const em = config.emailNotifications || {};
       document.getElementById('toggle-emailNotif').classList.toggle('on', !!em.enabled);
@@ -1824,6 +1834,30 @@ add_action('wp_footer', 'add_chatbot_widget');
         body: JSON.stringify({ semanticSearch: enabled })
       });
       showToast('Semantic search ' + (enabled ? 'enabled' : 'disabled'));
+    }
+
+    // ---- AI Features toggle save ----------------------------
+    async function toggleAiFeatures() {
+      const toggle = document.getElementById('toggle-enableAi');
+      const isEnabled = !toggle.classList.contains('on');
+      toggle.classList.toggle('on', isEnabled);
+      
+      try {
+        const res = await fetchAuth(`${API}/api/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enableAiChatbot: isEnabled })
+        });
+        if (!res.ok) {
+          toggle.classList.toggle('on', !isEnabled);
+          alert('Failed to save settings.');
+        } else {
+          showToast(isEnabled ? 'AI Features Enabled!' : 'AI Features Disabled!');
+        }
+      } catch (err) {
+        toggle.classList.toggle('on', !isEnabled);
+        alert('Error saving settings.');
+      }
     }
 
     // ---- Bots (Multi-tenant) --------------------------------

@@ -608,10 +608,12 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
 
   const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + advancedInstructions;
 
+  const enableAi = config.enableAiChatbot !== false; // true by default
+
   // Use OpenAI if available
   let openaiReply = null;
   let openaiLowConfidence = false;
-  if (openai) {
+  if (enableAi && openai) {
     try {
       const history = getHistory(sessionId, 10);
       const messages = [
@@ -654,7 +656,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
   }
 
   // ---- Fallback: Gemini 2.5 Flash API ----
-  if (process.env.GEMINI_API_KEY) {
+  if (enableAi && process.env.GEMINI_API_KEY) {
     try {
       const https = require('https');
       const payload = JSON.stringify({

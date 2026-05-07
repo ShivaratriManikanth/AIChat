@@ -477,10 +477,11 @@
           const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
           const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
           const isHashed = c.password && c.password.startsWith('$2');
-          const pwDisplay = isHashed ? '••••••••' : (c.password || '****');
+          // Always show dots — reveal only on eye click
           const pwId = 'pw_' + c.id;
-          const company = (c.company_name || '').replace(/'/g, "\\'");
-          const email = (c.email || '').replace(/'/g, "\\'");
+          const safePw = (c.password || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          const company = (c.company_name || '').replace(/'/g, "&#39;");
+          const email = (c.email || '').replace(/'/g, "&#39;");
           return `<tr>
             <td><span class="client-company">${c.company_name || '–'}</span></td>
             <td><span class="client-email">${c.email}</span></td>
@@ -488,8 +489,8 @@
             <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
             <td style="color:#888;font-size:13px;">${date}</td>
             <td>
-              <span class="mono-pw" id="${pwId}" data-plain="${isHashed ? '' : (c.password||'')}" data-hashed="${isHashed}">${pwDisplay}</span>
-              <button onclick="togglePw('${pwId}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;" title="Toggle password">👁️</button>
+              <span class="mono-pw" id="${pwId}" data-plain="${isHashed ? '' : safePw}" data-hashed="${isHashed}" data-visible="false">••••••••</span>
+              <button onclick="togglePw('${pwId}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;" title="Show/hide password">👁️</button>
             </td>
             <td style="display:flex;gap:6px;">
               <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}','${email}','${company}')">Edit</button>
@@ -505,9 +506,20 @@
 
     function togglePw(pwId) {
       const el = document.getElementById(pwId);
-      const isHashed = el.dataset.hashed === 'true';
-      if (isHashed) { el.textContent = el.textContent === '••••••••' ? '[hashed — not shown]' : '••••••••'; return; }
-      el.textContent = el.textContent === '••••••••' ? el.dataset.plain : '••••••••';
+      const isVisible = el.dataset.visible === 'true';
+      if (isVisible) {
+        // Hide it
+        el.textContent = '••••••••';
+        el.dataset.visible = 'false';
+      } else {
+        // Show it
+        if (el.dataset.hashed === 'true') {
+          el.textContent = '[hashed — not reversible]';
+        } else {
+          el.textContent = el.dataset.plain || '(empty)';
+        }
+        el.dataset.visible = 'true';
+      }
     }
 
     async function createClient() {

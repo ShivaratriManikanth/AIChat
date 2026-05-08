@@ -1695,45 +1695,45 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'SMTP not configured. Please set SMTP details in Settings > Email Notifications.' });
   }
 
-  // Collect target emails based on audience — each table queried independently for safety
+  // Collect target emails — query users, sessions, and leads with multi-tier fallback
   let emails = [];
   try {
-    const fetchUsersEmails = () => {
-      try {
-        return db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId).map(u => u.email);
-      } catch(e) {
-        // Fallback: client_id column may not exist in older DB
-        try {
-          return db.prepare('SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != ""').all().map(u => u.email);
-        } catch(e2) { return []; }
-      }
+    const safeEmails = (sql, params = []) => {
+      try { return db.prepare(sql).all(...params).map(r => r.email).filter(Boolean); }
+      catch(e) { return []; }
     };
-    const fetchLeadsEmails = () => {
-      try {
-        return db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId).map(l => l.email);
-      } catch(e) {
-        // Fallback: client_id column may not exist in older DB
-        try {
-          return db.prepare('SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != ""').all().map(l => l.email);
-        } catch(e2) { return []; }
-      }
+
+    const getUserEmails = () => {
+      let found = safeEmails('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
+      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""', ['default_client']);
+      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != ""', []);
+      let fromSessions = safeEmails('SELECT DISTINCT email FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
+      if (!fromSessions.length) fromSessions = safeEmails('SELECT DISTINCT email FROM sessions WHERE email IS NOT NULL AND email != ""', []);
+      return [...new Set([...found, ...fromSessions])];
+    };
+
+    const getLeadsEmails = () => {
+      let found = safeEmails('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
+      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != ""', []);
+      return found;
     };
 
     if (audience === 'leads') {
-      emails = fetchLeadsEmails();
+      emails = getLeadsEmails();
     } else if (audience === 'users') {
-      emails = fetchUsersEmails();
+      emails = getUserEmails();
     } else {
-      // 'all' — merge both, deduplicate
-      const set = new Set([...fetchUsersEmails(), ...fetchLeadsEmails()]);
+      const set = new Set([...getUserEmails(), ...getLeadsEmails()]);
       emails = [...set];
     }
+
+    emails = emails.filter(e => e && e.includes('@') && e.length > 4);
   } catch(e) {
     return res.status(500).json({ error: 'Failed to fetch recipients: ' + e.message });
   }
 
   if (emails.length === 0) {
-    return res.status(400).json({ error: 'No recipients found for the selected audience.' });
+    return res.status(400).json({ error: 'No recipients found. Make sure users have chatted with your bot and provided their email.' });
   }
 
   // Build transporter using client's SMTP or system SMTP

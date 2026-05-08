@@ -1695,20 +1695,37 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'SMTP not configured. Please set SMTP details in Settings > Email Notifications.' });
   }
 
-  // Collect target emails based on audience
+  // Collect target emails based on audience — each table queried independently for safety
   let emails = [];
   try {
+    const fetchUsersEmails = () => {
+      try {
+        return db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId).map(u => u.email);
+      } catch(e) {
+        // Fallback: client_id column may not exist in older DB
+        try {
+          return db.prepare('SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != ""').all().map(u => u.email);
+        } catch(e2) { return []; }
+      }
+    };
+    const fetchLeadsEmails = () => {
+      try {
+        return db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId).map(l => l.email);
+      } catch(e) {
+        // Fallback: client_id column may not exist in older DB
+        try {
+          return db.prepare('SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != ""').all().map(l => l.email);
+        } catch(e2) { return []; }
+      }
+    };
+
     if (audience === 'leads') {
-      const leads = db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
-      emails = leads.map(l => l.email);
+      emails = fetchLeadsEmails();
     } else if (audience === 'users') {
-      const users = db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
-      emails = users.map(u => u.email);
+      emails = fetchUsersEmails();
     } else {
       // 'all' — merge both, deduplicate
-      const users = db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
-      const leads = db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
-      const set = new Set([...users.map(u => u.email), ...leads.map(l => l.email)]);
+      const set = new Set([...fetchUsersEmails(), ...fetchLeadsEmails()]);
       emails = [...set];
     }
   } catch(e) {

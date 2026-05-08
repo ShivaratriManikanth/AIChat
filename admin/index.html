@@ -1179,9 +1179,9 @@
           </div>
         </div>
 
-        <!-- Email Notifications -->
+        <!-- Email Notifications & Marketing -->
         <div class="card">
-          <div class="card-header"><h2>Email Notifications (when a lead is captured)</h2></div>
+          <div class="card-header"><h2>Email Notifications & Broadcast Setup</h2></div>
           <div class="card-body">
             <div class="toggle-row">
               <div>
@@ -1190,30 +1190,49 @@
               </div>
               <div class="toggle-switch" id="toggle-emailNotif" onclick="document.getElementById('toggle-emailNotif').classList.toggle('on')"></div>
             </div>
-            <div class="form-row" style="margin-top:16px;">
-              <div class="form-group">
-                <label>Admin Email (receives notifications)</label>
-                <input type="email" id="cfg-adminEmail" placeholder="admin@yourcompany.com">
-              </div>
-              <div class="form-group">
-                <label>SMTP Host</label>
-                <input type="text" id="cfg-smtpHost" placeholder="smtp.gmail.com">
+            
+            <div style="margin-top:20px; padding:15px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; display:flex; gap:12px; align-items:center;">
+              <div style="font-size:20px;">💡</div>
+              <div style="font-size:13px; color:#0369a1;">
+                <b>Reliable Email Delivery:</b> We recommend using <b>Brevo</b> for broadcasts. It's free (300 emails/day) and bypasses technical server blocks. 
+                <a href="https://www.brevo.com/" target="_blank" style="font-weight:600; text-decoration:underline;">Get Free API Key here</a>.
               </div>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>SMTP Port</label>
-                <input type="number" id="cfg-smtpPort" placeholder="587">
-              </div>
-              <div class="form-group">
-                <label>SMTP Username</label>
-                <input type="text" id="cfg-smtpUser" placeholder="your-email@gmail.com">
-              </div>
+
+            <div class="form-group" style="margin-top:20px;">
+              <label>Brevo API Key (for Broadcasts)</label>
+              <input type="password" id="cfg-brevoKey" placeholder="xkeysib-...">
             </div>
+
             <div class="form-group">
-              <label>SMTP Password (App Password for Gmail)</label>
-              <input type="password" id="cfg-smtpPass" placeholder="••••••••••••">
+              <label>Admin Email (receives lead notifications)</label>
+              <input type="email" id="cfg-adminEmail" placeholder="admin@yourcompany.com">
             </div>
+
+            <div style="border-top:1px solid #eee; margin-top:20px; padding-top:20px;">
+              <h3 style="font-size:14px; color:#64748b; margin-bottom:12px;">Advanced SMTP (Fallback)</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>SMTP Host</label>
+                  <input type="text" id="cfg-smtpHost" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-group">
+                  <label>SMTP Port</label>
+                  <input type="number" id="cfg-smtpPort" placeholder="587">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>SMTP Username</label>
+                  <input type="text" id="cfg-smtpUser" placeholder="your-email@gmail.com">
+                </div>
+                <div class="form-group">
+                  <label>SMTP Password</label>
+                  <input type="password" id="cfg-smtpPass" placeholder="••••••••••••">
+                </div>
+              </div>
+            </div>
+            
             <button class="btn btn-outline" onclick="testEmail()">📧 Send Test Email</button>
           </div>
         </div>
@@ -1822,6 +1841,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       const em = config.emailNotifications || {};
       document.getElementById('toggle-emailNotif').classList.toggle('on', !!em.enabled);
       document.getElementById('cfg-adminEmail').value = em.adminEmail || '';
+      document.getElementById('cfg-brevoKey').value = em.brevoKey || '';
       document.getElementById('cfg-smtpHost').value = em.smtpHost || '';
       document.getElementById('cfg-smtpPort').value = em.smtpPort || 587;
       document.getElementById('cfg-smtpUser').value = em.smtpUser || '';
@@ -1872,6 +1892,7 @@ add_action('wp_footer', 'add_chatbot_widget');
         emailNotifications: {
           enabled: document.getElementById('toggle-emailNotif').classList.contains('on'),
           adminEmail: document.getElementById('cfg-adminEmail').value,
+          brevoKey: document.getElementById('cfg-brevoKey').value,
           smtpHost: document.getElementById('cfg-smtpHost').value,
           smtpPort: parseInt(document.getElementById('cfg-smtpPort').value) || 587,
           smtpUser: document.getElementById('cfg-smtpUser').value,

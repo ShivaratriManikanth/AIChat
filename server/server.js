@@ -1786,46 +1786,68 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     </div>
   `;
 
-  // Send one email using system APIs (same chain as sendWelcomeEmail)
+  // Send one email using the best available method
   async function sendOneBroadcast(to) {
-    // 1. Resend HTTP API
+    // 1. Priority: Client's own Brevo API Key (Modern HTTP, Reliable)
+    const clientBrevoKey = emailCfg.brevoKey;
+    const clientEmail = emailCfg.smtpUser || emailCfg.adminEmail; // Use client's configured email
+    
+    if (clientBrevoKey) {
+      const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': clientBrevoKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender: { name: companyName, email: clientEmail || 'noreply@yourbot.com' },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: emailHtml
+        })
+      });
+      if (r.ok) return;
+      console.warn(`[Broadcast] Client Brevo failed, falling back...`);
+    }
+
+    // 2. System Fallback: Resend HTTP API (Admin's account)
     if (process.env.RESEND_API_KEY) {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: `${companyName} <onboarding@resend.dev>`, to, subject, html: emailHtml })
       });
-      if (!r.ok) throw new Error('Resend: ' + await r.text());
-      return;
+      if (r.ok) return;
     }
-    // 2. SendGrid HTTP API
+
+    // 3. System Fallback: SendGrid HTTP API (Admin's account)
     if (process.env.SENDGRID_API_KEY) {
       const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: smtpUser, name: companyName },
+          from: { email: process.env.SMTP_EMAIL || 'noreply@aichat.com', name: companyName },
           subject, content: [{ type: 'text/html', value: emailHtml }]
         })
       });
-      if (!r.ok) throw new Error('SendGrid: ' + await r.text());
+      if (r.ok) return;
+    }
+
+    // 4. Final Fallback: Client's SMTP (if they filled it in)
+    if (emailCfg.smtpHost && emailCfg.smtpUser && emailCfg.smtpPass) {
+      const dnsP = require('dns').promises;
+      let host = emailCfg.smtpHost;
+      try { const addrs = await dnsP.resolve4(host); if(addrs.length) host = addrs[0]; } catch(e){}
+      
+      const transporter = nodemailer.createTransport({
+        host: host, port: parseInt(emailCfg.smtpPort) || 587, secure: false,
+        auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass },
+        connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
+      });
+      await transporter.sendMail({ from: `"${companyName}" <${emailCfg.smtpUser}>`, to, subject, html: emailHtml });
+      transporter.close();
       return;
     }
-    // 3. Nodemailer SMTP fallback (pre-resolve IPv4 to avoid Railway ENETUNREACH)
-    const dnsP = require('dns').promises;
-    let resolvedHost = smtpHost;
-    try {
-      const addrs = await dnsP.resolve4(smtpHost);
-      if (addrs && addrs.length > 0) resolvedHost = addrs[0];
-    } catch(e) {}
-    const transporter = nodemailer.createTransport({
-      host: resolvedHost, port: smtpPort, secure: false,
-      auth: { user: smtpUser, pass: smtpPass },
-      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
-    });
-    await transporter.sendMail({ from: `"${companyName}" <${smtpUser}>`, to, subject, html: emailHtml });
-    transporter.close();
+
+    throw new Error('No valid email configuration found (Brevo, Resend, SendGrid, or SMTP).');
   }
 
   let sent = 0, failed = 0, failedEmails = [];

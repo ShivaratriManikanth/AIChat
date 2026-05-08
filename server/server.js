@@ -1678,22 +1678,24 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
   const { subject, body, audience } = req.body; // audience: 'users' | 'leads' | 'all'
   if (!subject || !body) return res.status(400).json({ error: 'Subject and body are required' });
 
-  // Get client company name for the "From" display name
+  // Get client company name and email config
   const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(req.clientId);
   let companyName = 'AI Chatbot';
+  let emailCfg = {};
   try {
     const cfg = JSON.parse(bot?.config || '{}');
     companyName = cfg.companyName || cfg.botName || companyName;
+    emailCfg = cfg.emailNotifications || {};
   } catch(e) {}
 
-  // Always use system SMTP (admin credentials — never exposed to clients)
+  // System SMTP Fallback creds (used only if Brevo is not set)
   const smtpUser = process.env.SMTP_EMAIL;
   const smtpPass = process.env.SMTP_PASSWORD;
   const smtpHost = 'smtp.gmail.com';
-  const smtpPort = 587;  // Port 587 (STARTTLS) is more reliable on Railway than 465
+  const smtpPort = 587; 
 
-  if (!smtpUser || !smtpPass) {
-    return res.status(500).json({ error: 'System email is not configured. Contact the platform administrator.' });
+  if (!emailCfg.brevoKey && (!smtpUser || !smtpPass)) {
+    return res.status(500).json({ error: 'Email system not configured. Please set Brevo API Key in Settings.' });
   }
 
   // Collect target emails — same proven query style as /api/users and /api/stats

@@ -499,6 +499,9 @@
       <div class="nav-item" data-page="bots">
         <span class="icon">🤖</span> Bots
       </div>
+      <div class="nav-item" data-page="broadcast">
+        <span class="icon">📣</span> Email Broadcast
+      </div>
       <div class="nav-section">Bot Setup</div>
       <div class="nav-item" data-page="knowledge">
         <span class="icon">🧠</span> 1. AI Chatbot
@@ -770,6 +773,136 @@
               <tbody id="bots-table-body"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ======== EMAIL BROADCAST PAGE ======== -->
+      <div class="panel" id="page-broadcast">
+
+        <!-- Header -->
+        <div style="margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#ec4899,#f43f5e);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 12px rgba(236,72,153,0.3);">📣</div>
+              <h2 style="font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">Email Broadcast</h2>
+            </div>
+            <p style="color:#64748b;font-size:14px;margin-left:56px;">Send bulk emails to your users or leads directly from your dashboard.</p>
+          </div>
+          <div id="broadcast-smtp-status" style="display:flex;align-items:center;gap:10px;background:white;padding:12px 18px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #e8edf5;flex-shrink:0;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div>
+            <span style="font-size:13px;font-weight:600;color:#64748b;">Checking SMTP...</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+
+          <!-- Left: Composer -->
+          <div style="display:flex;flex-direction:column;gap:20px;">
+
+            <!-- Audience Card -->
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-header" style="background:white;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:34px;height:34px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">👥</div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:#0f172a;">Select Audience</div>
+                    <div style="font-size:12px;color:#64748b;">Who should receive this email?</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                  <label id="aud-all" onclick="selectAudience('all')" style="border:2px solid #4f46e5;background:#f5f3ff;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                    <input type="radio" name="bc-audience" value="all" checked style="display:none;">
+                    <div style="font-size:28px;margin-bottom:6px;">🌐</div>
+                    <div style="font-size:13px;font-weight:700;color:#4f46e5;">Everyone</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px;">All users + leads</div>
+                  </label>
+                  <label id="aud-users" onclick="selectAudience('users')" style="border:2px solid #e2e8f0;background:white;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                    <input type="radio" name="bc-audience" value="users" style="display:none;">
+                    <div style="font-size:28px;margin-bottom:6px;">💬</div>
+                    <div style="font-size:13px;font-weight:700;color:#0f172a;">Chat Users</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px;">People who chatted</div>
+                  </label>
+                  <label id="aud-leads" onclick="selectAudience('leads')" style="border:2px solid #e2e8f0;background:white;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                    <input type="radio" name="bc-audience" value="leads" style="display:none;">
+                    <div style="font-size:28px;margin-bottom:6px;">🎯</div>
+                    <div style="font-size:13px;font-weight:700;color:#0f172a;">Leads Only</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px;">Form submissions</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Composer Card -->
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-header" style="background:white;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:34px;height:34px;background:linear-gradient(135deg,#fce7f3,#fbcfe8);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">✍️</div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:#0f172a;">Compose Email</div>
+                    <div style="font-size:12px;color:#64748b;">Write your subject and message</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                  <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:8px;">📋 Subject Line</label>
+                  <input type="text" id="bc-subject" placeholder="e.g., Special Offer Just for You!" oninput="updateBroadcastPreview()" style="width:100%;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor='#ec4899'; this.style.boxShadow='0 0 0 3px rgba(236,72,153,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                </div>
+                <div>
+                  <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:8px;">💬 Message Body</label>
+                  <textarea id="bc-body" placeholder="Write your message here...&#10;&#10;You can use multiple lines." rows="8" oninput="updateBroadcastPreview()" style="width:100%;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;transition:all 0.2s;" onfocus="this.style.borderColor='#ec4899'; this.style.boxShadow='0 0 0 3px rgba(236,72,153,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'"></textarea>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <button id="bc-send-btn" onclick="sendBroadcast()" style="background:linear-gradient(135deg,#ec4899,#f43f5e);color:white;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 14px rgba(236,72,153,0.35);" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(236,72,153,0.5)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 14px rgba(236,72,153,0.35)'">📣 Send Broadcast</button>
+                  <span id="bc-recipient-count" style="font-size:13px;color:#64748b;"></span>
+                </div>
+
+                <!-- Result Banner -->
+                <div id="bc-result" style="display:none;"></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: Live Preview -->
+          <div>
+            <div class="card" style="margin-bottom:0;position:sticky;top:20px;">
+              <div class="card-header" style="background:white;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:34px;height:34px;background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">👁️</div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:#0f172a;">Email Preview</div>
+                    <div style="font-size:12px;color:#64748b;">Live preview of your email</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body" style="padding:16px;">
+                <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                  <!-- Email Header Preview -->
+                  <div id="preview-header" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 24px;">
+                    <p style="color:rgba(255,255,255,0.7);font-size:11px;margin:0 0 4px;">FROM</p>
+                    <p style="color:white;font-size:14px;font-weight:700;margin:0;" id="preview-company">Your Company</p>
+                  </div>
+                  <!-- Email Subject -->
+                  <div style="background:#f8fafc;padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+                    <p style="font-size:11px;color:#94a3b8;margin:0 0 2px;">SUBJECT</p>
+                    <p id="preview-subject" style="font-size:13.5px;font-weight:600;color:#0f172a;margin:0;">Your email subject...</p>
+                  </div>
+                  <!-- Email Body -->
+                  <div style="background:white;padding:20px;min-height:140px;">
+                    <p id="preview-body" style="font-size:13px;line-height:1.7;color:#374151;margin:0;white-space:pre-wrap;">Your message will appear here...</p>
+                  </div>
+                  <!-- Email Footer -->
+                  <div style="background:#f8fafc;padding:12px 20px;border-top:1px solid #e2e8f0;">
+                    <p style="font-size:11px;color:#94a3b8;margin:0;">Sent via AI Chatbot Widget</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -1386,13 +1519,120 @@ add_action('wp_footer', 'add_chatbot_widget');
         chats: 'Chat Management', settings: 'Settings',
         faqs: 'FAQ Management', embed: 'Embed Code',
         leads: 'Lead Management', analytics: 'Advanced Analytics',
-        bots: 'Bot Management (Multi-tenant)', knowledge: 'Knowledge Base'
+        bots: 'Bot Management (Multi-tenant)', knowledge: 'Knowledge Base',
+        broadcast: 'Email Broadcast'
       };
       document.getElementById('page-title').textContent = titles[page] || 'Dashboard';
 
       if (page === 'leads') loadLeads();
       if (page === 'analytics') loadAnalytics();
       if (page === 'bots') loadBots();
+      if (page === 'broadcast') initBroadcastPage();
+    }
+
+    // ---- Email Broadcast -----------------------------------
+    let broadcastAudience = 'all';
+
+    function selectAudience(type) {
+      broadcastAudience = type;
+      ['all', 'users', 'leads'].forEach(t => {
+        const el = document.getElementById('aud-' + t);
+        if (t === type) {
+          el.style.borderColor = '#4f46e5';
+          el.style.background = '#f5f3ff';
+          el.querySelector('div:nth-child(2)').style.color = '#4f46e5';
+        } else {
+          el.style.borderColor = '#e2e8f0';
+          el.style.background = 'white';
+          el.querySelector('div:nth-child(2)').style.color = '#0f172a';
+        }
+      });
+    }
+
+    function updateBroadcastPreview() {
+      const subject = document.getElementById('bc-subject').value || 'Your email subject...';
+      const body = document.getElementById('bc-body').value || 'Your message will appear here...';
+      document.getElementById('preview-subject').textContent = subject;
+      document.getElementById('preview-body').textContent = body;
+    }
+
+    async function initBroadcastPage() {
+      // Load company name for preview
+      try {
+        const res = await fetchAuth(`${API}/api/config/full`);
+        const cfg = await res.json();
+        const company = cfg.companyName || cfg.botName || 'Your Company';
+        document.getElementById('preview-company').textContent = company;
+        // Check SMTP
+        const smtp = cfg.emailNotifications || {};
+        const statusEl = document.getElementById('broadcast-smtp-status');
+        if (smtp.smtpUser && smtp.smtpPass) {
+          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#10b981;"></div><span style="font-size:13px;font-weight:600;color:#10b981;">SMTP Ready</span>';
+        } else {
+          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div><span style="font-size:13px;font-weight:600;color:#f59e0b;">Configure SMTP in Settings</span>';
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    async function sendBroadcast() {
+      const subject = document.getElementById('bc-subject').value.trim();
+      const body = document.getElementById('bc-body').value.trim();
+      const resultEl = document.getElementById('bc-result');
+      const btn = document.getElementById('bc-send-btn');
+
+      if (!subject || !body) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;color:#ef4444;padding:14px 18px;border-radius:10px;font-size:13.5px;font-weight:600;">⚠️ Please fill in both the subject and message.</div>';
+        return;
+      }
+
+      if (!confirm(`Send this email to all ${broadcastAudience === 'all' ? 'users & leads' : broadcastAudience}? This cannot be undone.`)) return;
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+      resultEl.style.display = 'none';
+
+      try {
+        const res = await fetchAuth(`${API}/api/broadcast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, body, audience: broadcastAudience })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          resultEl.style.display = 'block';
+          resultEl.innerHTML = `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;">
+              <div style="font-size:15px;font-weight:700;color:#16a34a;margin-bottom:8px;">✅ Broadcast Sent Successfully!</div>
+              <div style="display:flex;gap:20px;">
+                <div style="text-align:center;">
+                  <div style="font-size:24px;font-weight:800;color:#16a34a;">${data.sent}</div>
+                  <div style="font-size:12px;color:#64748b;">Emails Sent</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:24px;font-weight:800;color:#ef4444;">${data.failed}</div>
+                  <div style="font-size:12px;color:#64748b;">Failed</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:24px;font-weight:800;color:#6366f1;">${data.total}</div>
+                  <div style="font-size:12px;color:#64748b;">Total</div>
+                </div>
+              </div>
+            </div>`;
+          document.getElementById('bc-subject').value = '';
+          document.getElementById('bc-body').value = '';
+          updateBroadcastPreview();
+        } else {
+          resultEl.style.display = 'block';
+          resultEl.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;color:#ef4444;padding:14px 18px;border-radius:10px;font-size:13.5px;font-weight:600;">❌ ${data.error || 'Failed to send broadcast.'}</div>`;
+        }
+      } catch(e) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;color:#ef4444;padding:14px 18px;border-radius:10px;font-size:13.5px;">❌ Network error: ${e.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = '📣 Send Broadcast';
     }
 
     // ---- Load Stats -----------------------------------------

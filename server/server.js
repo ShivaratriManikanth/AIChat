@@ -1672,6 +1672,95 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   }
 });
 
+// ---- Email Broadcast (Client sends bulk email to their users/leads) ----
+app.post('/api/broadcast', requireAuth, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { subject, body, audience } = req.body; // audience: 'users' | 'leads' | 'all'
+  if (!subject || !body) return res.status(400).json({ error: 'Subject and body are required' });
+
+  // Get client's SMTP config from their bot config
+  const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(req.clientId);
+  if (!bot) return res.status(404).json({ error: 'Bot config not found' });
+
+  let clientConfig = {};
+  try { clientConfig = JSON.parse(bot.config); } catch(e) {}
+
+  const emailCfg = clientConfig.emailNotifications || {};
+  const smtpUser = emailCfg.smtpUser || process.env.SMTP_EMAIL;
+  const smtpPass = emailCfg.smtpPass || process.env.SMTP_PASSWORD;
+  const smtpHost = emailCfg.smtpHost || 'smtp.gmail.com';
+  const smtpPort = emailCfg.smtpPort || 465;
+
+  if (!smtpUser || !smtpPass) {
+    return res.status(400).json({ error: 'SMTP not configured. Please set SMTP details in Settings > Email Notifications.' });
+  }
+
+  // Collect target emails based on audience
+  let emails = [];
+  try {
+    if (audience === 'leads') {
+      const leads = db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
+      emails = leads.map(l => l.email);
+    } else if (audience === 'users') {
+      const users = db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
+      emails = users.map(u => u.email);
+    } else {
+      // 'all' — merge both, deduplicate
+      const users = db.prepare('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
+      const leads = db.prepare('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""').all(req.clientId);
+      const set = new Set([...users.map(u => u.email), ...leads.map(l => l.email)]);
+      emails = [...set];
+    }
+  } catch(e) {
+    return res.status(500).json({ error: 'Failed to fetch recipients: ' + e.message });
+  }
+
+  if (emails.length === 0) {
+    return res.status(400).json({ error: 'No recipients found for the selected audience.' });
+  }
+
+  // Build transporter using client's SMTP or system SMTP
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort == 465,
+    auth: { user: smtpUser, pass: smtpPass }
+  });
+
+  const companyName = clientConfig.companyName || clientConfig.botName || 'Your Company';
+  const htmlBody = body.replace(/\n/g, '<br>');
+
+  let sent = 0, failed = 0, failedEmails = [];
+  for (const to of emails) {
+    try {
+      await transporter.sendMail({
+        from: `"${companyName}" <${smtpUser}>`,
+        to,
+        subject,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+            <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
+              <h2 style="color:white;margin:0;font-size:22px;">${companyName}</h2>
+            </div>
+            <div style="background:#ffffff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+              <div style="font-size:15px;line-height:1.7;color:#374151;">${htmlBody}</div>
+              <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0;">
+              <p style="color:#9ca3af;font-size:12px;margin:0;">This email was sent by ${companyName} via AI Chatbot Widget.</p>
+            </div>
+          </div>
+        `
+      });
+      sent++;
+    } catch(e) {
+      failed++;
+      failedEmails.push(to);
+      console.error(`Broadcast failed for ${to}:`, e.message);
+    }
+  }
+
+  res.json({ success: true, total: emails.length, sent, failed, failedEmails });
+});
+
 // ---- Start Server ------------------------------------------
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  AI Chatbot Server running on http://localhost:${PORT}`);

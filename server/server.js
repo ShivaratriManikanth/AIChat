@@ -1678,21 +1678,22 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
   const { subject, body, audience } = req.body; // audience: 'users' | 'leads' | 'all'
   if (!subject || !body) return res.status(400).json({ error: 'Subject and body are required' });
 
-  // Get client's SMTP config from their bot config
+  // Get client company name for the "From" display name
   const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(req.clientId);
-  if (!bot) return res.status(404).json({ error: 'Bot config not found' });
+  let companyName = 'AI Chatbot';
+  try {
+    const cfg = JSON.parse(bot?.config || '{}');
+    companyName = cfg.companyName || cfg.botName || companyName;
+  } catch(e) {}
 
-  let clientConfig = {};
-  try { clientConfig = JSON.parse(bot.config); } catch(e) {}
-
-  const emailCfg = clientConfig.emailNotifications || {};
-  const smtpUser = emailCfg.smtpUser || process.env.SMTP_EMAIL;
-  const smtpPass = emailCfg.smtpPass || process.env.SMTP_PASSWORD;
-  const smtpHost = emailCfg.smtpHost || 'smtp.gmail.com';
-  const smtpPort = emailCfg.smtpPort || 465;
+  // Always use system SMTP (admin credentials — never exposed to clients)
+  const smtpUser = process.env.SMTP_EMAIL;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  const smtpHost = 'smtp.gmail.com';
+  const smtpPort = 587;  // Port 587 (STARTTLS) is more reliable on Railway than 465
 
   if (!smtpUser || !smtpPass) {
-    return res.status(400).json({ error: 'SMTP not configured. Please set SMTP details in Settings > Email Notifications.' });
+    return res.status(500).json({ error: 'System email is not configured. Contact the platform administrator.' });
   }
 
   // Collect target emails — same proven query style as /api/users and /api/stats
@@ -1797,10 +1798,9 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     await transporter.verify();
   } catch(e) {
-    return res.status(400).json({ error: `SMTP connection failed: ${e.message}. Check your SMTP credentials in Settings.` });
+    return res.status(500).json({ error: `System SMTP connection failed: ${e.message}. Please contact the platform administrator.` });
   }
 
-  const companyName = clientConfig.companyName || clientConfig.botName || 'Your Company';
   const htmlBody = body.replace(/\n/g, '<br>');
 
   // Helper: send one email with a 15s timeout

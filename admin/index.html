@@ -1118,9 +1118,15 @@
 
       <!-- ======== FAQS PAGE (Manual Setup) ======== -->
       <div class="panel" id="page-faqs">
-        <div style="margin-bottom:20px;">
-          <h2 style="font-size:22px;color:#1a1a2e;">2. Manual Setup</h2>
-          <p style="color:#666;font-size:14px;margin-top:4px;">Manually add questions, answers, and custom responses here.</p>
+        <div style="margin-bottom:20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size:22px;color:#1a1a2e;">2. Manual Setup</h2>
+            <p style="color:#666;font-size:14px;margin-top:4px;">Manually add questions, answers, and custom responses here.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="toggle-switch" id="toggle-faq-active" onclick="toggleFaqActive()"></div>
+            <span style="font-size:14px; font-weight:500; color:#555;">Active</span>
+          </div>
         </div>
         
         <div class="card">
@@ -1475,6 +1481,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       document.getElementById('cfg-emailCaptureSubtitle').value = config.emailCaptureSubtitle || '';
       document.getElementById('cfg-introMessage').value = config.introMessage || '';
       document.getElementById('toggle-emailCapture').classList.toggle('on', !!config.emailCapture);
+      document.getElementById('toggle-faq-active').classList.toggle('on', config.enableFaq !== false);
 
       // Lead capture
       const lc = config.leadCapture || {};
@@ -1576,7 +1583,8 @@ add_action('wp_footer', 'add_chatbot_widget');
           smtpPort: parseInt(document.getElementById('cfg-smtpPort').value) || 587,
           smtpUser: document.getElementById('cfg-smtpUser').value,
           smtpPass: document.getElementById('cfg-smtpPass').value
-        }
+        },
+        enableFaq: document.getElementById('toggle-faq-active').classList.contains('on')
       };
 
       const res = await fetchAuth(`${API}/api/config`, {
@@ -1589,6 +1597,11 @@ add_action('wp_footer', 'add_chatbot_widget');
         showToast('Settings saved successfully!');
         loadConfig();
       }
+    }
+
+    function toggleFaqActive() {
+      document.getElementById('toggle-faq-active').classList.toggle('on');
+      saveSettings();
     }
 
     // ---- FAQ Management -------------------------------------

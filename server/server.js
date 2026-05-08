@@ -690,27 +690,30 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   // Save user message with optional file
   saveMessage(req.clientId, sessionId, 'user', message, file, null, email);
 
-  // Try semantic (TF-IDF) match first if enabled
+  // Try FAQ matching if enabled
   let faqMatch = null;
-  if (config.semanticSearch !== false && config.faqs && config.faqs.length) {
-    const result = semanticFaqMatch(message, config.faqs, 0.30);
-    if (result) faqMatch = result.faq;
-  }
+  if (config.enableFaq !== false) {
+    // Try semantic (TF-IDF) match first if enabled
+    if (config.semanticSearch !== false && config.faqs && config.faqs.length) {
+      const result = semanticFaqMatch(message, config.faqs, 0.30);
+      if (result) faqMatch = result.faq;
+    }
 
-  // Fallback: keyword match
-  if (!faqMatch && config.faqs && Array.isArray(config.faqs)) {
-    faqMatch = config.faqs.find(f => {
-      if (!f || typeof f.question !== 'string') return false;
-      const q = f.question.toLowerCase().replace(/[?]/g, '');
-      const m = message.toLowerCase().replace(/[?]/g, '');
-      return m.includes(q) || q.includes(m);
-    });
-  }
+    // Fallback: keyword match
+    if (!faqMatch && config.faqs && Array.isArray(config.faqs)) {
+      faqMatch = config.faqs.find(f => {
+        if (!f || typeof f.question !== 'string') return false;
+        const q = f.question.toLowerCase().replace(/[?]/g, '');
+        const m = message.toLowerCase().replace(/[?]/g, '');
+        return m.includes(q) || q.includes(m);
+      });
+    }
 
-  if (faqMatch) {
-    const responseMs = Date.now() - startTime;
-    saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs }, email);
-    return res.json({ reply: faqMatch.answer, source: 'faq' });
+    if (faqMatch) {
+      const responseMs = Date.now() - startTime;
+      saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs }, email);
+      return res.json({ reply: faqMatch.answer, source: 'faq' });
+    }
   }
 
   // Page context and language hint

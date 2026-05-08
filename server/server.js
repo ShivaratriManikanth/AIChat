@@ -97,6 +97,12 @@ try {
       UNIQUE(email, session_id)
     )
   `);
+  // Ensure multi-tenancy columns exist in all tables
+  try { db.exec(`ALTER TABLE chat_history ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE leads ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+  try { db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+
   // Add email column to sessions if not exists
   try {
     db.exec(`ALTER TABLE sessions ADD COLUMN email TEXT DEFAULT ''`);
@@ -144,6 +150,17 @@ try {
       password TEXT
     )
   `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS superadmin_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      project_name TEXT DEFAULT 'GAdigital Solution',
+      smtp_email TEXT DEFAULT '',
+      smtp_password TEXT DEFAULT '',
+      smtp_host TEXT DEFAULT 'smtp.gmail.com',
+      smtp_port INTEGER DEFAULT 465
+    )
+  `);
+  try { db.prepare("INSERT OR IGNORE INTO superadmin_settings (id, project_name) VALUES (1, 'GAdigital Solution')").run(); } catch(e){}
   db.exec(`
     CREATE TABLE IF NOT EXISTS plans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1327,35 +1344,51 @@ app.post('/api/purchase', async (req, res) => {
 
 // TEST ENDPOINT: Actually try to send a test email and report errors
 app.get('/api/test-smtp', async (req, res) => {
-  const smtpEmail = process.env.SMTP_EMAIL || 'NOT SET';
-  const smtpPass = process.env.SMTP_PASSWORD ? '✅ SET (' + process.env.SMTP_PASSWORD.length + ' chars)' : '❌ NOT SET';
+  let smtpEmail = process.env.SMTP_EMAIL || '';
+  let smtpPassword = process.env.SMTP_PASSWORD || '';
+  let smtpHost = 'smtp.gmail.com';
+  let smtpPort = 465;
+  let projectName = 'GAdigital Solution';
+
+  if (db) {
+    try {
+      const settings = db.prepare('SELECT * FROM superadmin_settings WHERE id = 1').get() || {};
+      if (settings.smtp_email) smtpEmail = settings.smtp_email;
+      if (settings.smtp_password) smtpPassword = settings.smtp_password;
+      if (settings.smtp_host) smtpHost = settings.smtp_host;
+      if (settings.smtp_port) smtpPort = settings.smtp_port;
+      if (settings.project_name) projectName = settings.project_name;
+    } catch (e) {}
+  }
+
+  const smtpPassStatus = smtpPassword ? '✅ SET (' + smtpPassword.length + ' chars)' : '❌ NOT SET';
   const serverUrl = process.env.SERVER_URL || 'NOT SET';
   
-  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    return res.json({ error: 'SMTP not configured', smtp_email: smtpEmail, smtp_password_status: smtpPass });
+  if (!smtpEmail || !smtpPassword) {
+    return res.json({ error: 'SMTP not configured', smtp_email: smtpEmail || 'NOT SET', smtp_password_status: smtpPassStatus });
   }
 
   try {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // true for 465, false for other ports
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for other ports
       auth: {
-        user: process.env.SMTP_EMAIL,
-        pass: process.env.SMTP_PASSWORD
+        user: smtpEmail,
+        pass: smtpPassword
       }
     });
 
-    const targetEmail = req.query.to || process.env.SMTP_EMAIL;
+    const targetEmail = req.query.to || smtpEmail;
 
     // Verify connection
     await transporter.verify();
     
     // Send a real test email to yourself or the specified client
     const info = await transporter.sendMail({
-      from: `"GAdigital Test" <${process.env.SMTP_EMAIL}>`,
+      from: `"${projectName} Test" <${smtpEmail}>`,
       to: targetEmail,
-      subject: '✅ SMTP Test - GAdigital Solution',
+      subject: `✅ SMTP Test - ${projectName}`,
       text: 'If you receive this, your SMTP is working correctly!'
     });
 
@@ -1365,7 +1398,7 @@ app.get('/api/test-smtp', async (req, res) => {
       messageId: info.messageId,
       smtp_email: smtpEmail,
       target_email: targetEmail,
-      smtp_password_status: smtpPass
+      smtp_password_status: smtpPassStatus
     });
   } catch (err) {
     res.json({
@@ -1373,7 +1406,7 @@ app.get('/api/test-smtp', async (req, res) => {
       error: err.message,
       error_code: err.code,
       smtp_email: smtpEmail,
-      smtp_password_status: smtpPass
+      smtp_password_status: smtpPassStatus
     });
   }
 });
@@ -1382,15 +1415,32 @@ app.get('/api/test-smtp', async (req, res) => {
 async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
   console.log('📧 Attempting to send email to:', email);
   
+  let projectName = 'GAdigital Solution';
+  let smtpEmail = process.env.SMTP_EMAIL || '';
+  let smtpPassword = process.env.SMTP_PASSWORD || '';
+  let smtpHost = 'smtp.gmail.com';
+  let smtpPort = 465;
+
+  try {
+    if (db) {
+      const settings = db.prepare('SELECT * FROM superadmin_settings WHERE id = 1').get() || {};
+      if (settings.project_name) projectName = settings.project_name;
+      if (settings.smtp_email) smtpEmail = settings.smtp_email;
+      if (settings.smtp_password) smtpPassword = settings.smtp_password;
+      if (settings.smtp_host) smtpHost = settings.smtp_host;
+      if (settings.smtp_port) smtpPort = settings.smtp_port;
+    }
+  } catch (e) {}
+
   const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
   const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
-  const subject = '🚀 Your AI Chatbot is Ready! - GAdigital Solution';
+  const subject = `🚀 Your AI Chatbot is Ready! - ${projectName}`;
 
   const htmlContent = `
     <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
       <div style="background: #6366f1; padding: 40px; border-radius: 20px 20px 0 0; text-align: center; color: white;">
         <h1 style="margin: 0; font-size: 28px;">Welcome to the Future!</h1>
-        <p style="opacity: 0.9; margin-top: 10px;">GAdigital Solution has successfully activated your ${planName} Plan.</p>
+        <p style="opacity: 0.9; margin-top: 10px;">${projectName} has successfully activated your ${planName} Plan.</p>
       </div>
       <div style="padding: 40px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 0 20px 20px;">
         <h2 style="font-size: 20px; color: #6366f1;">Hello ${company_name},</h2>
@@ -1418,7 +1468,7 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
         <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
           <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
           <p>Our team will reach out to you shortly for the payment collection.</p>
-          <p style="margin-top: 20px;">Best Regards,<br><b>GAdigital Solution Team</b></p>
+          <p style="margin-top: 20px;">Best Regards,<br><b>${projectName} Team</b></p>
         </div>
       </div>
     </div>
@@ -1459,23 +1509,23 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
   }
 
   // 3. Fallback to Nodemailer SMTP
-  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+  if (!smtpEmail || !smtpPassword) {
     console.log('⚠️ No Email API or SMTP configured. Logged creds:', { email, password, botId });
     return;
   }
 
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
     auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD
+      user: smtpEmail,
+      pass: smtpPassword
     }
   });
 
   await transporter.sendMail({
-    from: `"GAdigital Solution" <${process.env.SMTP_EMAIL}>`,
+    from: `"${projectName}" <${smtpEmail}>`,
     to: email,
     subject: subject,
     html: htmlContent
@@ -1586,6 +1636,28 @@ function requireSuperAuth(req, res, next) {
 // ==========================================
 // SAAS SUPER ADMIN ENDPOINTS
 // ==========================================
+
+// ---- Super Admin Settings ----
+app.get('/api/super/settings', requireSuperAuth, (req, res) => {
+  if (!db) return res.json({});
+  const settings = db.prepare('SELECT * FROM superadmin_settings WHERE id = 1').get() || {};
+  res.json(settings);
+});
+
+app.put('/api/super/settings', requireSuperAuth, (req, res) => {
+  const { project_name, smtp_email, smtp_password, smtp_host, smtp_port } = req.body;
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  try {
+    db.prepare(`
+      UPDATE superadmin_settings 
+      SET project_name = ?, smtp_email = ?, smtp_password = ?, smtp_host = ?, smtp_port = ?
+      WHERE id = 1
+    `).run(project_name || 'GAdigital Solution', smtp_email || '', smtp_password || '', smtp_host || 'smtp.gmail.com', parseInt(smtp_port) || 465);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ---- Plans CRUD ----
 app.get('/api/super/plans', requireSuperAuth, (req, res) => {

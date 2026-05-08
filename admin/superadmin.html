@@ -375,6 +375,41 @@
       </div>
     </div>
 
+    <!-- System & Notification Settings -->
+    <div class="card">
+      <div class="card-header"><h2>⚙️ System & Notification Settings</h2></div>
+      <div class="card-body">
+        <div class="create-form">
+          <div class="form-group">
+            <label>Project Name <span style="font-weight:400;color:#aaa;font-size:11px;">(Displayed in emails)</span></label>
+            <input type="text" id="cfgProjectName" placeholder="e.g. GAdigital Solution">
+          </div>
+          <div class="form-group">
+            <label>SMTP Email <span style="font-weight:400;color:#aaa;font-size:11px;">(Used to send notifications)</span></label>
+            <input type="email" id="cfgSmtpEmail" placeholder="e.g. notify@yourdomain.com">
+          </div>
+          <div class="form-group">
+            <label>SMTP Password</label>
+            <input type="password" id="cfgSmtpPassword" placeholder="Enter App Password">
+          </div>
+          <div class="form-group" style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>SMTP Host</label>
+              <input type="text" id="cfgSmtpHost" placeholder="smtp.gmail.com">
+            </div>
+            <div style="width:100px;">
+              <label>SMTP Port</label>
+              <input type="number" id="cfgSmtpPort" placeholder="465">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:8px;">
+            <button class="btn btn-primary" onclick="saveSuperSettings()">💾 Save Settings</button>
+            <button class="btn btn-outline" style="margin-left:12px;" onclick="testSuperSmtp(event)">✉️ Test SMTP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Edit Modal -->
@@ -673,8 +708,71 @@
       } catch (e) { alert('Network error.'); }
     }
 
+    // ---- Super Admin Settings ----
+    async function loadSuperSettings() {
+      try {
+        const res = await fetchAuth('/api/super/settings');
+        const settings = await res.json();
+        document.getElementById('cfgProjectName').value = settings.project_name || 'GAdigital Solution';
+        document.getElementById('cfgSmtpEmail').value = settings.smtp_email || '';
+        document.getElementById('cfgSmtpPassword').value = settings.smtp_password || '';
+        document.getElementById('cfgSmtpHost').value = settings.smtp_host || 'smtp.gmail.com';
+        document.getElementById('cfgSmtpPort').value = settings.smtp_port || 465;
+      } catch (err) { console.error('Failed to load settings', err); }
+    }
+
+    async function saveSuperSettings() {
+      const btn = event.target;
+      btn.textContent = 'Saving...'; btn.disabled = true;
+      try {
+        const body = {
+          project_name: document.getElementById('cfgProjectName').value.trim(),
+          smtp_email: document.getElementById('cfgSmtpEmail').value.trim(),
+          smtp_password: document.getElementById('cfgSmtpPassword').value.trim(),
+          smtp_host: document.getElementById('cfgSmtpHost').value.trim() || 'smtp.gmail.com',
+          smtp_port: parseInt(document.getElementById('cfgSmtpPort').value) || 465
+        };
+        const res = await fetchAuth('/api/super/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.ok) alert('Settings saved successfully!');
+        else alert('Failed to save settings');
+      } catch (err) { alert('Network error'); }
+      finally { btn.textContent = '💾 Save Settings'; btn.disabled = false; }
+    }
+
+    async function testSuperSmtp(event) {
+      const btn = event.target;
+      btn.textContent = 'Testing...'; btn.disabled = true;
+      try {
+        // Save first so test runs on latest
+        await fetchAuth('/api/super/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_name: document.getElementById('cfgProjectName').value.trim(),
+            smtp_email: document.getElementById('cfgSmtpEmail').value.trim(),
+            smtp_password: document.getElementById('cfgSmtpPassword').value.trim(),
+            smtp_host: document.getElementById('cfgSmtpHost').value.trim() || 'smtp.gmail.com',
+            smtp_port: parseInt(document.getElementById('cfgSmtpPort').value) || 465
+          })
+        });
+
+        const email = prompt('Enter an email address to receive the test email:');
+        if (!email) return;
+        const res = await fetchAuth('/api/test-smtp?to=' + encodeURIComponent(email));
+        const data = await res.json();
+        if (data.success) alert('Success! ' + data.message);
+        else alert('Failed: ' + (data.error || 'Unknown error'));
+      } catch (err) { alert('Network error'); }
+      finally { btn.textContent = '✉️ Test SMTP'; btn.disabled = false; }
+    }
+
     // Init
     loadPlans().then(() => loadClients());
+    loadSuperSettings();
   </script>
 </body>
 </html>

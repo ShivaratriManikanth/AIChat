@@ -209,45 +209,65 @@
     .card-body { padding: 20px 24px; }
 
     /* ============ TABLE ============ */
-    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
     .data-table th {
       text-align: left;
-      padding: 12px 16px;
+      padding: 16px 24px;
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #888;
-      font-weight: 600;
-      border-bottom: 1px solid #f0f0f0;
-      background: #fafafa;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      font-weight: 700;
+      border-bottom: 2px solid #f1f5f9;
+      background: #f8fafc;
     }
     .data-table td {
-      padding: 14px 16px;
+      padding: 18px 24px;
       font-size: 13.5px;
-      border-bottom: 1px solid #f5f5f5;
-      color: #444;
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+      vertical-align: middle;
     }
-    .data-table tr:hover { background: #fafbff; }
+    .data-table tr { transition: all 0.2s ease; }
+    .data-table tr:hover td { background: #f8fafc; }
     .data-table .email-cell {
-      font-weight: 500; color: #4F46E5;
+      font-weight: 600; color: #1e293b;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .data-table .email-cell::before {
+      content: '👤';
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      background: #e0e7ff; color: #4f46e5;
+      border-radius: 50%; font-size: 14px;
+      flex-shrink: 0;
     }
     .data-table .session-cell {
       font-family: 'Fira Code', monospace;
-      font-size: 11px; color: #888;
+      font-size: 11.5px; color: #64748b;
+      background: #f1f5f9; padding: 4px 8px; border-radius: 6px;
     }
     .data-table .badge-count {
-      background: #EEF2FF; color: #4F46E5;
-      padding: 3px 10px; border-radius: 10px;
-      font-size: 12px; font-weight: 600;
+      background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      color: #3730a3;
+      padding: 4px 12px; border-radius: 12px;
+      font-size: 12px; font-weight: 700;
+      box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+      display: inline-block;
     }
     .data-table .btn-view {
-      background: #4F46E5; color: white;
-      border: none; padding: 6px 14px;
-      border-radius: 6px; font-size: 12px;
-      cursor: pointer; font-weight: 500;
-      transition: all 0.2s;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      border: none; padding: 8px 18px;
+      border-radius: 8px; font-size: 12.5px;
+      cursor: pointer; font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
     }
-    .data-table .btn-view:hover { background: #4338CA; }
+    .data-table .btn-view:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35); 
+    }
 
     /* ============ FORMS ============ */
     .form-group { margin-bottom: 18px; }
@@ -588,10 +608,13 @@
       <!-- ======== USERS PAGE ======== -->
       <div class="panel" id="page-users">
         <div class="card">
-          <div class="card-header">
-            <h2>All Users</h2>
-            <div class="card-actions">
-              <input type="text" id="user-search" placeholder="Search by email..." style="padding:8px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;width:250px;">
+          <div class="card-header" style="padding: 24px 24px; border-bottom: 1px solid #f1f5f9; background: white;">
+            <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;">All Users</h2>
+            <div class="card-actions" style="position: relative;">
+              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </span>
+              <input type="text" id="user-search" placeholder="Search by email..." style="padding:10px 14px 10px 38px;border:1px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;width:280px;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onfocus="this.style.borderColor='#6366F1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
             </div>
           </div>
           <div class="card-body" style="padding:0;">

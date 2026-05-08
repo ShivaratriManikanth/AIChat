@@ -473,10 +473,6 @@
         <span class="icon">🎯</span> Leads
         <span class="badge" id="nav-lead-count">0</span>
       </div>
-      <div class="nav-item" data-page="complaints">
-        <span class="icon">⚠️</span> Complaints
-        <span class="badge" id="nav-complaint-count">0</span>
-      </div>
       <div class="nav-item" data-page="analytics">
         <span class="icon">📈</span> Analytics
       </div>
@@ -665,37 +661,6 @@
         </div>
       </div>
 
-      <!-- ======== COMPLAINTS PAGE ======== -->
-      <div class="panel" id="page-complaints">
-        <div class="card">
-          <div class="card-header">
-            <h2>Customer Complaints</h2>
-            <div class="card-actions">
-              <select id="complaint-filter" onchange="filterComplaints()" style="padding:8px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;">
-                <option value="">All Status</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body" style="padding:0;">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Mobile</th>
-                  <th>Email</th>
-                  <th>Issue</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="complaints-table-body"></tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       <!-- ======== ANALYTICS PAGE ======== -->
@@ -1329,15 +1294,13 @@ add_action('wp_footer', 'add_chatbot_widget');
         chats: 'Chat Management', settings: 'Settings',
         faqs: 'FAQ Management', embed: 'Embed Code',
         leads: 'Lead Management', analytics: 'Advanced Analytics',
-        bots: 'Bot Management (Multi-tenant)', knowledge: 'Knowledge Base',
-        complaints: 'Customer Complaints'
+        bots: 'Bot Management (Multi-tenant)', knowledge: 'Knowledge Base'
       };
       document.getElementById('page-title').textContent = titles[page] || 'Dashboard';
 
       if (page === 'leads') loadLeads();
       if (page === 'analytics') { loadAnalytics(); loadDropoff(); }
       if (page === 'bots') loadBots();
-      if (page === 'complaints') loadComplaints();
     }
 
     // ---- Load Stats -----------------------------------------
@@ -2099,63 +2062,6 @@ add_action('wp_footer', 'add_chatbot_widget');
       } catch (e) { console.error(e); }
     }
 
-    // ---- Complaints -----------------------------------------
-    let allComplaints = [];
-    async function loadComplaints() {
-      try {
-        const res = await fetchAuth(`${API}/api/complaints`);
-        allComplaints = await res.json();
-        document.getElementById('nav-complaint-count').textContent = allComplaints.length;
-        renderComplaints(allComplaints);
-      } catch (e) { console.error(e); }
-    }
-
-    function filterComplaints() {
-      const val = document.getElementById('complaint-filter').value;
-      renderComplaints(val ? allComplaints.filter(c => c.status === val) : allComplaints);
-    }
-
-    function renderComplaints(list) {
-      const tbody = document.getElementById('complaints-table-body');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⚠️</div>No complaints yet</div></td></tr>';
-        return;
-      }
-      const statusColors = {
-        open:        { bg: '#FEE2E2', text: '#991B1B' },
-        in_progress: { bg: '#FEF3C7', text: '#92400E' },
-        resolved:    { bg: '#D1FAE5', text: '#065F46' }
-      };
-      tbody.innerHTML = list.map(c => {
-        const sc = statusColors[c.status] || statusColors.open;
-        return `
-          <tr>
-            <td style="font-weight:500;">${c.name || '-'}</td>
-            <td>${c.phone || '-'}</td>
-            <td class="email-cell">${c.email || '-'}</td>
-            <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#666;" title="${(c.message||'').replace(/"/g,'&quot;')}">${c.message}</td>
-            <td><span style="background:${sc.bg};color:${sc.text};padding:4px 10px;border-radius:10px;font-size:11px;font-weight:600;text-transform:capitalize;">${c.status.replace('_', ' ')}</span></td>
-            <td style="font-size:12px;color:#888;">${formatDate(c.created_at)}</td>
-            <td>
-              <select onchange="updateComplaintStatus(${c.id}, this.value)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:11px;">
-                <option value="open"        ${c.status === 'open' ? 'selected' : ''}>Open</option>
-                <option value="in_progress" ${c.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-                <option value="resolved"    ${c.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-              </select>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    async function updateComplaintStatus(id, status) {
-      await fetchAuth(`${API}/api/complaint/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      showToast('Status updated');
-      loadComplaints();
     }
 
     // ---- Flow Builder Logic ---------------------------------
@@ -2308,7 +2214,6 @@ add_action('wp_footer', 'add_chatbot_widget');
     loadUsers();
     loadSessions();
     loadLeads();
-    loadComplaints();
     loadConfig();
     loadFlow();
     setupEmbedUrls();

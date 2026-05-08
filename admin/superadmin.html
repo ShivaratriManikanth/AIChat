@@ -510,6 +510,29 @@
           const planBadge = planBadgeClass(c.plan_id);
           const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
           const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
+          
+          let remainingText = '';
+          if (c.created_at && plan.duration && (c.payment_status === 'active' || c.payment_status === 'COD_PENDING')) {
+            const createdDate = new Date(c.created_at);
+            const expiryDate = new Date(createdDate);
+            if (plan.duration.includes('Month')) {
+              const months = parseInt(plan.duration) || 1;
+              expiryDate.setMonth(expiryDate.getMonth() + months);
+            } else if (plan.duration.includes('Year')) {
+              const years = parseInt(plan.duration) || 1;
+              expiryDate.setFullYear(expiryDate.getFullYear() + years);
+            }
+            
+            const diffTime = expiryDate - new Date();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0) {
+              remainingText = `<span style="font-size:11px;color:#666;margin-left:6px;font-weight:500;white-space:nowrap;">(${diffDays} days left)</span>`;
+            } else {
+              remainingText = `<span style="font-size:11px;color:#DC2626;margin-left:6px;font-weight:500;white-space:nowrap;">(Expired)</span>`;
+            }
+          }
+
           const isHashed = c.password && c.password.startsWith('$2');
           // Always show dots — reveal only on eye click
           const pwId = 'pw_' + c.id;
@@ -519,7 +542,7 @@
           return `<tr>
             <td><span class="client-company">${c.company_name || '–'}</span></td>
             <td><span class="client-email">${c.email}</span></td>
-            <td><span class="badge ${planBadge}">${planName}</span></td>
+            <td><span class="badge ${planBadge}">${planName}</span>${remainingText}</td>
             <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
             <td style="color:#888;font-size:13px;">${date}</td>
             <td>

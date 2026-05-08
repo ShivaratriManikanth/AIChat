@@ -789,7 +789,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           geminiReply = await new Promise((resolve, reject) => {
-            const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
+            const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -851,17 +851,11 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     return res.json({ reply: finalReply, source: 'ai', lowConfidence: true });
   }
 
-  if (openai) {
-    const fallback = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
-    saveMessage(req.clientId, sessionId, 'assistant', fallback, null, { source: 'error' });
-    return res.json({ reply: fallback, source: 'error' });
-  }
-
-  // Fallback: simple keyword matching
+  // If all AI fails, try keyword fallback
   const reply = generateFallbackReply(message, config);
   const responseMs = Date.now() - startTime;
-  saveMessage(clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs });
-  res.json({ reply, source: 'fallback' });
+  saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source: 'fallback', responseMs }, email);
+  return res.json({ reply, source: 'fallback' });
 });
 
 // POST /api/lead — Capture lead (name, phone, email)

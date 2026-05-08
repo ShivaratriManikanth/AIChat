@@ -1771,21 +1771,39 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     });
   }
 
-  // Build transporter using client's SMTP or system SMTP
+  // Build transporter with timeouts to prevent hanging on Railway
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
     secure: smtpPort == 465,
-    auth: { user: smtpUser, pass: smtpPass }
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 10000,  // 10s to establish connection
+    greetingTimeout: 10000,    // 10s for SMTP greeting
+    socketTimeout: 15000       // 15s for socket inactivity
   });
+
+  // Verify SMTP connection before sending
+  try {
+    await transporter.verify();
+  } catch(e) {
+    return res.status(400).json({ error: `SMTP connection failed: ${e.message}. Check your SMTP credentials in Settings.` });
+  }
 
   const companyName = clientConfig.companyName || clientConfig.botName || 'Your Company';
   const htmlBody = body.replace(/\n/g, '<br>');
 
+  // Helper: send one email with a 15s timeout
+  const sendWithTimeout = (mailOptions) => {
+    return Promise.race([
+      transporter.sendMail(mailOptions),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout after 15s')), 15000))
+    ]);
+  };
+
   let sent = 0, failed = 0, failedEmails = [];
   for (const to of emails) {
     try {
-      await transporter.sendMail({
+      await sendWithTimeout({
         from: `"${companyName}" <${smtpUser}>`,
         to,
         subject,
@@ -1810,6 +1828,7 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     }
   }
 
+  transporter.close();
   res.json({ success: true, total: emails.length, sent, failed, failedEmails });
 });
 

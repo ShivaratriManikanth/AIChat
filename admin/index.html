@@ -922,18 +922,7 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label>System Prompt (AI Personality)</label>
-              <textarea id="cfg-systemPrompt" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-              <label>Input Placeholder</label>
-              <input type="text" id="cfg-placeholder">
-            </div>
-            <div class="form-group">
-              <label>Suggested Questions (one per line)</label>
-              <textarea id="cfg-suggestedQuestions" rows="4"></textarea>
-            </div>
+
           </div>
         </div>
 
@@ -1035,16 +1024,6 @@
           </div>
         </div>
 
-        <!-- PDF Knowledge Upload -->
-        <div class="card">
-          <div class="card-header"><h2>Upload PDF to Knowledge Base</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:#666;margin-bottom:12px;">Upload a PDF document — we'll extract the text and add it as FAQ entries so your bot can answer from it.</p>
-            <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
-            <button class="btn btn-primary" onclick="document.getElementById('pdf-input').click()">📄 Upload PDF</button>
-            <div id="pdf-status" style="margin-top:12px;font-size:13px;color:#666;"></div>
-          </div>
-        </div>
 
         <!-- Email Notifications -->
         <div class="card">
@@ -1108,17 +1087,6 @@
           </div>
         </div>
 
-        <!-- Domain Restriction -->
-        <div class="card">
-          <div class="card-header"><h2>Domain Restriction (Security)</h2></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:#666;margin-bottom:12px;">Only allow these domains to use your chatbot. Leave empty to allow all.</p>
-            <div class="form-group">
-              <label>Allowed Domains (one per line, e.g., yoursite.com)</label>
-              <textarea id="cfg-allowedDomains" rows="4" placeholder="yourdomain.com&#10;example.com"></textarea>
-            </div>
-          </div>
-        </div>
 
         <!-- Fallback & Offline Messages -->
         <div class="card">

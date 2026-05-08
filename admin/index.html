@@ -622,7 +622,6 @@
               <thead>
                 <tr>
                   <th>Email</th>
-                  <th>Session ID</th>
                   <th>Messages</th>
                   <th>Last Active</th>
                   <th>Action</th>
@@ -645,7 +644,6 @@
               <thead>
                 <tr>
                   <th>Email</th>
-                  <th>Session</th>
                   <th>Messages</th>
                   <th>Last Updated</th>
                   <th>Action</th>
@@ -1357,7 +1355,6 @@ add_action('wp_footer', 'add_chatbot_widget');
       tbody.innerHTML = users.map(u => `
         <tr>
           <td class="email-cell">${u.email}</td>
-          <td class="session-cell">${u.session_id.substring(0, 20)}...</td>
           <td><span class="badge-count">${u.message_count}</span></td>
           <td style="font-size:12px;color:#888;">${formatDate(u.last_message || u.created_at)}</td>
           <td><button class="btn-view" onclick="viewUserChat('${u.session_id}', '${u.email}')">View Chat</button></td>
@@ -1394,7 +1391,6 @@ add_action('wp_footer', 'add_chatbot_widget');
       tbody.innerHTML = sessions.map(s => `
         <tr>
           <td class="email-cell">${s.email || 'Anonymous'}</td>
-          <td class="session-cell">${s.session_id.substring(0, 20)}...</td>
           <td><span class="badge-count">${s.message_count}</span></td>
           <td style="font-size:12px;color:#888;">${formatDate(s.updated_at)}</td>
           <td><button class="btn-view" onclick="viewSession('${s.session_id}', '${s.email || 'Anonymous'}')">View</button></td>

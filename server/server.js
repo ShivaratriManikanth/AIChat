@@ -588,7 +588,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
 // GET /api/flows — Get all flows for the logged-in client
 app.get('/api/flows', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  const flows = db.prepare('SELECT id, name, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
+  const flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
   res.json(flows);
 });
 

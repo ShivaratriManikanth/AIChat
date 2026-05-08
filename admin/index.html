@@ -2131,8 +2131,9 @@ add_action('wp_footer', 'add_chatbot_widget');
     async function loadFlow() {
       try {
         const res = await fetchAuth(`${API}/api/flows`);
-        if (res && res.length > 0) {
-          const flow = res[0];
+        const flows = await res.json();
+        if (flows && flows.length > 0) {
+          const flow = flows[0];
           currentFlowId = flow.id;
           flowNodes = JSON.parse(flow.flow_data || '[]');
           isFlowActive = flow.is_active === 1;
@@ -2256,8 +2257,9 @@ add_action('wp_footer', 'add_chatbot_widget');
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.success) {
-          currentFlowId = res.id;
+        const data = await res.json();
+        if (data.success) {
+          currentFlowId = data.id;
           showToast('Flow saved successfully!');
         }
       } catch (err) {

@@ -11,6 +11,12 @@ const fs         = require('fs');
 const OpenAI     = require('openai');
 const nodemailer = require('nodemailer');
 const bcrypt     = require('bcryptjs');
+const dns        = require('dns');
+
+// Fix for Node 18+ preferring IPv6 in environments without IPv6 routing (e.g. Railway) causing ENETUNREACH
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 
 const app  = express();

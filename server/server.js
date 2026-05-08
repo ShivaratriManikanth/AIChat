@@ -1772,65 +1772,66 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     });
   }
 
-  // Pre-resolve hostname to IPv4 (Railway has no IPv6 — same fix as main server)
-  let resolvedHost = smtpHost;
-  try {
-    const dns = require('dns').promises;
-    const addrs = await dns.resolve4(smtpHost);
-    if (addrs && addrs.length > 0) resolvedHost = addrs[0];
-    console.log(`[Broadcast SMTP] Resolved ${smtpHost} → ${resolvedHost}`);
-  } catch(e) {
-    console.warn('[Broadcast SMTP] DNS resolve4 failed, using raw host:', e.message);
-  }
-
-  // Build transporter using the pre-resolved IPv4 address
-  const transporter = nodemailer.createTransport({
-    host: resolvedHost,
-    port: smtpPort,
-    secure: smtpPort == 465,
-    auth: { user: smtpUser, pass: smtpPass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-  });
-
-  // Verify SMTP connection before sending
-  try {
-    await transporter.verify();
-  } catch(e) {
-    return res.status(500).json({ error: `System SMTP connection failed: ${e.message}. Please contact the platform administrator.` });
-  }
-
   const htmlBody = body.replace(/\n/g, '<br>');
+  const emailHtml = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
+        <h2 style="color:white;margin:0;font-size:22px;">${companyName}</h2>
+      </div>
+      <div style="background:#ffffff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+        <div style="font-size:15px;line-height:1.7;color:#374151;">${htmlBody}</div>
+        <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0;">
+        <p style="color:#9ca3af;font-size:12px;margin:0;">This email was sent by ${companyName} via AI Chatbot Widget.</p>
+      </div>
+    </div>
+  `;
 
-  // Helper: send one email with a 15s timeout
-  const sendWithTimeout = (mailOptions) => {
-    return Promise.race([
-      transporter.sendMail(mailOptions),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout after 15s')), 15000))
-    ]);
-  };
+  // Send one email using system APIs (same chain as sendWelcomeEmail)
+  async function sendOneBroadcast(to) {
+    // 1. Resend HTTP API
+    if (process.env.RESEND_API_KEY) {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: `${companyName} <onboarding@resend.dev>`, to, subject, html: emailHtml })
+      });
+      if (!r.ok) throw new Error('Resend: ' + await r.text());
+      return;
+    }
+    // 2. SendGrid HTTP API
+    if (process.env.SENDGRID_API_KEY) {
+      const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: smtpUser, name: companyName },
+          subject, content: [{ type: 'text/html', value: emailHtml }]
+        })
+      });
+      if (!r.ok) throw new Error('SendGrid: ' + await r.text());
+      return;
+    }
+    // 3. Nodemailer SMTP fallback (pre-resolve IPv4 to avoid Railway ENETUNREACH)
+    const dnsP = require('dns').promises;
+    let resolvedHost = smtpHost;
+    try {
+      const addrs = await dnsP.resolve4(smtpHost);
+      if (addrs && addrs.length > 0) resolvedHost = addrs[0];
+    } catch(e) {}
+    const transporter = nodemailer.createTransport({
+      host: resolvedHost, port: smtpPort, secure: false,
+      auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
+    });
+    await transporter.sendMail({ from: `"${companyName}" <${smtpUser}>`, to, subject, html: emailHtml });
+    transporter.close();
+  }
 
   let sent = 0, failed = 0, failedEmails = [];
   for (const to of emails) {
     try {
-      await sendWithTimeout({
-        from: `"${companyName}" <${smtpUser}>`,
-        to,
-        subject,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-            <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
-              <h2 style="color:white;margin:0;font-size:22px;">${companyName}</h2>
-            </div>
-            <div style="background:#ffffff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
-              <div style="font-size:15px;line-height:1.7;color:#374151;">${htmlBody}</div>
-              <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0;">
-              <p style="color:#9ca3af;font-size:12px;margin:0;">This email was sent by ${companyName} via AI Chatbot Widget.</p>
-            </div>
-          </div>
-        `
-      });
+      await sendOneBroadcast(to);
       sent++;
     } catch(e) {
       failed++;
@@ -1839,7 +1840,6 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     }
   }
 
-  transporter.close();
   res.json({ success: true, total: emails.length, sent, failed, failedEmails });
 });
 

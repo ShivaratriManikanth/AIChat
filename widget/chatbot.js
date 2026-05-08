@@ -1217,6 +1217,47 @@
     } catch (e) {}
   }
 
+  // ---- Flow Execution Logic ---------------------------------
+  let activeFlow = [];
+  let currentFlowId = null;
+  let currentFlowNodeIndex = -1;
+
+  async function loadActiveFlow() {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/active-flow`, { headers: { 'x-bot-key': API_KEY } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.flow && data.flow.flow_data.length > 0) {
+          activeFlow = data.flow.flow_data;
+          currentFlowId = data.flow.id;
+        }
+      }
+    } catch (e) {
+      console.warn('Flow load failed', e);
+    }
+  }
+
+  function renderNextFlowNode() {
+    if (currentFlowNodeIndex >= activeFlow.length) {
+      // Flow ended
+      currentFlowNodeIndex = -1;
+      return;
+    }
+    const node = activeFlow[currentFlowNodeIndex];
+    
+    // Convert node to quick replies if it's a choice
+    let qr = null;
+    if (node.type === 'single_choice' || node.type === 'multiple_choice') {
+      qr = node.config.options || [];
+    }
+    
+    setTimeout(() => {
+      addMessage(node.config.question || node.label, 'bot', { quickReplies: qr });
+      // Depending on type, we could render specific inputs in the chat.
+      // For now, quickReplies handle choices. Other types expect text/file.
+    }, 500);
+  }
+
   // ---- Send Message -----------------------------------------
   let pendingFile = null;
 
@@ -1248,6 +1289,31 @@
 
     // Send a placeholder for backend if text is empty but file exists
     const sendText = text || (fileToSend ? `[File: ${fileToSend.name}]` : text);
+
+    // Flow Interception
+    if (activeFlow && activeFlow.length > 0 && currentFlowNodeIndex >= 0 && currentFlowNodeIndex < activeFlow.length) {
+      const node = activeFlow[currentFlowNodeIndex];
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (API_KEY) headers['X-Bot-Key'] = API_KEY;
+        
+        const res = await fetch(`${SERVER_URL}/api/chat`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            message: sendText, sessionId: SESSION_ID, clientId: CLIENT_ID, flowNodeId: node.id, flowId: currentFlowId,
+            lang: currentLang, email: userEmail, file: fileToSend, pageUrl, botId: BOT_ID, widgetVersion: WIDGET_VERSION
+          })
+        });
+        
+        hideTyping();
+        if (res.ok) {
+          currentFlowNodeIndex++;
+          renderNextFlowNode();
+        }
+      } catch (err) { hideTyping(); }
+      return;
+    }
 
     // Track interactions (only real user text messages)
     if (text.trim()) {
@@ -1730,13 +1796,18 @@
     const advancedFeatures = document.getElementById('chatbot-advanced-features');
     if (advancedFeatures) advancedFeatures.style.display = 'flex';
 
-    // Show welcome message
+    // Show welcome message or flow
     const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
     if (history.length === 0) {
-      const greeting = getTimeGreeting();
-      addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
-        quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
-      });
+      if (activeFlow && activeFlow.length > 0) {
+        currentFlowNodeIndex = 0;
+        renderNextFlowNode();
+      } else {
+        const greeting = getTimeGreeting();
+        addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
+          quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
+        });
+      }
     }
     document.getElementById('chatbot-input').focus();
   }
@@ -2077,6 +2148,7 @@
   // ---- Initialize -------------------------------------------
   async function init() {
     await loadConfig();
+    await loadActiveFlow();
     injectStyles();
     buildWidget();
     renderSuggestions();
@@ -2087,10 +2159,15 @@
       loadFromLocal();
       const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       if (history.length === 0) {
-        const greeting = getTimeGreeting();
-        addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
-          quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
-        });
+        if (activeFlow && activeFlow.length > 0) {
+          currentFlowNodeIndex = 0;
+          renderNextFlowNode();
+        } else {
+          const greeting = getTimeGreeting();
+          addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
+            quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
+          });
+        }
       }
     }
   }

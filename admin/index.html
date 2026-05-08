@@ -457,7 +457,10 @@
         <span class="icon">🧠</span> 1. AI Chatbot
       </div>
       <div class="nav-item" data-page="faqs">
-        <span class="icon">✍️</span> 2. Manual Setup
+        <span class="icon">✍️</span> 2. FAQ Setup
+      </div>
+      <div class="nav-item" data-page="flows">
+        <span class="icon">🔀</span> 3. Flow Builder
       </div>
 
       <div class="nav-section">Configuration</div>
@@ -1115,6 +1118,101 @@
               <textarea id="newFaqA" placeholder="e.g., We are open Mon-Fri, 9 AM to 6 PM."></textarea>
             </div>
             <button class="btn btn-success" onclick="addFaq()">Add FAQ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== FLOW BUILDER PAGE ======== -->
+      <div class="panel" id="page-flows">
+        <style>
+          .flow-builder-container {
+            display: flex; gap: 20px; height: 600px;
+            background: white; border-radius: 16px; border: 1px solid #ebebf0;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          }
+          .flow-sidebar {
+            width: 320px; background: #fafbff; border-right: 1px solid #ebebf0;
+            padding: 20px; overflow-y: auto; flex-shrink: 0;
+          }
+          .flow-components-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+          }
+          .flow-component-btn {
+            background: white; border: 1.5px solid #e5e7eb; border-radius: 10px;
+            padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s;
+            font-size: 11px; font-weight: 600; color: #444;
+          }
+          .flow-component-btn .icon { font-size: 20px; margin-bottom: 6px; color: #4F46E5; }
+          .flow-component-btn:hover { border-color: #4F46E5; color: #4F46E5; box-shadow: 0 2px 6px rgba(79,70,229,0.1); transform: translateY(-1px); }
+          
+          .flow-workspace { flex: 1; display: flex; flex-direction: column; background: #f8fafc; }
+          .flow-workspace-header {
+            padding: 16px 24px; background: white; border-bottom: 1px solid #ebebf0;
+            display: flex; justify-content: space-between; align-items: center;
+          }
+          .flow-nodes-list {
+            flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+          }
+          .flow-node-item {
+            background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 10px;
+            position: relative; animation: slideIn 0.2s ease-out;
+          }
+          @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          .flow-node-header { display: flex; justify-content: space-between; align-items: center; }
+          .flow-node-title { font-size: 13px; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; }
+          .flow-node-actions { display: flex; gap: 6px; }
+          .flow-node-btn { background: #f1f5f9; border: none; padding: 6px; border-radius: 6px; cursor: pointer; color: #64748b; font-size: 12px; transition: 0.2s; }
+          .flow-node-btn:hover { background: #e2e8f0; color: #0f172a; }
+          .flow-node-btn.delete:hover { background: #fee2e2; color: #ef4444; }
+          .flow-node-body { font-size: 13px; color: #475569; }
+          .flow-node-input { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; transition: 0.2s; font-family: inherit; margin-top: 6px; }
+          .flow-node-input:focus { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+          .flow-node-reply { background: #4F46E5; color: white; padding: 10px 16px; border-radius: 12px; border-bottom-right-radius: 2px; align-self: flex-end; font-size: 13px; max-width: 80%; display: none; }
+        </style>
+        
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 style="font-size:22px;color:#1a1a2e;">3. Flow Builder</h2>
+            <p style="color:#666;font-size:14px;margin-top:4px;">Visually create chatbot conversation flows and components.</p>
+          </div>
+          <button class="btn btn-primary" onclick="saveFlow()">💾 Save Flow</button>
+        </div>
+
+        <div class="flow-builder-container">
+          <div class="flow-sidebar">
+            <h3 style="font-size:13px; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:12px;">Ask User</h3>
+            <div class="flow-components-grid">
+              <div class="flow-component-btn" onclick="addFlowNode('question', '❓ Question')"><div class="icon">❓</div>Question</div>
+              <div class="flow-component-btn" onclick="addFlowNode('single_choice', '🔘 Single Choice')"><div class="icon">🔘</div>Single Choice</div>
+              <div class="flow-component-btn" onclick="addFlowNode('multiple_choice', '☑️ Multiple Choice')"><div class="icon">☑️</div>Multiple Choice</div>
+              <div class="flow-component-btn" onclick="addFlowNode('email', '📧 Email')"><div class="icon">📧</div>Email</div>
+              <div class="flow-component-btn" onclick="addFlowNode('mobile', '📱 Mobile Number')"><div class="icon">📱</div>Mobile Number</div>
+              <div class="flow-component-btn" onclick="addFlowNode('number', '#️⃣ Number')"><div class="icon">#️⃣</div>Number</div>
+              <div class="flow-component-btn" onclick="addFlowNode('rating', '⭐ Rating')"><div class="icon">⭐</div>Rating</div>
+              <div class="flow-component-btn" onclick="addFlowNode('date_picker', '📅 Date Picker')"><div class="icon">📅</div>Date Picker</div>
+              <div class="flow-component-btn" onclick="addFlowNode('time_picker', '🕒 Time Picker')"><div class="icon">🕒</div>Time Picker</div>
+              <div class="flow-component-btn" onclick="addFlowNode('location', '📍 Location')"><div class="icon">📍</div>Location</div>
+              <div class="flow-component-btn" onclick="addFlowNode('file_upload', '📁 File Upload')"><div class="icon">📁</div>File Upload</div>
+              <div class="flow-component-btn" onclick="addFlowNode('website', '🔗 Website')"><div class="icon">🔗</div>Website</div>
+              <div class="flow-component-btn" onclick="addFlowNode('appointment', '🗓️ Appointment')"><div class="icon">🗓️</div>Appointment</div>
+            </div>
+          </div>
+          <div class="flow-workspace">
+            <div class="flow-workspace-header">
+              <div style="font-size:14px; font-weight:600; color:#1e293b;">Flow Sequence</div>
+              <div>
+                <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadFlow()">Revert</button>
+                <div class="toggle-switch" id="toggle-flow-active" onclick="toggleFlowActive()" style="display:inline-block; vertical-align:middle; margin-left:10px;"></div>
+                <span style="font-size:12px; color:#555; vertical-align:middle; margin-left:6px; font-weight:500;">Active</span>
+              </div>
+            </div>
+            <div id="flow-nodes-list" class="flow-nodes-list">
+              <div class="empty-state" id="flow-empty-state">
+                <div class="empty-icon">🖱️</div>
+                <p>Click a component on the left to add it to your flow.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2025,6 +2123,149 @@ add_action('wp_footer', 'add_chatbot_widget');
       loadComplaints();
     }
 
+    // ---- Flow Builder Logic ---------------------------------
+    let currentFlowId = null;
+    let flowNodes = [];
+    let isFlowActive = false;
+
+    async function loadFlow() {
+      try {
+        const res = await fetchAuth(`${API}/api/flows`);
+        if (res && res.length > 0) {
+          const flow = res[0];
+          currentFlowId = flow.id;
+          flowNodes = JSON.parse(flow.flow_data || '[]');
+          isFlowActive = flow.is_active === 1;
+        } else {
+          currentFlowId = null;
+          flowNodes = [];
+          isFlowActive = false;
+        }
+        document.getElementById('toggle-flow-active').className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+        renderFlowNodes();
+      } catch (err) {
+        console.error('Failed to load flow', err);
+      }
+    }
+
+    function toggleFlowActive() {
+      isFlowActive = !isFlowActive;
+      document.getElementById('toggle-flow-active').className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+      saveFlow();
+    }
+
+    function addFlowNode(type, label) {
+      const id = 'node_' + Math.random().toString(36).substr(2, 9);
+      flowNodes.push({
+        id,
+        type,
+        label,
+        config: { question: 'Please provide your ' + label.replace(/[^a-zA-Z ]/g, '').trim() + '?', options: [] }
+      });
+      renderFlowNodes();
+    }
+
+    function deleteFlowNode(index) {
+      if(confirm('Delete this component?')) {
+        flowNodes.splice(index, 1);
+        renderFlowNodes();
+      }
+    }
+
+    function duplicateFlowNode(index) {
+      const node = flowNodes[index];
+      const newNode = JSON.parse(JSON.stringify(node));
+      newNode.id = 'node_' + Math.random().toString(36).substr(2, 9);
+      flowNodes.splice(index + 1, 0, newNode);
+      renderFlowNodes();
+    }
+
+    function moveNodeUp(index) {
+      if (index === 0) return;
+      const temp = flowNodes[index];
+      flowNodes[index] = flowNodes[index - 1];
+      flowNodes[index - 1] = temp;
+      renderFlowNodes();
+    }
+
+    function moveNodeDown(index) {
+      if (index === flowNodes.length - 1) return;
+      const temp = flowNodes[index];
+      flowNodes[index] = flowNodes[index + 1];
+      flowNodes[index + 1] = temp;
+      renderFlowNodes();
+    }
+
+    function updateNodeConfig(index, key, value) {
+      if (!flowNodes[index].config) flowNodes[index].config = {};
+      flowNodes[index].config[key] = value;
+    }
+
+    function renderFlowNodes() {
+      const container = document.getElementById('flow-nodes-list');
+      
+      if (flowNodes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" id="flow-empty-state">
+            <div class="empty-icon">🖱️</div>
+            <p>Click a component on the left to add it to your flow.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      let html = '';
+      flowNodes.forEach((node, i) => {
+        let configHtml = '';
+        if (node.type === 'single_choice' || node.type === 'multiple_choice') {
+          configHtml = `<input type="text" class="flow-node-input" placeholder="Options (comma separated)" value="${(node.config.options||[]).join(', ')}" onchange="updateNodeConfig(${i}, 'options', this.value.split(',').map(s=>s.trim()))">`;
+        }
+        
+        html += `
+          <div class="flow-node-item">
+            <div class="flow-node-header">
+              <div class="flow-node-title">${node.label}</div>
+              <div class="flow-node-actions">
+                <button class="flow-node-btn" onclick="moveNodeUp(${i})">↑</button>
+                <button class="flow-node-btn" onclick="moveNodeDown(${i})">↓</button>
+                <button class="flow-node-btn" onclick="duplicateFlowNode(${i})">📄</button>
+                <button class="flow-node-btn delete" onclick="deleteFlowNode(${i})">🗑️</button>
+              </div>
+            </div>
+            <div class="flow-node-body">
+              <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Bot Asks:</label>
+              <input type="text" class="flow-node-input" placeholder="Enter bot prompt..." value="${node.config.question || ''}" onchange="updateNodeConfig(${i}, 'question', this.value)">
+              ${configHtml}
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    async function saveFlow() {
+      try {
+        const payload = {
+          id: currentFlowId,
+          name: 'Main Flow',
+          flow_data: flowNodes,
+          is_active: isFlowActive
+        };
+        const res = await fetchAuth(`${API}/api/flows`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.success) {
+          currentFlowId = res.id;
+          showToast('Flow saved successfully!');
+        }
+      } catch (err) {
+        console.error('Failed to save flow', err);
+        showToast('Error saving flow');
+      }
+    }
+
     // ---- Init -----------------------------------------------
     loadStats();
     loadUsers();
@@ -2032,6 +2273,7 @@ add_action('wp_footer', 'add_chatbot_widget');
     loadLeads();
     loadComplaints();
     loadConfig();
+    loadFlow();
     setupEmbedUrls();
   </script>
 </body>

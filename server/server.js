@@ -216,6 +216,30 @@ try {
     db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
   }
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS flows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      flow_data TEXT DEFAULT '[]',
+      is_active INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS flow_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      flow_id INTEGER NOT NULL,
+      node_id TEXT NOT NULL,
+      response_data TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('SQLite database connected and SaaS schema initialized');
 } catch (err) {
   console.error('CRITICAL DATABASE ERROR:', err);
@@ -561,12 +585,90 @@ app.get('/api/stats', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/flows — Get all flows for the logged-in client
+app.get('/api/flows', requireAuth, (req, res) => {
+  if (!db) return res.json([]);
+  const flows = db.prepare('SELECT id, name, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
+  res.json(flows);
+});
+
+// GET /api/flows/:id — Get a specific flow
+app.get('/api/flows/:id', requireAuth, (req, res) => {
+  if (!db) return res.status(404).json({ error: 'DB not available' });
+  const flow = db.prepare('SELECT * FROM flows WHERE id = ? AND client_id = ?').get(req.params.id, req.clientId);
+  if (!flow) return res.status(404).json({ error: 'Flow not found' });
+  res.json(flow);
+});
+
+// POST /api/flows — Create or update a flow
+app.post('/api/flows', requireAuth, (req, res) => {
+  const { id, name, flow_data, is_active } = req.body;
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  
+  if (id) {
+    db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ?')
+      .run(name, JSON.stringify(flow_data || []), is_active ? 1 : 0, id, req.clientId);
+    if (is_active) {
+      db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(id, req.clientId);
+    }
+    return res.json({ success: true, id });
+  } else {
+    const result = db.prepare('INSERT INTO flows (client_id, name, flow_data, is_active) VALUES (?, ?, ?, ?)')
+      .run(req.clientId, name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
+    if (is_active) {
+      db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(result.lastInsertRowid, req.clientId);
+    }
+    return res.json({ success: true, id: result.lastInsertRowid });
+  }
+});
+
+// DELETE /api/flows/:id — Delete a flow
+app.delete('/api/flows/:id', requireAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ?').run(req.params.id, req.clientId);
+  res.json({ success: true });
+});
+
+// GET /api/active-flow — Get the active flow for a widget (uses bot key)
+app.get('/api/active-flow', checkApiKey, (req, res) => {
+  if (!db) return res.json({ flow: null });
+  const flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+  if (!flow) return res.json({ flow: null });
+  
+  try {
+    flow.flow_data = JSON.parse(flow.flow_data);
+  } catch(e) {
+    flow.flow_data = [];
+  }
+  res.json({ flow });
+});
+
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email } = req.body;
+  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email, flowNodeId, flowId } = req.body;
 
-  if (!message || !sessionId) {
-    return res.status(400).json({ error: 'message and sessionId are required' });
+  if (!message && !file) {
+    return res.status(400).json({ error: 'message or file is required' });
+  }
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+
+  // Handle flow responses
+  if (flowNodeId && flowId) {
+    if (db) {
+      db.prepare('INSERT INTO flow_responses (client_id, session_id, flow_id, node_id, response_data) VALUES (?, ?, ?, ?, ?)')
+        .run(req.clientId, sessionId, flowId, flowNodeId, JSON.stringify(message || file));
+    }
+    // Track bot_id and last_user_msg_at
+    if (db) {
+      db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
+      db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
+        .run(botId || 'default', widgetVersion || '', req.clientId, sessionId);
+    }
+    saveMessage(req.clientId, sessionId, 'user', typeof message === 'string' ? message : JSON.stringify(message), file, { source: 'flow_response' }, email);
+    
+    return res.json({ success: true, source: 'flow' });
   }
 
   // Sanitize input

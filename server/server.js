@@ -1695,45 +1695,80 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'SMTP not configured. Please set SMTP details in Settings > Email Notifications.' });
   }
 
-  // Collect target emails — query users, sessions, and leads with multi-tier fallback
+  // Collect target emails — same proven query style as /api/users and /api/stats
   let emails = [];
   try {
-    const safeEmails = (sql, params = []) => {
-      try { return db.prepare(sql).all(...params).map(r => r.email).filter(Boolean); }
-      catch(e) { return []; }
-    };
+    const clientId = req.clientId;
 
-    const getUserEmails = () => {
-      let found = safeEmails('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
-      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != ""', ['default_client']);
-      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != ""', []);
-      let fromSessions = safeEmails('SELECT DISTINCT email FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
-      if (!fromSessions.length) fromSessions = safeEmails('SELECT DISTINCT email FROM sessions WHERE email IS NOT NULL AND email != ""', []);
-      return [...new Set([...found, ...fromSessions])];
-    };
+    // Pull from users table — exact same pattern as /api/users endpoint
+    let userEmails = [];
+    try {
+      userEmails = db.prepare(
+        'SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
+      ).all(clientId).map(r => r.email);
+      // If none found, try default_client (pre-migration data)
+      if (!userEmails.length) {
+        userEmails = db.prepare(
+          'SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != \'\''
+        ).all().map(r => r.email);
+      }
+    } catch(e) { console.error('users query failed:', e.message); }
 
-    const getLeadsEmails = () => {
-      let found = safeEmails('SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != ""', [req.clientId]);
-      if (!found.length) found = safeEmails('SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != ""', []);
-      return found;
-    };
+    // Pull from sessions table (emails stored during chat registration)
+    let sessionEmails = [];
+    try {
+      sessionEmails = db.prepare(
+        'SELECT DISTINCT email FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
+      ).all(clientId).map(r => r.email);
+      if (!sessionEmails.length) {
+        sessionEmails = db.prepare(
+          'SELECT DISTINCT email FROM sessions WHERE email IS NOT NULL AND email != \'\''
+        ).all().map(r => r.email);
+      }
+    } catch(e) { console.error('sessions query failed:', e.message); }
 
+    // Pull from leads table
+    let leadsEmails = [];
+    try {
+      leadsEmails = db.prepare(
+        'SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
+      ).all(clientId).map(r => r.email);
+      if (!leadsEmails.length) {
+        leadsEmails = db.prepare(
+          'SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != \'\''
+        ).all().map(r => r.email);
+      }
+    } catch(e) { console.error('leads query failed:', e.message); }
+
+    // Build final list based on audience
+    let combined = [];
     if (audience === 'leads') {
-      emails = getLeadsEmails();
+      combined = leadsEmails;
     } else if (audience === 'users') {
-      emails = getUserEmails();
+      combined = [...new Set([...userEmails, ...sessionEmails])];
     } else {
-      const set = new Set([...getUserEmails(), ...getLeadsEmails()]);
-      emails = [...set];
+      combined = [...new Set([...userEmails, ...sessionEmails, ...leadsEmails])];
     }
 
-    emails = emails.filter(e => e && e.includes('@') && e.length > 4);
+    // Final filter: valid email format only
+    emails = combined.filter(e => e && typeof e === 'string' && e.includes('@') && e.length > 4);
+
+    console.log(`[Broadcast] clientId=${clientId} audience=${audience} users=${userEmails.length} sessions=${sessionEmails.length} leads=${leadsEmails.length} final=${emails.length}`);
   } catch(e) {
     return res.status(500).json({ error: 'Failed to fetch recipients: ' + e.message });
   }
 
   if (emails.length === 0) {
-    return res.status(400).json({ error: 'No recipients found. Make sure users have chatted with your bot and provided their email.' });
+    // Get counts for debug info
+    let debugCounts = {};
+    try {
+      debugCounts.users = db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE client_id = ?').get(req.clientId)?.c || 0;
+      debugCounts.sessions = db.prepare('SELECT COUNT(DISTINCT email) as c FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != \'\'').get(req.clientId)?.c || 0;
+      debugCounts.allUsers = db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE email IS NOT NULL AND email != \'\'').get()?.c || 0;
+    } catch(e) {}
+    return res.status(400).json({
+      error: `No recipients found for audience "${audience}". Debug: ${JSON.stringify(debugCounts)}`
+    });
   }
 
   // Build transporter using client's SMTP or system SMTP

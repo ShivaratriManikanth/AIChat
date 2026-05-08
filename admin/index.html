@@ -666,72 +666,55 @@
       <!-- ======== ANALYTICS PAGE ======== -->
       <div class="panel" id="page-analytics">
         <div class="stats-grid">
-          <div class="stat-card">
+          <div class="stat-card" style="background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%); color: white; border: none; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);">
             <div class="stat-header">
               <div>
-                <div class="stat-label">Avg Response Time</div>
-                <div class="stat-value" id="stat-avg-response">0<span style="font-size:14px;opacity:0.6;">ms</span></div>
+                <div class="stat-label" style="color: rgba(255,255,255,0.8);">Avg Response Time</div>
+                <div class="stat-value" id="stat-avg-response" style="color: white;">0<span style="font-size:14px;opacity:0.6;">ms</span></div>
               </div>
-              <div class="stat-icon blue">⚡</div>
+              <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;">⚡</div>
             </div>
-            <div class="stat-change">Bot speed</div>
+            <div class="stat-change" style="color: rgba(255,255,255,0.9);">Bot speed</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="stat-header">
               <div>
                 <div class="stat-label">Total Leads</div>
-                <div class="stat-value" id="stat-leads">0</div>
+                <div class="stat-value" id="stat-leads" style="color: #1E293B;">0</div>
               </div>
-              <div class="stat-icon orange">🎯</div>
+              <div class="stat-icon" style="background: #FEF3C7; color: #D97706;">🎯</div>
             </div>
             <div class="stat-change">Captured</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="stat-header">
               <div>
                 <div class="stat-label">Conversion Rate</div>
-                <div class="stat-value" id="stat-conversion">0<span style="font-size:14px;opacity:0.6;">%</span></div>
+                <div class="stat-value" id="stat-conversion" style="color: #1E293B;">0<span style="font-size:14px;opacity:0.6;">%</span></div>
               </div>
-              <div class="stat-icon green">📊</div>
+              <div class="stat-icon" style="background: #D1FAE5; color: #059669;">📊</div>
             </div>
             <div class="stat-change">Users → Leads</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="stat-header">
               <div>
                 <div class="stat-label">FAQ Hits</div>
-                <div class="stat-value" id="stat-faq-hits">0</div>
+                <div class="stat-value" id="stat-faq-hits" style="color: #1E293B;">0</div>
               </div>
-              <div class="stat-icon purple">❓</div>
+              <div class="stat-icon" style="background: #F3E8FF; color: #7C3AED;">❓</div>
             </div>
             <div class="stat-change">AI not needed</div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header"><h2>Response Source Breakdown</h2></div>
-          <div class="card-body">
-            <div id="source-breakdown-content"></div>
+        <div class="card" style="border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 16px;">
+          <div class="card-header" style="border-bottom: 1px solid #f1f5f9; padding: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; color: #1E293B;">Response Source Breakdown</h2>
+            <p style="font-size: 13px; color: #64748b; margin-top: 4px;">Analyze where your bot's answers are coming from.</p>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2>📉 Drop-off Analytics</h2></div>
-          <div class="card-body">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
-              <div style="background:#FEF3C7;padding:16px;border-radius:10px;">
-                <div style="font-size:12px;color:#92400E;font-weight:600;text-transform:uppercase;">Abandoned Sessions</div>
-                <div style="font-size:28px;font-weight:700;color:#78350F;margin-top:4px;" id="stat-abandoned">0</div>
-              </div>
-              <div style="background:#FEE2E2;padding:16px;border-radius:10px;">
-                <div style="font-size:12px;color:#991B1B;font-weight:600;text-transform:uppercase;">Abandon Rate</div>
-                <div style="font-size:28px;font-weight:700;color:#7F1D1D;margin-top:4px;" id="stat-abandon-rate">0%</div>
-              </div>
-            </div>
-            <h3 style="font-size:14px;margin-bottom:10px;">Messages per Session</h3>
-            <div id="dropoff-buckets"></div>
-            <h3 style="font-size:14px;margin:20px 0 10px;">Widget Version Distribution</h3>
-            <div id="version-distribution"></div>
+          <div class="card-body" style="padding: 24px;">
+            <div id="source-breakdown-content"></div>
           </div>
         </div>
       </div>
@@ -1299,7 +1282,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       document.getElementById('page-title').textContent = titles[page] || 'Dashboard';
 
       if (page === 'leads') loadLeads();
-      if (page === 'analytics') { loadAnalytics(); loadDropoff(); }
+      if (page === 'analytics') loadAnalytics();
       if (page === 'bots') loadBots();
     }
 
@@ -1694,7 +1677,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       try {
         const res = await fetchAuth(`${API}/api/analytics`);
         const data = await res.json();
-        document.getElementById('stat-avg-response').innerHTML = `${data.avgResponseMs}<span style="font-size:14px;opacity:0.6;">ms</span>`;
+        document.getElementById('stat-avg-response').innerHTML = `${data.avgResponseMs}<span style="font-size:14px;opacity:0.8;margin-left:2px;">ms</span>`;
         document.getElementById('stat-leads').textContent = data.totalLeads || 0;
         document.getElementById('stat-conversion').innerHTML = `${data.conversionRate || 0}<span style="font-size:14px;opacity:0.6;">%</span>`;
 
@@ -1707,19 +1690,26 @@ add_action('wp_footer', 'add_chatbot_widget');
           const pct = total > 0 ? ((s.count / total) * 100).toFixed(1) : 0;
           const colors = { faq: '#10B981', ai: '#4F46E5', fallback: '#F59E0B', error: '#EF4444' };
           const labels = { faq: '📚 FAQ Match', ai: '🤖 AI Response', fallback: '💬 Keyword Fallback', error: '⚠️ Error' };
+          const bgColors = { faq: '#D1FAE5', ai: '#E0E7FF', fallback: '#FEF3C7', error: '#FEE2E2' };
           return `
-            <div style="margin-bottom:12px;">
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                <span style="font-weight:500;">${labels[s.source] || s.source}</span>
-                <span style="color:#888;">${s.count} (${pct}%)</span>
+            <div style="margin-bottom:20px; background: #fafbfc; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${colors[s.source] || '#888'}; box-shadow: 0 0 8px ${colors[s.source] || '#888'}88;"></div>
+                  <span style="font-weight:600;color:#1E293B;font-size:14px;">${labels[s.source] || s.source}</span>
+                </div>
+                <div style="text-align:right;">
+                  <span style="font-weight:700;font-size:16px;color:#0F172A;">${pct}%</span>
+                  <span style="color:#64748b;font-size:12px;margin-left:6px;">(${s.count} queries)</span>
+                </div>
               </div>
-              <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;">
-                <div style="height:100%;width:${pct}%;background:${colors[s.source] || '#888'};transition:width 0.5s;"></div>
+              <div style="height:8px;background:${bgColors[s.source] || '#f0f0f0'};border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${colors[s.source] || '#888'};transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); border-radius:4px;"></div>
               </div>
             </div>
           `;
         }).join('');
-        document.getElementById('source-breakdown-content').innerHTML = content || '<div class="empty-state">No data yet</div>';
+        document.getElementById('source-breakdown-content').innerHTML = content || '<div class="empty-state">No analytical data available yet.</div>';
       } catch (e) { console.error(e); }
     }
 
@@ -2025,42 +2015,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       showToast('New API key generated!');
     }
 
-    // ---- Drop-off Analytics ---------------------------------
-    async function loadDropoff() {
-      try {
-        const res = await fetchAuth(`${API}/api/dropoff`);
-        const data = await res.json();
-        document.getElementById('stat-abandoned').textContent = data.abandonedCount || 0;
-        document.getElementById('stat-abandon-rate').textContent = (data.abandonRate || 0) + '%';
 
-        // Buckets
-        const total = (data.buckets || []).reduce((a, b) => a + b.count, 0);
-        const bucketsHTML = (data.buckets || []).map(b => {
-          const pct = total > 0 ? ((b.count / total) * 100).toFixed(1) : 0;
-          return `
-            <div style="margin-bottom:10px;">
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                <span>${b.bucket}</span>
-                <span style="color:#888;">${b.count} (${pct}%)</span>
-              </div>
-              <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;">
-                <div style="height:100%;width:${pct}%;background:#4F46E5;"></div>
-              </div>
-            </div>
-          `;
-        }).join('');
-        document.getElementById('dropoff-buckets').innerHTML = bucketsHTML || '<div class="empty-state" style="padding:16px;">No data yet</div>';
-
-        // Versions
-        const versHTML = (data.versions || []).map(v => `
-          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#f7f8fc;border-radius:8px;margin-bottom:6px;font-size:13px;">
-            <span><b>v${v.version}</b></span>
-            <span style="color:#888;">${v.count} sessions</span>
-          </div>
-        `).join('');
-        document.getElementById('version-distribution').innerHTML = versHTML || '<div class="empty-state" style="padding:16px;">No version data</div>';
-      } catch (e) { console.error(e); }
-    }
 
     // ---- Flow Builder Logic ---------------------------------
     let currentFlowId = null;

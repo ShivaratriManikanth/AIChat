@@ -217,14 +217,43 @@
     .pw-wrap input { flex: 1; padding-right: 38px; }
     .eye-btn { position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888; padding: 0; line-height: 1; }
     .eye-btn:hover { color: #4F46E5; }
-    /* Plans table */
-    .plans-grid { display: grid; grid-template-columns: 1fr 1fr auto auto auto; gap: 8px; align-items: center; }
-    .plans-grid input, .plans-grid select { padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; }
-    .plans-grid input:focus, .plans-grid select:focus { border-color: #4F46E5; }
-    .plan-row { display: contents; }
-    .btn-icon { padding: 6px 10px; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; }
-    .btn-save { background: #EEF2FF; color: #4F46E5; }
-    .btn-del  { background: #FEE2E2; color: #DC2626; }
+    /* Plans Table / Manager enhancements */
+    .plans-header {
+      display: grid; grid-template-columns: 2fr 1.5fr 1.5fr auto auto; gap: 12px;
+      align-items: center; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+      color: #888; letter-spacing: 0.5px; margin-bottom: 12px; padding: 0 16px;
+    }
+    .plan-row-wrapper {
+      display: grid; grid-template-columns: 2fr 1.5fr 1.5fr auto auto; gap: 12px;
+      align-items: center; background: white; border: 1px solid #f0f0f0;
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 10px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .plan-row-wrapper:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03); border-color: #e5e7eb;
+    }
+    .plan-input {
+      padding: 10px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-size: 13.5px; font-family: inherit; outline: none; background: #fafafa;
+      width: 100%; transition: all 0.2s; color: #333;
+    }
+    .plan-input:focus {
+      border-color: #4F46E5; background: white; box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .btn-plan-action {
+      padding: 10px 14px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px; justify-content: center;
+    }
+    .btn-plan-save { background: #EEF2FF; color: #4F46E5; }
+    .btn-plan-save:hover { background: #E0E7FF; transform: translateY(-1px); }
+    .btn-plan-del { background: #FEE2E2; color: #DC2626; }
+    .btn-plan-del:hover { background: #FECACA; transform: translateY(-1px); }
+    
+    .add-plan-wrapper {
+      display: grid; grid-template-columns: 2fr 1.5fr 1.5fr auto; gap: 12px;
+      align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e5e7eb;
+    }
     .mono-pw { font-family: monospace; font-size: 11px; color: #666; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
   </style>
 </head>
@@ -275,18 +304,18 @@
     <!-- Plans Management -->
     <div class="card">
       <div class="card-header"><h2>📋 Subscription Plans</h2></div>
-      <div class="card-body">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:8px;align-items:center;font-size:11px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:6px;padding:0 4px">
-          <span>Plan Name</span><span>Price (₹/mo)</span><span>Duration</span><span></span><span></span>
+      <div class="card-body" style="padding: 24px 20px;">
+        <div class="plans-header">
+          <span>Plan Name</span><span>Price (₹/mo)</span><span>Billing Cycle</span><span></span><span></span>
         </div>
         <div id="plansContainer"></div>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0">
-          <input type="text" id="newPlanName" placeholder="Plan name e.g. Enterprise">
-          <input type="number" id="newPlanPrice" placeholder="Price" min="0">
-          <select id="newPlanDuration">
+        <div class="add-plan-wrapper">
+          <input type="text" id="newPlanName" placeholder="Plan name e.g. Enterprise" class="plan-input">
+          <input type="number" id="newPlanPrice" placeholder="Price" min="0" class="plan-input">
+          <select id="newPlanDuration" class="plan-input">
             <option>1 Month</option><option>3 Months</option><option>6 Months</option><option>1 Year</option>
           </select>
-          <button class="btn btn-primary" style="padding:9px 16px;font-size:13px;" onclick="addPlan()">➕ Add</button>
+          <button class="btn btn-primary" style="padding:10px 24px;font-size:14px;white-space:nowrap;" onclick="addPlan()">➕ Add Plan</button>
         </div>
       </div>
     </div>
@@ -414,14 +443,14 @@
       // Render plans manager
       const container = document.getElementById('plansContainer');
       container.innerHTML = PLANS.map(p => `
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:6px;">
-          <input type="text" value="${p.name}" id="pname_${p.id}" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
-          <input type="number" value="${p.price}" id="pprice_${p.id}" min="0" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
-          <select id="pdur_${p.id}" style="padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;outline:none;">
+        <div class="plan-row-wrapper">
+          <input type="text" value="${p.name}" id="pname_${p.id}" class="plan-input" placeholder="Plan Name">
+          <input type="number" value="${p.price}" id="pprice_${p.id}" min="0" class="plan-input" placeholder="Price">
+          <select id="pdur_${p.id}" class="plan-input">
             ${['1 Month','3 Months','6 Months','1 Year'].map(d=>`<option ${p.duration===d?'selected':''}>${d}</option>`).join('')}
           </select>
-          <button class="btn-icon btn-save" onclick="savePlan(${p.id})">💾 Save</button>
-          <button class="btn-icon btn-del" onclick="deletePlan(${p.id})">🗑️</button>
+          <button class="btn-plan-action btn-plan-save" onclick="savePlan(${p.id})">💾 Save</button>
+          <button class="btn-plan-action btn-plan-del" onclick="deletePlan(${p.id})">🗑️</button>
         </div>`).join('');
       // Populate the plan dropdowns
       const planOptions = PLANS.map(p => `<option value="${p.id}">${p.name} — ₹${p.price}/${p.duration}</option>`).join('');

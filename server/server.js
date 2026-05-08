@@ -1771,13 +1771,23 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     });
   }
 
-  // Build transporter with timeouts + force IPv4 (Railway has no IPv6 routing)
+  // Pre-resolve hostname to IPv4 (Railway has no IPv6 — same fix as main server)
+  let resolvedHost = smtpHost;
+  try {
+    const dns = require('dns').promises;
+    const addrs = await dns.resolve4(smtpHost);
+    if (addrs && addrs.length > 0) resolvedHost = addrs[0];
+    console.log(`[Broadcast SMTP] Resolved ${smtpHost} → ${resolvedHost}`);
+  } catch(e) {
+    console.warn('[Broadcast SMTP] DNS resolve4 failed, using raw host:', e.message);
+  }
+
+  // Build transporter using the pre-resolved IPv4 address
   const transporter = nodemailer.createTransport({
-    host: smtpHost,
+    host: resolvedHost,
     port: smtpPort,
     secure: smtpPort == 465,
     auth: { user: smtpUser, pass: smtpPass },
-    family: 4,                 // Force IPv4 — Railway ENETUNREACH fix
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000

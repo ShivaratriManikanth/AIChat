@@ -1771,15 +1771,16 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     });
   }
 
-  // Build transporter with timeouts to prevent hanging on Railway
+  // Build transporter with timeouts + force IPv4 (Railway has no IPv6 routing)
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
     secure: smtpPort == 465,
     auth: { user: smtpUser, pass: smtpPass },
-    connectionTimeout: 10000,  // 10s to establish connection
-    greetingTimeout: 10000,    // 10s for SMTP greeting
-    socketTimeout: 15000       // 15s for socket inactivity
+    family: 4,                 // Force IPv4 — Railway ENETUNREACH fix
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 
   // Verify SMTP connection before sending

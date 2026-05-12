@@ -1005,7 +1005,7 @@
 
         <div id="chatbot-shortcuts-hint" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}">ESC close &bull; Ctrl+F search &bull; Ctrl+Enter send</div>
 
-        ${CONFIG.showBranding ? '<div id="chatbot-branding">Powered by AI Chatbot Widget</div>' : ''}
+        ${CONFIG.showBranding ? `<div id="chatbot-branding">${CONFIG.branding || 'Powered by AI Chatbot Widget'}</div>` : ''}
       </div>
     `;
     document.body.appendChild(container);

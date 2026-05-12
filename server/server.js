@@ -257,6 +257,68 @@ try {
   console.error('CRITICAL DATABASE ERROR:', err);
 }
 
+// ---- Plan Limits & Features ---------------------------------
+const PLAN_LIMITS = {
+  1: { // Basic
+    name: 'Basic',
+    monthlyMessages: 1000,
+    maxBots: 1,
+    models: ['gpt-3.5-turbo', 'gpt-4o-mini'],
+    branding: 'Powered by GAdigital',
+    features: ['email_capture', 'faq']
+  },
+  2: { // Standard
+    name: 'Standard',
+    monthlyMessages: 5000,
+    maxBots: 3,
+    models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4'],
+    branding: 'Custom Branding',
+    features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics']
+  },
+  3: { // Premium
+    name: 'Premium',
+    monthlyMessages: 50000,
+    maxBots: 10,
+    models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4', 'gpt-4o'],
+    branding: 'Full Customization',
+    features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics', 'priority_support', 'api_access']
+  }
+};
+
+function getClientPlan(clientId) {
+  if (!db) return PLAN_LIMITS[1];
+  const client = db.prepare('SELECT plan_id FROM clients WHERE id = ?').get(clientId);
+  const planId = client?.plan_id || 1;
+  return PLAN_LIMITS[planId] || PLAN_LIMITS[1];
+}
+
+async function checkMessageLimit(clientId) {
+  if (!db) return true;
+  const plan = getClientPlan(clientId);
+  
+  // Count messages in current month
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0,0,0,0);
+  
+  const result = db.prepare(`
+    SELECT COUNT(*) as count 
+    FROM chat_history 
+    WHERE client_id = ? 
+    AND role = 'assistant'
+    AND timestamp >= ?
+  `).get(clientId, startOfMonth.toISOString());
+  
+  return result.count < plan.monthlyMessages;
+}
+
+function checkBotLimit(clientId) {
+  if (!db) return true;
+  const plan = getClientPlan(clientId);
+  const result = db.prepare('SELECT COUNT(*) as count FROM bots WHERE client_id = ?').get(clientId);
+  return result.count < plan.maxBots;
+}
+
 // In-memory fallback
 const memoryStore = {};
 
@@ -511,15 +573,30 @@ function saveClientBotConfig(clientId, config) {
 app.get('/api/config', (req, res) => {
   const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
   let config;
+  let clientId = 'default_client';
+
   if (apiKey && db) {
-    const bot = db.prepare('SELECT config FROM bots WHERE api_key = ?').get(apiKey);
-    config = bot ? JSON.parse(bot.config) : loadConfig();
+    const bot = db.prepare('SELECT client_id, config FROM bots WHERE api_key = ?').get(apiKey);
+    if (bot) {
+      config = JSON.parse(bot.config);
+      clientId = bot.client_id;
+    } else {
+      config = loadConfig();
+    }
   } else {
     config = loadConfig();
   }
+
+  // Add branding info based on plan
+  const plan = getClientPlan(clientId);
+  
   // Don't expose sensitive data to widget
   config.emailCapture = true; // Force mandatory
   const { aiModel, systemPrompt, ...safeConfig } = config;
+  
+  safeConfig.branding = plan.branding;
+  safeConfig.planName = plan.name;
+  
   res.json(safeConfig);
 });
 
@@ -666,6 +743,15 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     return res.status(400).json({ error: 'sessionId is required' });
   }
 
+  // ---- Plan Limit Check ----
+  const withinLimit = await checkMessageLimit(req.clientId);
+  if (!withinLimit) {
+    return res.status(403).json({ 
+      reply: "Monthly message limit reached for your current plan. Please upgrade to continue.",
+      error: "LIMIT_REACHED"
+    });
+  }
+
   // Handle flow responses
   if (flowNodeId && flowId) {
     if (db) {
@@ -757,8 +843,14 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
         ...history.map(h => ({ role: h.role, content: h.content })),
       ];
 
+      const plan = getClientPlan(req.clientId);
+      let selectedModel = config.aiModel || 'gpt-3.5-turbo';
+      if (!plan.models.includes(selectedModel)) {
+        selectedModel = plan.models[0];
+      }
+
       const completion = await openai.chat.completions.create({
-        model: config.aiModel || 'gpt-3.5-turbo',
+        model: selectedModel,
         messages,
         max_tokens: 500,
         temperature: 0.7,
@@ -1128,6 +1220,13 @@ app.get('/api/bots', requireAuth, (req, res) => {
 app.post('/api/bots', requireAuth, (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Bot name required' });
+
+  // ---- Bot Limit Check ----
+  const canCreateBot = checkBotLimit(req.clientId);
+  if (!canCreateBot) {
+    return res.status(403).json({ error: 'Bot limit reached for your current plan. Please upgrade to create more bots.' });
+  }
+
   const bot_id = 'bot_' + require('crypto').randomBytes(6).toString('hex');
   const api_key = 'key_' + require('crypto').randomBytes(20).toString('hex');
   const defaultConfig = JSON.stringify({ 
@@ -1394,7 +1493,8 @@ app.get('/api/test-smtp', async (req, res) => {
 async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
   console.log('📧 Attempting to send email to:', email);
   
-  const planName = plan_id === '3' ? 'Premium' : plan_id === '2' ? 'Standard' : 'Basic';
+  const plan = PLAN_LIMITS[plan_id] || PLAN_LIMITS[1];
+  const planName = plan.name;
   const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
   const subject = '🚀 Your AI Chatbot is Ready! - GAdigital Solution';
 

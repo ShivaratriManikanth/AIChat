@@ -613,11 +613,18 @@
         <div class="card">
           <div class="card-header" style="padding: 24px 24px; border-bottom: 1px solid #f1f5f9; background: white;">
             <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;">All Users</h2>
-            <div class="card-actions" style="position: relative;">
-              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              </span>
-              <input type="text" id="user-search" placeholder="Search by email..." style="padding:10px 14px 10px 38px;border:1px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;width:280px;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onfocus="this.style.borderColor='#6366F1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div class="card-actions" style="display:flex;gap:10px;align-items:center;">
+              <!-- Domain Filter -->
+              <select id="user-domain-filter" style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;background:white;cursor:pointer;" onchange="loadUsers()">
+                <option value="">All Domains</option>
+              </select>
+
+              <div style="position: relative;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </span>
+                <input type="text" id="user-search" placeholder="Search by email..." style="padding:10px 14px 10px 38px;border:1px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;width:240px;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05);" onfocus="this.style.borderColor='#6366F1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+              </div>
             </div>
           </div>
           <div class="card-body" style="padding:0;">
@@ -745,16 +752,27 @@
 
       <!-- ======== BOTS (Multi-tenant) PAGE ======== -->
       <div class="panel" id="page-bots">
-        <div class="card" style="display:none;">
+        <div class="card" id="create-bot-card">
           <div class="card-header">
             <h2>Create New Bot</h2>
           </div>
           <div class="card-body">
-            <div style="display:flex;gap:10px;">
-              <input type="text" id="new-bot-name" placeholder="e.g., Acme Store Bot" style="flex:1;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <input type="text" id="new-bot-name" placeholder="Bot Name (e.g., Acme Store Bot)" style="flex:1;min-width:200px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;">
+              <input type="text" id="new-bot-domain" placeholder="Domain (e.g., acme.com)" style="flex:1;min-width:200px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;">
               <button class="btn btn-primary" onclick="createBot()">➕ Create Bot</button>
             </div>
-            <p style="font-size:12px;color:#888;margin-top:8px;">Each bot gets its own unique ID and API key for use on different websites.</p>
+            <p style="font-size:12px;color:#888;margin-top:8px;">Each bot is assigned to a unique domain and gets its own API key.</p>
+            
+            <!-- Success/Embed script area -->
+            <div id="new-bot-script-container" style="display:none;margin-top:20px;padding:15px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="font-size:13px;font-weight:700;color:#0f172a;">🎉 Bot Created Successfully!</span>
+                <button class="btn btn-outline" style="padding:4px 10px;font-size:11px;" onclick="copyNewBotScript()">Copy Script</button>
+              </div>
+              <p style="font-size:12px;color:#64748b;margin-bottom:8px;">Copy and paste this script into your website's <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code>:</p>
+              <textarea id="new-bot-script-text" readonly style="width:100%;height:100px;padding:12px;font-family:monospace;font-size:12px;border:1.5px solid #cbd5e1;border-radius:10px;background:white;resize:none;color:#334155;"></textarea>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -764,6 +782,7 @@
               <thead>
                 <tr>
                   <th>Bot Name</th>
+                  <th>Domain</th>
                   <th>Bot ID</th>
                   <th>API Key</th>
                   <th>Created</th>
@@ -1687,9 +1706,26 @@ add_action('wp_footer', 'add_chatbot_widget');
     // ---- Load Users -----------------------------------------
     async function loadUsers() {
       try {
-        const res = await fetchAuth(`${API}/api/users`);
+        const domain = document.getElementById('user-domain-filter').value;
+        const url = domain ? `${API}/api/users?domain=${encodeURIComponent(domain)}` : `${API}/api/users`;
+        const res = await fetchAuth(url);
         allUsers = await res.json();
         renderUsers(allUsers);
+        
+        // Populate domain filter if empty
+        const filter = document.getElementById('user-domain-filter');
+        if (filter.options.length === 1) {
+           const botsRes = await fetchAuth(`${API}/api/bots`);
+           const bots = await botsRes.json();
+           bots.forEach(b => {
+             if (b.domain) {
+               const opt = document.createElement('option');
+               opt.value = b.domain;
+               opt.textContent = b.domain;
+               filter.appendChild(opt);
+             }
+           });
+        }
       } catch (e) { console.error(e); }
     }
 
@@ -2316,12 +2352,13 @@ add_action('wp_footer', 'add_chatbot_widget');
       const bots = await res.json();
       const tbody = document.getElementById('bots-table-body');
       if (bots.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🤖</div>No bots registered yet</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🤖</div>No bots registered yet</div></td></tr>';
         return;
       }
       tbody.innerHTML = bots.map(b => `
         <tr>
           <td style="font-weight:600;">${b.name}</td>
+          <td style="color:#6366F1;font-weight:500;">${b.domain || '-'}</td>
           <td class="session-cell">${b.bot_id}</td>
           <td class="session-cell" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${b.api_key.substring(0, 30)}...</td>
           <td style="font-size:12px;color:#888;">${formatDate(b.created_at)}</td>
@@ -2335,24 +2372,42 @@ add_action('wp_footer', 'add_chatbot_widget');
 
     async function createBot() {
       const name = document.getElementById('new-bot-name').value.trim();
+      const domain = document.getElementById('new-bot-domain').value.trim();
+      
       if (!name) { alert('Enter a bot name'); return; }
+      if (!domain) { alert('Enter a domain name'); return; }
+      
       try {
         const res = await fetchAuth(`${API}/api/bots`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name })
+          body: JSON.stringify({ name, domain })
         });
+        const data = await res.json();
+        
         if (res.ok) {
           document.getElementById('new-bot-name').value = '';
+          document.getElementById('new-bot-domain').value = '';
           showToast('Bot created!');
           loadBots();
+          
+          // Show embed script
+          const scriptText = `<script\n  src="${API}/widget/chatbot.js"\n  data-server="${API}"\n  data-bot-id="${data.bot_id}"\n  data-api-key="${data.api_key}"\n><\/script>`;
+          document.getElementById('new-bot-script-text').value = scriptText;
+          document.getElementById('new-bot-script-container').style.display = 'block';
         } else {
-          const data = await res.json();
           alert('Failed to create bot: ' + (data.error || res.statusText));
         }
       } catch (err) {
         alert('Network error: ' + err.message);
       }
+    }
+
+    function copyNewBotScript() {
+      const text = document.getElementById('new-bot-script-text');
+      text.select();
+      document.execCommand('copy');
+      showToast('Script copied to clipboard!');
     }
 
     async function deleteBot(botId) {

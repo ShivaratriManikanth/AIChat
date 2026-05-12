@@ -205,6 +205,7 @@ try {
   // Alter existing tables for multi-tenancy
   try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
+  try { db.exec(`ALTER TABLE bots ADD COLUMN domain TEXT`); } catch(e){}
 
   // Data Migration: Fix chat history messages that have 'default_client' but belong to a specific client's session
   try {
@@ -278,7 +279,7 @@ const PLAN_LIMITS = {
   3: { // Premium
     name: 'Premium',
     monthlyMessages: 50000,
-    maxBots: 10,
+    maxBots: 6,
     models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4', 'gpt-4o'],
     branding: 'Full Customization',
     features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics', 'priority_support', 'api_access']
@@ -624,19 +625,33 @@ app.post('/api/register', checkApiKey, (req, res) => {
   res.json({ success: true });
 });
 
-// GET /api/users — Admin: list all users with email
 app.get('/api/users', requireAuth, (req, res) => {
+  const domainFilter = req.query.domain;
   if (db) {
-    const users = db.prepare(`
+    let query = `
       SELECT u.email, u.session_id, u.created_at,
              COUNT(c.id) as message_count,
-             MAX(c.timestamp) as last_message
+             MAX(c.timestamp) as last_message,
+             b.domain as bot_domain
       FROM users u
       LEFT JOIN chat_history c ON u.session_id = c.session_id
+      LEFT JOIN sessions s ON u.session_id = s.session_id
+      LEFT JOIN bots b ON s.bot_id = b.bot_id
       WHERE u.client_id = ?
+    `;
+    let params = [req.clientId];
+
+    if (domainFilter) {
+      query += ` AND b.domain = ?`;
+      params.push(domainFilter);
+    }
+
+    query += `
       GROUP BY u.email, u.session_id
       ORDER BY u.created_at DESC
-    `).all(req.clientId);
+    `;
+
+    const users = db.prepare(query).all(...params);
     return res.json(users);
   }
   const users = Object.entries(memoryStore._users || {}).map(([sid, email]) => ({
@@ -1207,24 +1222,33 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
 // GET /api/bots - List all bots (multi-tenant)
 app.get('/api/bots', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  const botsRows = db.prepare('SELECT bot_id, name, config, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  const botsRows = db.prepare('SELECT bot_id, name, domain, config, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
   const bots = botsRows.map(row => {
     let apiKey = '';
     try { apiKey = JSON.parse(row.config || '{}').apiKey || ''; } catch(e){}
-    return { bot_id: row.bot_id, name: row.name, api_key: apiKey, created_at: row.created_at };
+    return { bot_id: row.bot_id, name: row.name, domain: row.domain, api_key: apiKey, created_at: row.created_at };
   });
   res.json(bots);
 });
 
 // POST /api/bots - Create a new bot
 app.post('/api/bots', requireAuth, (req, res) => {
-  const { name } = req.body;
+  const { name, domain } = req.body;
   if (!name) return res.status(400).json({ error: 'Bot name required' });
+  if (!domain) return res.status(400).json({ error: 'Domain name required' });
+
+  // Domain uniqueness check
+  if (db) {
+    const existing = db.prepare('SELECT bot_id FROM bots WHERE domain = ?').get(domain);
+    if (existing) {
+      return res.status(400).json({ error: 'This domain is already in use by another bot.' });
+    }
+  }
 
   // ---- Bot Limit Check ----
   const canCreateBot = checkBotLimit(req.clientId);
   if (!canCreateBot) {
-    return res.status(403).json({ error: 'Bot limit reached for your current plan. Please upgrade to create more bots.' });
+    return res.status(403).json({ error: 'Not eligible as your plan has reached its limit. Please upgrade to create more bots.' });
   }
 
   const bot_id = 'bot_' + require('crypto').randomBytes(6).toString('hex');
@@ -1237,9 +1261,9 @@ app.post('/api/bots', requireAuth, (req, res) => {
     emailCaptureSubtitle: 'Please enter your email to start.'
   });
   if (db) {
-    db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES (?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId);
+    db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id, domain) VALUES (?, ?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId, domain);
   }
-  res.json({ success: true, bot_id, api_key, name });
+  res.json({ success: true, bot_id, api_key, name, domain });
 });
 
 // DELETE /api/bots/:id

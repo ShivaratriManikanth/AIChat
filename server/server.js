@@ -673,7 +673,7 @@ app.get('/api/users', requireAuth, (req, res) => {
   res.json(users);
 });
 
-// GET /api/stats — Admin: dashboard stats
+// GET /api/stats - Admin: dashboard stats
 app.get('/api/stats', requireAuth, (req, res) => {
   if (db) {
     const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
@@ -682,22 +682,30 @@ app.get('/api/stats', requireAuth, (req, res) => {
     const activeSessions = db.prepare(
       "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND updated_at > datetime('now', '-30 minutes')"
     ).get(req.clientId).count;
-    const recentUsers = db.prepare(`
-      SELECT u.email, u.created_at, COUNT(c.id) as message_count
-      FROM users u
-      LEFT JOIN chat_history c ON u.session_id = c.session_id
-      WHERE u.client_id = ?
-      GROUP BY u.email
-      ORDER BY u.created_at DESC LIMIT 5
-    `).all(req.clientId);
-    return res.json({ totalUsers, totalChats, totalSessions, activeSessions, recentUsers });
+    
+    // Get plan info
+    const client = db.prepare(`
+      SELECT c.created_at, p.name as plan_name, p.duration
+      FROM clients c
+      LEFT JOIN plans p ON c.plan_id = p.id
+      WHERE c.id = ?
+    `).get(req.clientId);
+
+    let daysRemaining = 0;
+    let planName = 'Trial';
+    if (client) {
+      planName = client.plan_name || 'Free Plan';
+      const created = new Date(client.created_at);
+      const durationDays = client.duration && client.duration.toLowerCase().includes('month') ? 30 : 365;
+      const expiry = new Date(created.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      daysRemaining = Math.max(0, Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)));
+    }
+
+    return res.json({ totalUsers, totalChats, totalSessions, activeSessions, planName, daysRemaining });
   }
   res.json({
-    totalUsers: Object.keys(memoryStore._users || {}).length,
-    totalChats: Object.values(memoryStore).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0),
-    totalSessions: Object.keys(memoryStore).filter(k => k !== '_users').length,
-    activeSessions: 0,
-    recentUsers: []
+    totalUsers: 0, totalChats: 0, totalSessions: 0, activeSessions: 0, planName: 'Local', daysRemaining: 0
   });
 });
 

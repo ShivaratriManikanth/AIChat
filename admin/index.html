@@ -784,7 +784,6 @@
                   <th>Bot Name</th>
                   <th>Domain</th>
                   <th>Bot ID</th>
-                  <th>API Key</th>
                   <th>Created</th>
                   <th>Action</th>
                 </tr>
@@ -2352,7 +2351,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       const bots = await res.json();
       const tbody = document.getElementById('bots-table-body');
       if (bots.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🤖</div>No bots registered yet</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🤖</div>No bots registered yet</div></td></tr>';
         return;
       }
       tbody.innerHTML = bots.map(b => `
@@ -2360,7 +2359,6 @@ add_action('wp_footer', 'add_chatbot_widget');
           <td style="font-weight:600;">${b.name}</td>
           <td style="color:#6366F1;font-weight:500;">${b.domain || '-'}</td>
           <td class="session-cell">${b.bot_id}</td>
-          <td class="session-cell" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${b.api_key.substring(0, 30)}...</td>
           <td style="font-size:12px;color:#888;">${formatDate(b.created_at)}</td>
           <td>
             <button class="btn-view" onclick="showBotEmbed('${b.bot_id}', '${b.api_key}')">Embed</button>

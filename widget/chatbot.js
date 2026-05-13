@@ -2149,6 +2149,19 @@
   // ---- Initialize -------------------------------------------
   async function init() {
     await loadConfig();
+
+    // Domain Restriction Check
+    if (CONFIG.authorizedDomain && !IS_PREVIEW) {
+      const currentHost = window.location.hostname;
+      // Strip protocol/path from authorized domain if user entered full URL
+      const allowedHost = CONFIG.authorizedDomain.toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+      
+      if (currentHost !== allowedHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+        console.error(`Chatbot Error: Domain "${currentHost}" is not authorized for Bot ID "${BOT_ID}".`);
+        return; 
+      }
+    }
+
     await loadActiveFlow();
     injectStyles();
     buildWidget();

@@ -577,10 +577,11 @@ app.get('/api/config', (req, res) => {
   let clientId = 'default_client';
 
   if (apiKey && db) {
-    const bot = db.prepare('SELECT client_id, config FROM bots WHERE api_key = ?').get(apiKey);
+    const bot = db.prepare('SELECT client_id, config, domain FROM bots WHERE api_key = ?').get(apiKey);
     if (bot) {
       config = JSON.parse(bot.config);
       clientId = bot.client_id;
+      config.authorizedDomain = bot.domain;
     } else {
       config = loadConfig();
     }

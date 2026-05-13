@@ -19,6 +19,7 @@
   const BOT_ID     = scriptTag?.getAttribute('data-bot-id') || 'default';
   const API_KEY    = scriptTag?.getAttribute('data-api-key') || '';
   const CLIENT_ID  = scriptTag?.getAttribute('data-client-id') || 'default_client';
+  const IS_PREVIEW = scriptTag?.getAttribute('data-preview') === 'true';
   
   let CONFIG = {
     botName: 'AI Assistant',
@@ -52,7 +53,7 @@
   let isSearchOpen = false;
   let chatIsOpen = false;
   let userEmail = localStorage.getItem(LS_EMAIL) || '';
-  let emailVerified = !!userEmail;
+  let emailVerified = !!userEmail || IS_PREVIEW;
   let userInteractions = parseInt(localStorage.getItem(LS_INTER) || '0');
   let leadCaptured = localStorage.getItem(LS_LEAD) === 'true';
   let pageUrl = window.location.href;

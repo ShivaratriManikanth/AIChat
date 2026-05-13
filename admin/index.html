@@ -535,7 +535,7 @@
         <div id="bot-setup-selector-wrap" style="margin-right: 15px; display: none; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
           <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Working Bot:</span>
           <select id="global-bot-selector" onchange="onWorkingBotChange()" style="background: transparent; border: none; font-size: 13px; font-weight: 600; color: #0f172a; outline: none; cursor: pointer; padding: 4px 0;">
-            <option value="">Default Bot</option>
+            <option value="">Loading bots...</option>
           </select>
         </div>
 
@@ -2677,18 +2677,25 @@
         // Preserve current selection if possible
         const prevValue = selector.value;
         
-        selector.innerHTML = '<option value="">Default Bot</option>';
-        allBots.forEach(bot => {
+        selector.innerHTML = ''; // Removed Default Bot option
+        if (allBots.length === 0) {
+          selector.innerHTML = '<option value="">No bots found</option>';
+        }
+
+        allBots.forEach((bot, index) => {
           const opt = document.createElement('option');
           opt.value = bot.bot_id;
           opt.textContent = bot.name + (bot.domain ? ` (${bot.domain})` : '');
           selector.appendChild(opt);
         });
         
-        if (currentWorkingBotId) {
+        if (currentWorkingBotId && allBots.some(b => b.bot_id === currentWorkingBotId)) {
           selector.value = currentWorkingBotId;
-        } else if (prevValue) {
-          selector.value = prevValue;
+        } else if (allBots.length > 0) {
+          // Auto-select first bot if none selected or selection invalid
+          selector.value = allBots[0].bot_id;
+          currentWorkingBotId = allBots[0].bot_id;
+          localStorage.setItem('current_working_bot_id', currentWorkingBotId);
         }
       } catch (e) { console.error('Failed to load bots for selector', e); }
     }

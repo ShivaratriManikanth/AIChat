@@ -1474,34 +1474,66 @@
 
       <!-- ======== EMBED PAGE ======== -->
       <div class="panel" id="page-embed">
-        <div class="card">
-          <div class="card-header"><h2>Embed on Your Website</h2></div>
-          <div class="card-body">
-            <p style="color:#666;font-size:14px;margin-bottom:20px;">
-              Add this single line of code to any HTML, PHP, WordPress, or Laravel website.
-            </p>
-
-            <h3 style="font-size:14px; margin-bottom:8px;">Universal Script Tag <span style="font-weight:normal; color:#6b7280; font-size:12.5px; margin-left:4px;">(HTML, PHP)</span></h3>
-            <div class="code-block" id="embed-code-block">
-&lt;script src="<span id="embed-url-1"></span>/widget/chatbot.js" data-server="<span id="embed-url-2"></span>"&gt;&lt;/script&gt;
-              <button class="copy-btn" onclick="copyEmbed()">Copy</button>
+        <div class="card" style="border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-radius: 20px;">
+          <div class="card-header" style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); padding: 30px; border-radius: 20px 20px 0 0; color: white; border: none;">
+            <div style="display:flex; align-items:center; gap:15px;">
+              <div style="width:50px; height:50px; background:rgba(255,255,255,0.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px;">📋</div>
+              <div>
+                <h2 style="font-size: 22px; font-weight: 800; color: white; margin: 0; letter-spacing: -0.5px;">Embed on Your Website</h2>
+                <p style="color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 4px;">Choose a bot and get the code to go live.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 30px;">
+            
+            <div style="margin-bottom: 30px; padding: 20px; background: #F8FAFC; border-radius: 16px; border: 1px solid #E2E8F0;">
+              <label style="display: block; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Select Bot / Domain</label>
+              <select id="embed-bot-selector" style="width:100%; padding: 14px; border: 1.5px solid #E2E8F0; border-radius: 12px; font-size: 15px; font-weight: 600; color: #1E293B; outline: none; transition: all 0.2s; cursor: pointer; background: white;" onchange="updateEmbedScripts()">
+                <!-- Options populated by JS -->
+              </select>
             </div>
 
-            <h3 style="font-size:14px; margin: 24px 0 8px;">WordPress (functions.php)</h3>
-            <div class="code-block">
-function add_chatbot_widget() {
-    echo '&lt;script src="<span class="embed-url"></span>/widget/chatbot.js" data-server="<span class="embed-url"></span>"&gt;&lt;/script&gt;';
-}
-add_action('wp_footer', 'add_chatbot_widget');
-              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <div id="embed-scripts-container" style="display:none; animation: fadeIn 0.4s ease;">
+              
+              <div class="embed-section" style="margin-bottom: 30px;">
+                <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="background:#EEF2FF; color:#4F46E5; padding:4px 8px; border-radius:6px; font-size:12px;">1</span> Universal Script Tag (HTML / PHP)
+                </h3>
+                <div class="code-block" style="background:#1E293B; color:#E2E8F0; padding:20px; border-radius:14px; position:relative; font-family:'Fira Code', monospace; font-size:13px; line-height:1.6; border: 1px solid #334155;">
+                  <pre id="script-universal" style="margin:0; white-space:pre-wrap;"></pre>
+                  <button class="copy-btn" onclick="copyPreText('script-universal')" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.1); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer; transition:all 0.2s;">Copy</button>
+                </div>
+              </div>
+
+              <div class="embed-section" style="margin-bottom: 30px;">
+                <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="background:#F0FDF4; color:#16A34A; padding:4px 8px; border-radius:6px; font-size:12px;">2</span> WordPress (functions.php)
+                </h3>
+                <div class="code-block" style="background:#1E293B; color:#E2E8F0; padding:20px; border-radius:14px; position:relative; font-family:'Fira Code', monospace; font-size:13px; line-height:1.6; border: 1px solid #334155;">
+                  <pre id="script-wordpress" style="margin:0; white-space:pre-wrap;"></pre>
+                  <button class="copy-btn" onclick="copyPreText('script-wordpress')" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.1); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer; transition:all 0.2s;">Copy</button>
+                </div>
+              </div>
+
+              <div class="embed-section">
+                <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <span style="background:#FFF1F2; color:#E11D48; padding:4px 8px; border-radius:6px; font-size:12px;">3</span> Laravel (Blade Template)
+                </h3>
+                <div class="code-block" style="background:#1E293B; color:#E2E8F0; padding:20px; border-radius:14px; position:relative; font-family:'Fira Code', monospace; font-size:13px; line-height:1.6; border: 1px solid #334155;">
+                  <pre id="script-laravel" style="margin:0; white-space:pre-wrap;"></pre>
+                  <button class="copy-btn" onclick="copyPreText('script-laravel')" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.1); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer; transition:all 0.2s;">Copy</button>
+                </div>
+              </div>
+
             </div>
 
-            <h3 style="font-size:14px; margin: 24px 0 8px;">Laravel (Blade Template)</h3>
-            <div class="code-block">
-{{-- Add before &lt;/body&gt; in layout --}}
-&lt;script src="<span class="embed-url"></span>/widget/chatbot.js" data-server="<span class="embed-url"></span>"&gt;&lt;/script&gt;
-              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <div id="embed-empty-state" style="text-align:center; padding:60px 20px;">
+              <div style="font-size:60px; margin-bottom:20px; opacity:0.3;">🤖</div>
+              <h4 style="font-size:18px; color:#1E293B; margin-bottom:8px;">No bots created yet</h4>
+              <p style="color:#64748B; font-size:14px; max-width:400px; margin:0 auto;">You need to create a chatbot in the "Bots" section before you can get the embed code.</p>
+              <button class="btn btn-primary" onclick="switchPage('bots')" style="margin-top:20px;">➕ Create Your First Bot</button>
             </div>
+
           </div>
         </div>
       </div>
@@ -1565,6 +1597,7 @@ add_action('wp_footer', 'add_chatbot_widget');
       if (page === 'analytics') loadAnalytics();
       if (page === 'bots') loadBots();
       if (page === 'broadcast') initBroadcastPage();
+      if (page === 'embed') initEmbedPage();
     }
 
     // ---- Email Broadcast -----------------------------------
@@ -2346,6 +2379,65 @@ add_action('wp_footer', 'add_chatbot_widget');
     }
 
     // ---- Bots (Multi-tenant) --------------------------------
+    // ---- Embed Page Logic ---------------------------------
+    let allBotsForEmbed = [];
+
+    async function initEmbedPage() {
+      try {
+        const res = await fetchAuth(`${API}/api/bots`);
+        allBotsForEmbed = await res.json();
+        
+        const selector = document.getElementById('embed-bot-selector');
+        const emptyState = document.getElementById('embed-empty-state');
+        const scriptsContainer = document.getElementById('embed-scripts-container');
+
+        if (!allBotsForEmbed || allBotsForEmbed.length === 0) {
+          emptyState.style.display = 'block';
+          scriptsContainer.style.display = 'none';
+          selector.innerHTML = '<option value="">No bots available</option>';
+        } else {
+          emptyState.style.display = 'none';
+          scriptsContainer.style.display = 'block';
+          
+          selector.innerHTML = allBotsForEmbed.map(b => 
+            `<option value="${b.bot_id}">${b.name} (${b.domain || 'no domain'})</option>`
+          ).join('');
+          
+          updateEmbedScripts();
+        }
+      } catch (e) {
+        console.error('Error initializing embed page:', e);
+      }
+    }
+
+    function updateEmbedScripts() {
+      const botId = document.getElementById('embed-bot-selector').value;
+      const bot = allBotsForEmbed.find(b => b.bot_id === botId);
+      if (!bot) return;
+
+      const serverUrl = API;
+      const apiKey = bot.api_key;
+
+      // Universal Script
+      const universal = `<script\n  src="${serverUrl}/widget/chatbot.js"\n  data-server="${serverUrl}"\n  data-bot-id="${botId}"\n  data-api-key="${apiKey}"\n><\/script>`;
+      document.getElementById('script-universal').textContent = universal;
+
+      // WordPress
+      const wordpress = `function add_chatbot_widget() {\n    echo '<script src="${serverUrl}/widget/chatbot.js" data-server="${serverUrl}" data-bot-id="${botId}" data-api-key="${apiKey}"><\/script>';\n}\nadd_action('wp_footer', 'add_chatbot_widget');`;
+      document.getElementById('script-wordpress').textContent = wordpress;
+
+      // Laravel
+      const laravel = `{{-- Add before </body> in your layout file --}}\n<script\n  src="${serverUrl}/widget/chatbot.js"\n  data-server="${serverUrl}"\n  data-bot-id="${botId}"\n  data-api-key="${apiKey}"\n><\/script>`;
+      document.getElementById('script-laravel').textContent = laravel;
+    }
+
+    function copyPreText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Code copied to clipboard!');
+      });
+    }
+
     async function loadBots() {
       const res = await fetchAuth(`${API}/api/bots`);
       const bots = await res.json();

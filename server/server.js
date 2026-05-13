@@ -1222,13 +1222,8 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
 // GET /api/bots - List all bots (multi-tenant)
 app.get('/api/bots', requireAuth, (req, res) => {
   if (!db) return res.json([]);
-  const botsRows = db.prepare('SELECT bot_id, name, domain, config, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
-  const bots = botsRows.map(row => {
-    let apiKey = '';
-    try { apiKey = JSON.parse(row.config || '{}').apiKey || ''; } catch(e){}
-    return { bot_id: row.bot_id, name: row.name, domain: row.domain, api_key: apiKey, created_at: row.created_at };
-  });
-  res.json(bots);
+  const botsRows = db.prepare('SELECT bot_id, name, domain, api_key, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  res.json(botsRows);
 });
 
 // POST /api/bots - Create a new bot

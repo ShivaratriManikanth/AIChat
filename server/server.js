@@ -240,6 +240,7 @@ try {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  try { db.exec(`ALTER TABLE flows ADD COLUMN bot_id TEXT`); } catch(e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS flow_responses (
@@ -550,9 +551,15 @@ async function scrapeUrl(url) {
 }
 
 // ---- Helper functions for Multi-tenancy Config ----
-function loadClientBotConfig(clientId) {
+function loadClientBotConfig(clientId, botId = null) {
   if (!db) return loadConfig();
-  const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
+  let bot;
+  if (botId) {
+    bot = db.prepare('SELECT config FROM bots WHERE client_id = ? AND bot_id = ?').get(clientId, botId);
+  } else {
+    bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
+  }
+  
   if (!bot) return loadConfig();
   try {
     const config = JSON.parse(bot.config);
@@ -563,9 +570,13 @@ function loadClientBotConfig(clientId) {
   }
 }
 
-function saveClientBotConfig(clientId, config) {
+function saveClientBotConfig(clientId, config, botId = null) {
   if (!db) return saveConfig(config);
-  db.prepare('UPDATE bots SET config = ? WHERE client_id = ?').run(JSON.stringify(config), clientId);
+  if (botId) {
+    db.prepare('UPDATE bots SET config = ? WHERE client_id = ? AND bot_id = ?').run(JSON.stringify(config), clientId, botId);
+  } else {
+    db.prepare('UPDATE bots SET config = ? WHERE client_id = ?').run(JSON.stringify(config), clientId);
+  }
 }
 
 // ---- API Routes --------------------------------------------
@@ -690,10 +701,16 @@ app.get('/api/stats', requireAuth, (req, res) => {
   });
 });
 
-// GET /api/flows — Get all flows for the logged-in client
+// GET /api/flows - Get all flows for the logged-in client (optionally filtered by botId)
 app.get('/api/flows', requireAuth, (req, res) => {
+  const botId = req.query.botId;
   if (!db) return res.json([]);
-  const flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
+  let flows;
+  if (botId) {
+    flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all(req.clientId, botId);
+  } else {
+    flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
+  }
   res.json(flows);
 });
 
@@ -705,23 +722,31 @@ app.get('/api/flows/:id', requireAuth, (req, res) => {
   res.json(flow);
 });
 
-// POST /api/flows — Create or update a flow
+// POST /api/flows - Create or update a flow
 app.post('/api/flows', requireAuth, (req, res) => {
-  const { id, name, flow_data, is_active } = req.body;
+  const { id, name, flow_data, is_active, botId } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });
   
   if (id) {
     db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ?')
       .run(name, JSON.stringify(flow_data || []), is_active ? 1 : 0, id, req.clientId);
     if (is_active) {
-      db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(id, req.clientId);
+      if (botId) {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, req.clientId, botId);
+      } else {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(id, req.clientId);
+      }
     }
     return res.json({ success: true, id });
   } else {
-    const result = db.prepare('INSERT INTO flows (client_id, name, flow_data, is_active) VALUES (?, ?, ?, ?)')
-      .run(req.clientId, name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
+    const result = db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
+      .run(req.clientId, botId || null, name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
     if (is_active) {
-      db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(result.lastInsertRowid, req.clientId);
+      if (botId) {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, req.clientId, botId);
+      } else {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(result.lastInsertRowid, req.clientId);
+      }
     }
     return res.json({ success: true, id: result.lastInsertRowid });
   }
@@ -734,10 +759,20 @@ app.delete('/api/flows/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-// GET /api/active-flow — Get the active flow for a widget (uses bot key)
+// GET /api/active-flow - Get the active flow for a widget (uses bot key)
 app.get('/api/active-flow', checkApiKey, (req, res) => {
   if (!db) return res.json({ flow: null });
-  const flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+  // Find bot by api_key to get bot_id
+  const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
+  const bot = db.prepare('SELECT bot_id FROM bots WHERE api_key = ?').get(apiKey);
+  
+  let flow;
+  if (bot && bot.bot_id) {
+    flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? AND is_active = 1 LIMIT 1').get(req.clientId, bot.bot_id);
+  } else {
+    flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+  }
+  
   if (!flow) return res.json({ flow: null });
   
   try {
@@ -1023,7 +1058,8 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
     if (!text) return res.status(400).json({ error: 'No text extracted from PDF' });
 
     // Split into Q&A chunks — simple heuristic: split by double newlines
-    const config = loadClientBotConfig(req.clientId);
+    const botId = req.body.botId;
+    const config = loadClientBotConfig(req.clientId, botId);
     const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
     const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
       question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
@@ -1031,7 +1067,7 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig(req.clientId, config);
+    saveClientBotConfig(req.clientId, config, botId);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length });
   } catch (err) {
@@ -1040,13 +1076,13 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/logo — Upload logo (base64 image)
-app.post('/api/logo', (req, res) => {
-  const { logo } = req.body;
+// POST /api/logo - Upload logo (base64 image)
+app.post('/api/logo', requireAuth, (req, res) => {
+  const { logo, botId } = req.body;
   if (!logo) return res.status(400).json({ error: 'logo required' });
-  const config = loadConfig();
+  const config = loadClientBotConfig(req.clientId, botId);
   config.logo = logo;
-  saveConfig(config);
+  saveClientBotConfig(req.clientId, config, botId);
   res.json({ success: true });
 });
 
@@ -1170,21 +1206,23 @@ app.get('/api/session/:sessionId', requireAuth, (req, res) => {
   res.json([]);
 });
 
-// PUT /api/config — Admin: update config
+// PUT /api/config - Admin: update config
 app.put('/api/config', requireAuth, (req, res) => {
+  const { botId, ...configData } = req.body;
   try {
-    const current = loadClientBotConfig(req.clientId);
-    const updated = { ...current, ...req.body };
-    saveClientBotConfig(req.clientId, updated);
+    const current = loadClientBotConfig(req.clientId, botId);
+    const updated = { ...current, ...configData };
+    saveClientBotConfig(req.clientId, updated, botId);
     res.json({ success: true, config: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save config' });
   }
 });
 
-// GET /api/config/full — Admin: full config including sensitive fields
+// GET /api/config/full - Admin: full config including sensitive fields
 app.get('/api/config/full', requireAuth, (req, res) => {
-  res.json(loadClientBotConfig(req.clientId));
+  const botId = req.query.botId;
+  res.json(loadClientBotConfig(req.clientId, botId));
 });
 
 // POST /api/knowledge/url — Auto-train from website URL
@@ -1201,7 +1239,8 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
     }
 
     // Split text into chunks and add as FAQs
-    const config = loadClientBotConfig(req.clientId);
+    const botId = req.body.botId;
+    const config = loadClientBotConfig(req.clientId, botId);
     const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
     const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
 
@@ -1212,7 +1251,7 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig(req.clientId, config);
+    saveClientBotConfig(req.clientId, config, botId);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
   } catch (err) {

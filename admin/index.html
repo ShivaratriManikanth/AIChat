@@ -531,6 +531,14 @@
     <div class="topbar">
       <h1 id="page-title">Dashboard</h1>
       <div class="topbar-right">
+        <!-- Global Bot Selector -->
+        <div id="bot-setup-selector-wrap" style="margin-right: 15px; display: none; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+          <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Working Bot:</span>
+          <select id="global-bot-selector" onchange="onWorkingBotChange()" style="background: transparent; border: none; font-size: 13px; font-weight: 600; color: #0f172a; outline: none; cursor: pointer; padding: 4px 0;">
+            <option value="">Default Bot</option>
+          </select>
+        </div>
+
         <div class="server-status">Server Online</div>
         <button class="refresh-btn" onclick="logout()" style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3;">🚪 Logout</button>
         <button class="refresh-btn" onclick="refreshAll()">🔄 Refresh</button>
@@ -1503,6 +1511,8 @@
     let config = {};
     let allUsers = [];
     let allSessions = [];
+    let currentWorkingBotId = localStorage.getItem('current_working_bot_id') || '';
+    let allBots = [];
 
     // ---- Navigation -----------------------------------------
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -1533,6 +1543,19 @@
       if (page === 'bots') loadBots();
       if (page === 'broadcast') initBroadcastPage();
       if (page === 'embed') initEmbedPage();
+      
+      // Show/Hide Bot Selector based on page
+      const botSetupPages = ['knowledge', 'flows', 'settings', 'embed'];
+      const selectorWrap = document.getElementById('bot-setup-selector-wrap');
+      if (botSetupPages.includes(page)) {
+        selectorWrap.style.display = 'flex';
+        loadWorkingBots();
+      } else {
+        selectorWrap.style.display = 'none';
+      }
+
+      if (page === 'flows') loadFlow();
+      if (page === 'settings' || page === 'knowledge') loadConfig();
     }
 
     // ---- Email Broadcast -----------------------------------
@@ -1779,7 +1802,8 @@
 
     // ---- Load Config ----------------------------------------
     async function loadConfig() {
-      const res = await fetchAuth(`${API}/api/config/full`);
+      const url = currentWorkingBotId ? `${API}/api/config/full?botId=${currentWorkingBotId}` : `${API}/api/config/full`;
+      const res = await fetchAuth(url);
       config = await res.json();
 
       document.getElementById('cfg-botName').value = config.botName || '';
@@ -1901,7 +1925,8 @@
           smtpUser: document.getElementById('cfg-smtpUser').value,
           smtpPass: document.getElementById('cfg-smtpPass').value
         },
-        enableFaq: document.getElementById('toggle-faq-active').classList.contains('on')
+        enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
+        botId: currentWorkingBotId
       };
 
       const res = await fetchAuth(`${API}/api/config`, {
@@ -2095,7 +2120,7 @@
         const res = await fetchAuth(`${API}/api/logo`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logo: dataUrl })
+          body: JSON.stringify({ logo: dataUrl, botId: currentWorkingBotId })
         });
         if (res.ok) {
           document.getElementById('logo-preview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
@@ -2110,7 +2135,7 @@
       await fetchAuth(`${API}/api/logo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logo: '' })
+        body: JSON.stringify({ logo: '', botId: currentWorkingBotId })
       });
       document.getElementById('logo-preview').innerHTML = '🤖';
       showToast('Logo removed');
@@ -2131,7 +2156,7 @@
           const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: file.name, fileData: reader.result })
+            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: currentWorkingBotId })
           });
           const data = await res.json();
           if (res.ok) {
@@ -2175,7 +2200,7 @@
         const res = await fetchAuth(`${API}/api/knowledge/url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ url, botId: currentWorkingBotId })
         });
         const data = await res.json();
         if (res.ok) {
@@ -2208,7 +2233,7 @@
           const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: file.name, fileData: reader.result })
+            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: currentWorkingBotId })
           });
           const data = await res.json();
           if (res.ok) {
@@ -2252,14 +2277,14 @@
           answer: chunk.trim()
         }));
 
-        const resConf = await fetchAuth(`${API}/api/config`);
+        const resConf = await fetchAuth(currentWorkingBotId ? `${API}/api/config?botId=${currentWorkingBotId}` : `${API}/api/config`);
         const config = await resConf.json();
         const updatedFaqs = [...(config.faqs || []), ...newFaqs];
 
         const resPut = await fetchAuth(`${API}/api/config`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ faqs: updatedFaqs })
+          body: JSON.stringify({ faqs: updatedFaqs, botId: currentWorkingBotId })
         });
 
         if (resPut.ok) {
@@ -2472,7 +2497,8 @@
 
     async function loadFlow() {
       try {
-        const res = await fetchAuth(`${API}/api/flows`);
+        const url = currentWorkingBotId ? `${API}/api/flows?botId=${currentWorkingBotId}` : `${API}/api/flows`;
+        const res = await fetchAuth(url);
         const flows = await res.json();
         if (flows && flows.length > 0) {
           const flow = flows[0];
@@ -2622,7 +2648,8 @@
           id: currentFlowId,
           name: 'Main Flow',
           flow_data: flowNodes,
-          is_active: isFlowActive
+          is_active: isFlowActive,
+          botId: currentWorkingBotId
         };
         const res = await fetchAuth(`${API}/api/flows`, {
           method: 'POST',
@@ -2638,6 +2665,46 @@
         console.error('Failed to save flow', err);
         showToast('Error saving flow');
       }
+    }
+
+    // ---- Multi-bot Management -------------------------------
+    async function loadWorkingBots() {
+      try {
+        const res = await fetchAuth(`${API}/api/bots`);
+        allBots = await res.json();
+        const selector = document.getElementById('global-bot-selector');
+        
+        // Preserve current selection if possible
+        const prevValue = selector.value;
+        
+        selector.innerHTML = '<option value="">Default Bot</option>';
+        allBots.forEach(bot => {
+          const opt = document.createElement('option');
+          opt.value = bot.bot_id;
+          opt.textContent = bot.name + (bot.domain ? ` (${bot.domain})` : '');
+          selector.appendChild(opt);
+        });
+        
+        if (currentWorkingBotId) {
+          selector.value = currentWorkingBotId;
+        } else if (prevValue) {
+          selector.value = prevValue;
+        }
+      } catch (e) { console.error('Failed to load bots for selector', e); }
+    }
+
+    function onWorkingBotChange() {
+      const selector = document.getElementById('global-bot-selector');
+      currentWorkingBotId = selector.value;
+      localStorage.setItem('current_working_bot_id', currentWorkingBotId);
+      
+      showToast(`Switched to: ${selector.options[selector.selectedIndex].text}`);
+      
+      // Refresh active page data
+      const activePanel = document.querySelector('.panel.active').id;
+      if (activePanel === 'page-knowledge' || activePanel === 'page-settings') loadConfig();
+      if (activePanel === 'page-flows') loadFlow();
+      if (activePanel === 'page-embed') initEmbedPage();
     }
 
     // ---- Init -----------------------------------------------

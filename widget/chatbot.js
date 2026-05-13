@@ -2151,15 +2151,16 @@
     await loadConfig();
 
     // Domain Restriction Check
-    if (CONFIG.authorizedDomain && !IS_PREVIEW) {
+    if (CONFIG.authorizedDomain && CONFIG.authorizedDomain.trim() !== '' && !IS_PREVIEW) {
       const currentHost = window.location.hostname;
-      // Strip protocol/path from authorized domain if user entered full URL
       const allowedHost = CONFIG.authorizedDomain.toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
       
-      if (currentHost !== allowedHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-        console.error(`Chatbot Error: Domain "${currentHost}" is not authorized for Bot ID "${BOT_ID}".`);
+      if (currentHost !== allowedHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.includes('railway.app')) {
+        console.error(`Chatbot Error: Domain "${currentHost}" is not authorized. Expected "${allowedHost}".`);
         return; 
       }
+    } else if (!IS_PREVIEW) {
+      console.log(`Chatbot: No domain restriction for Bot "${BOT_ID}".`);
     }
 
     await loadActiveFlow();

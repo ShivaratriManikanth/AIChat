@@ -1213,8 +1213,16 @@ app.put('/api/config', requireAuth, (req, res) => {
     const current = loadClientBotConfig(req.clientId, botId);
     const updated = { ...current, ...configData };
     saveClientBotConfig(req.clientId, updated, botId);
+
+    // Sync domain column for restriction check
+    if (botId && configData.allowedDomains) {
+      const primaryDomain = configData.allowedDomains[0] || null;
+      db.prepare('UPDATE bots SET domain = ? WHERE client_id = ? AND bot_id = ?').run(primaryDomain, req.clientId, botId);
+    }
+
     res.json({ success: true, config: updated });
   } catch (err) {
+    console.error('Save config error:', err);
     res.status(500).json({ error: 'Failed to save config' });
   }
 });

@@ -506,11 +506,8 @@
       <div class="nav-item" data-page="knowledge">
         <span class="icon">🧠</span> 1. AI Chatbot
       </div>
-      <div class="nav-item" data-page="faqs">
-        <span class="icon">✍️</span> 2. FAQ Setup
-      </div>
       <div class="nav-item" data-page="flows">
-        <span class="icon">🔀</span> 3. Flow Builder
+        <span class="icon">🔀</span> 2. Flow Builder
       </div>
 
       <div class="nav-section">Configuration</div>
@@ -1309,72 +1306,7 @@
           </div>
         </div>
 
-        <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:4px;">Save All Settings</button>
-      </div>
-
-      <!-- ======== FAQS PAGE (Manual Setup) ======== -->
-      <div class="panel" id="page-faqs">
-
-        <!-- Page Header -->
-        <div style="margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
-          <div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#fbbf24);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 12px rgba(245,158,11,0.3);">💬</div>
-              <h2 style="font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">FAQ Management</h2>
-            </div>
-            <p style="color:#64748b;font-size:14px;margin-left:56px;">Manually add questions and answers to train the chatbot with precise responses.</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:14px;background:white;padding:14px 20px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #e8edf5;flex-shrink:0;">
-            <div>
-              <div style="font-weight:700;font-size:13px;color:#0f172a;">FAQ Active</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Enable FAQ-based replies</div>
-            </div>
-            <div class="toggle-switch" id="toggle-faq-active" onclick="toggleFaqActive()"></div>
-          </div>
-        </div>
-
-        <!-- Add New FAQ Card -->
-        <div class="card">
-          <div style="background:linear-gradient(135deg,#f59e0b 0%,#fbbf24 100%);padding:20px 24px;border-radius:16px 16px 0 0;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:38px;height:38px;background:rgba(255,255,255,0.25);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✏️</div>
-              <div>
-                <div style="font-size:15px;font-weight:700;color:white;">Add New FAQ</div>
-                <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;">Create a new question and answer pair</div>
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div style="display:grid;gap:16px;">
-              <div class="form-group" style="margin-bottom:0;">
-                <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;display:block;">❓ Question</label>
-                <input type="text" id="newFaqQ" placeholder="e.g., What are your business hours?" style="width:100%;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-              </div>
-              <div class="form-group" style="margin-bottom:0;">
-                <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;display:block;">💡 Answer</label>
-                <textarea id="newFaqA" placeholder="e.g., We are open Mon-Fri, 9 AM to 6 PM." rows="3" style="width:100%;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;resize:vertical;font-family:inherit;line-height:1.6;transition:all 0.2s;" onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'"></textarea>
-              </div>
-              <div>
-                <button class="btn btn-success" onclick="addFaq()" style="padding:11px 28px;border-radius:10px;font-weight:600;font-size:14px;">➕ Add FAQ</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Current FAQs List Card -->
-        <div class="card">
-          <div class="card-header" style="background:white;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:34px;height:34px;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">📋</div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#0f172a;">Current FAQs &amp; Responses</div>
-                <div style="font-size:12px;color:#64748b;">All saved question-answer pairs</div>
-              </div>
-            </div>
-          </div>
-          <div class="card-body" id="faq-list" style="padding:16px 24px;"></div>
-        </div>
-
+        <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:20px; padding: 12px 30px; border-radius: 12px; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">💾 Save All Settings</button>
       </div>
 
       <!-- ======== FLOW BUILDER PAGE ======== -->
@@ -1589,7 +1521,7 @@
       const titles = {
         dashboard: 'Dashboard', users: 'User Management',
         chats: 'Chat Management', settings: 'Settings',
-        faqs: 'FAQ Management', embed: 'Embed Code',
+        embed: 'Embed Code',
         leads: 'Lead Management', analytics: 'Advanced Analytics',
         bots: 'Bot Management (Multi-tenant)', knowledge: 'Knowledge Base',
         broadcast: 'Email Broadcast'

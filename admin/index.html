@@ -1431,7 +1431,10 @@
             <h2 style="font-size:22px;color:#1a1a2e;">3. Flow Builder</h2>
             <p style="color:#666;font-size:14px;margin-top:4px;">Visually create chatbot conversation flows and components.</p>
           </div>
-          <button class="btn btn-primary" onclick="saveFlow()">💾 Save Flow</button>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-outline" onclick="openFlowPreview()" style="border-color:#4F46E5; color:#4F46E5;">👁️ Preview Flow</button>
+            <button class="btn btn-primary" onclick="saveFlow()">💾 Save Flow</button>
+          </div>
         </div>
 
         <div class="flow-builder-container">
@@ -2651,6 +2654,36 @@
       container.innerHTML = html;
     }
 
+    async function openFlowPreview() {
+      // Auto-save flow before previewing to ensure it's up to date
+      await saveFlow();
+      
+      const overlay = document.getElementById('flow-preview-overlay');
+      const iframe = document.getElementById('flow-preview-iframe');
+      
+      // We need a bot ID to test. We'll use the first bot found for this client.
+      const botsRes = await fetchAuth(`${API}/api/bots`);
+      const bots = await botsRes.json();
+      
+      if (!bots || bots.length === 0) {
+        alert('Please create at least one bot in the "Bots" section first.');
+        return;
+      }
+      
+      const testBot = bots[0];
+      
+      // Load a special preview URL that has the chatbot script
+      // We'll pass a 'preview=true' flag to the widget if needed
+      iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}`;
+      overlay.style.display = 'flex';
+    }
+
+    function closeFlowPreview(e) {
+      if (e.target.id === 'flow-preview-overlay') {
+        document.getElementById('flow-preview-overlay').style.display = 'none';
+        document.getElementById('flow-preview-iframe').src = 'about:blank';
+      }
+    }
     async function saveFlow() {
       try {
         const payload = {
@@ -2685,7 +2718,24 @@
     setupEmbedUrls();
   </script>
 
-  <!-- Chat Viewer Modal -->
+  <!-- Flow Preview Modal -->
+  <div class="modal-overlay" id="flow-preview-overlay" onclick="closeFlowPreview(event)">
+    <div class="modal-content" style="max-width: 450px; height: 80vh; background: #f0f2f5;" onclick="event.stopPropagation()">
+      <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; padding: 15px 20px;">
+        <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+          <span style="color: #4F46E5;">👁️</span> Live Flow Preview
+        </h2>
+        <button class="btn btn-outline" onclick="document.getElementById('flow-preview-overlay').style.display='none'" style="padding: 6px 12px; font-size: 11px;">Close</button>
+      </div>
+      <div style="flex: 1; position: relative; overflow: hidden;">
+        <!-- The Chatbot will be injected here or loaded via iframe -->
+        <iframe id="flow-preview-iframe" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
+      </div>
+      <div style="padding: 12px; background: white; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b;">
+        This is a live preview of how your flow will appear to users.
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="chat-modal-overlay" onclick="closeChatModal(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="card-header" style="border-bottom: 1px solid #ebebf0; padding: 16px 24px;">

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Preview</title>
+    <style>
+        body {
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background: #f0f2f5; font-family: sans-serif;
+        }
+        .loading { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="status">Loading Chatbot Preview...</div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const botId = params.get('bot_id');
+        const apiKey = params.get('api_key');
+        const server = params.get('server');
+
+        if (botId && apiKey && server) {
+            const script = document.createElement('script');
+            script.src = `${server}/widget/chatbot.js`;
+            script.dataset.server = server;
+            script.dataset.botId = botId;
+            script.dataset.apiKey = apiKey;
+            
+            script.onload = () => {
+                document.getElementById('status').style.display = 'none';
+                // Automatically open the widget if it doesn't open by default in preview
+                setTimeout(() => {
+                    if (window.AIChatbotWidget && window.AIChatbotWidget.open) {
+                        window.AIChatbotWidget.open();
+                    }
+                }, 500);
+            };
+            
+            document.body.appendChild(script);
+        } else {
+            document.getElementById('status').textContent = 'Invalid preview parameters.';
+            document.getElementById('status').style.color = 'red';
+        }
+    </script>
+</body>
+</html>

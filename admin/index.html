@@ -2361,7 +2361,7 @@ add_action('wp_footer', 'add_chatbot_widget');
           <td class="session-cell">${b.bot_id}</td>
           <td style="font-size:12px;color:#888;">${formatDate(b.created_at)}</td>
           <td>
-            <button class="btn-view" onclick="showBotEmbed('${b.bot_id}', '${b.api_key}')">Embed</button>
+            <button class="btn-view" onclick="showBotEmbed('${b.bot_id}', '${b.api_key}')">Script</button>
             <button class="btn btn-danger" style="padding:6px 12px;font-size:11px;margin-left:4px;" onclick="deleteBot('${b.bot_id}')">Delete</button>
           </td>
         </tr>

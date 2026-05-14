@@ -1601,23 +1601,8 @@ app.post('/api/purchase', async (req, res) => {
       clientId, email, password, company_name, plan_id || 1, 'COD_PENDING'
     );
     
-    const botId = 'bot_' + require('crypto').randomBytes(6).toString('hex');
-    const apiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
-    const defaultConfig = JSON.stringify({ 
-      botName: company_name + ' Bot', 
-      themeColor: '#6366f1', 
-      apiKey,
-      emailCapture: true,
-      emailCaptureTitle: 'Welcome to ' + company_name,
-      emailCaptureSubtitle: 'Please enter your email to start the conversation.'
-    });
-    
-    db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
-      botId, company_name + ' Bot', clientId, apiKey, defaultConfig
-    );
-    
-    // Send Email via GAdigital (non-blocking, fire-and-forget)
-    sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id })
+    // Send Welcome Email (Login credentials only)
+    sendWelcomeEmail({ company_name, email, password, plan_id })
       .then(() => console.log(`📧 Welcome email sent to ${email}`))
       .catch(err => console.error(`❌ Email failed for ${email}:`, err.message));
     
@@ -1682,13 +1667,13 @@ app.get('/api/test-smtp', async (req, res) => {
 });
 
 // Helper for sending welcome email
-async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, plan_id }) {
+async function sendWelcomeEmail({ company_name, email, password, plan_id }) {
   console.log('📧 Attempting to send email to:', email);
   
   const plan = PLAN_LIMITS[plan_id] || PLAN_LIMITS[1];
   const planName = plan.name;
   const serverUrl = process.env.SERVER_URL || 'https://aichat-production-e0ec.up.railway.app';
-  const subject = '🚀 Your AI Chatbot is Ready! - GAdigital Solution';
+  const subject = '🚀 Welcome to GAdigital Solution - Your Account is Ready!';
 
   const htmlContent = `
     <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
@@ -1698,26 +1683,22 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
       </div>
       <div style="padding: 40px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 0 20px 20px;">
         <h2 style="font-size: 20px; color: #6366f1;">Hello ${company_name},</h2>
-        <p>Your AI Chatbot is now ready to be integrated into your website. Here are your access details:</p>
+        <p>Your account has been created successfully. You can now log in to your dashboard to create and manage your AI chatbots.</p>
         
         <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 24px 0;">
-          <p style="margin: 0; font-size: 14px; color: #64748b;">DASHBOARD LOGIN</p>
-          <p style="margin: 8px 0;"><b>Link:</b> <a href="${serverUrl}/admin/login.html" style="color: #6366f1;">Click here to Login</a></p>
+          <p style="margin: 0; font-size: 14px; color: #64748b;">DASHBOARD LOGIN CREDENTIALS</p>
+          <p style="margin: 8px 0;"><b>Dashboard Link:</b> <a href="${serverUrl}/admin/login.html" style="color: #6366f1;">Click here to Login</a></p>
           <p style="margin: 4px 0;"><b>Username:</b> ${email}</p>
           <p style="margin: 4px 0;"><b>Password:</b> ${password}</p>
         </div>
 
-        <h3 style="font-size: 16px;">How to Embed Your Chatbot</h3>
-        <p style="font-size: 14px;">Simply copy and paste the code below into your website's <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> tag:</p>
-        
-        <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 12px; font-family: monospace; font-size: 12px; overflow-x: auto;">
-          &lt;script <br>
-          &nbsp;&nbsp;src="${serverUrl}/widget/chatbot.js" <br>
-          &nbsp;&nbsp;data-server="${serverUrl}" <br>
-          &nbsp;&nbsp;data-bot-id="${botId}" <br>
-          &nbsp;&nbsp;data-api-key="${apiKey}"<br>
-          &gt;&lt;/script&gt;
-        </div>
+        <h3 style="font-size: 16px;">Next Steps:</h3>
+        <ol style="font-size: 14px; padding-left: 20px;">
+          <li>Log in to your dashboard using the link above.</li>
+          <li>Go to <b>"Bot Management"</b> and create your first chatbot.</li>
+          <li>Configure your bot settings and knowledge base.</li>
+          <li>Copy the embed code from the <b>"Embed Code"</b> section to add it to your website.</li>
+        </ol>
 
         <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
           <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
@@ -1735,7 +1716,7 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
       method: 'POST',
       headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'GAdigital Solution <onboarding@resend.dev>', // Change when domain is verified
+        from: 'GAdigital Solution <onboarding@resend.dev>',
         to: email,
         subject: subject,
         html: htmlContent
@@ -1764,7 +1745,7 @@ async function sendWelcomeEmail({ company_name, email, password, botId, apiKey, 
 
   // 3. Fallback to Nodemailer SMTP
   if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log('⚠️ No Email API or SMTP configured. Logged creds:', { email, password, botId });
+    console.log('⚠️ No Email API or SMTP configured. Logged creds:', { email, password });
     return;
   }
 

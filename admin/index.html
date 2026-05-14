@@ -1184,9 +1184,6 @@
               <label>Email Screen Subtitle</label>
               <input type="text" id="cfg-emailCaptureSubtitle">
             </div>
-            <div class="form-group">
-              <label>Organization Introduction Message</label>
-              <textarea id="cfg-introMessage" rows="4" placeholder="Shown after email, before chat starts..."></textarea>
             </div>
           </div>
         </div>
@@ -2000,7 +1997,6 @@
       // Email & intro fields
       document.getElementById('cfg-emailCaptureTitle').value = config.emailCaptureTitle || '';
       document.getElementById('cfg-emailCaptureSubtitle').value = config.emailCaptureSubtitle || '';
-      document.getElementById('cfg-introMessage').value = config.introMessage || '';
       document.getElementById('toggle-emailCapture').classList.toggle('on', !!config.emailCapture);
       document.getElementById('toggle-faq-active').classList.toggle('on', config.enableFaq !== false);
 
@@ -2084,7 +2080,6 @@
           emailCapture: document.getElementById('toggle-emailCapture').classList.contains('on'),
           emailCaptureTitle: document.getElementById('cfg-emailCaptureTitle').value,
           emailCaptureSubtitle: document.getElementById('cfg-emailCaptureSubtitle').value,
-          introMessage: document.getElementById('cfg-introMessage').value,
           leadCapture: {
             enabled: document.getElementById('toggle-leadCapture').classList.contains('on'),
             triggerAfter: parseInt(document.getElementById('cfg-leadTriggerAfter').value) || 3,

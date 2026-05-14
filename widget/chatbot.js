@@ -547,33 +547,6 @@
       }
       #chatbot-email-submit:hover { filter: brightness(1.1); transform: scale(1.02); }
 
-      /* Intro Screen */
-      #chatbot-intro-screen {
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        flex: 1; padding: 30px 24px; text-align: center;
-      }
-      .light #chatbot-intro-screen { background: #f7f8fc; }
-      .dark #chatbot-intro-screen { background: #0f0f23; }
-      #chatbot-intro-screen .intro-icon { font-size: 48px; margin-bottom: 16px; }
-      #chatbot-intro-screen .intro-company {
-        font-size: 20px; font-weight: 700; margin-bottom: 12px; color: ${theme};
-      }
-      #chatbot-intro-screen .intro-text {
-        font-size: 13.5px; line-height: 1.7; opacity: 0.75; margin-bottom: 24px;
-      }
-      #chatbot-intro-continue {
-        padding: 12px 40px;
-        background: ${theme}; color: white;
-        border: none; border-radius: 12px;
-        font-size: 15px; font-weight: 600;
-        cursor: pointer; transition: all 0.2s;
-      }
-      #chatbot-intro-continue:hover { filter: brightness(1.1); transform: scale(1.02); }
-      .intro-email-tag {
-        font-size: 11px; opacity: 0.5; margin-top: 12px;
-      }
-
       /* ---- Lead Capture Form (Inline card in chat) ---- */
       .chatbot-lead-form {
         margin: 10px 0; padding: 16px;
@@ -972,15 +945,6 @@
             <div id="chatbot-email-error"></div>
             <button id="chatbot-email-submit">Start Chat</button>
           </div>
-        </div>
-
-        <!-- Intro Screen -->
-        <div id="chatbot-intro-screen" style="display:none">
-          <div class="intro-icon">🏢</div>
-          <div class="intro-company">${CONFIG.companyName}</div>
-          <p class="intro-text">${CONFIG.introMessage || ''}</p>
-          <button id="chatbot-intro-continue">Continue to Chat</button>
-          <div class="intro-email-tag">Signed in as <span id="intro-email-display"></span></div>
         </div>
 
         <div id="chatbot-messages" style="${!emailVerified && CONFIG.emailCapture !== false ? 'display:none' : ''}"></div>
@@ -1772,22 +1736,11 @@
 
     playSound('click');
 
-    // Hide email screen, show intro
+    // Hide email screen, show chat
     document.getElementById('chatbot-email-screen').style.display = 'none';
-
-    if (CONFIG.introMessage) {
-      document.getElementById('intro-email-display').textContent = email;
-      document.getElementById('chatbot-intro-screen').style.display = 'flex';
-    } else {
-      showChatInterface();
-    }
-  }
-
-  function handleIntroContinue() {
-    playSound('click');
-    document.getElementById('chatbot-intro-screen').style.display = 'none';
     showChatInterface();
   }
+
 
   function showChatInterface() {
     document.getElementById('chatbot-messages').style.display = 'flex';
@@ -2091,11 +2044,6 @@
       });
     }
 
-    // Intro continue button
-    const introContinue = document.getElementById('chatbot-intro-continue');
-    if (introContinue) {
-      introContinue.addEventListener('click', handleIntroContinue);
-    }
 
 
     // Clear chat button

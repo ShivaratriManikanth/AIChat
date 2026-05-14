@@ -1164,12 +1164,46 @@ app.get('/api/leads/csv', requireAuth, (req, res) => {
 // GET /api/analytics — advanced analytics
 app.get('/api/analytics', requireAuth, (req, res) => {
   if (!db) return res.json({});
-  const avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0 AND client_id = ?").get(req.clientId).avg || 0;
-  const sourceBreakdown = db.prepare(
-    "SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' AND client_id = ? GROUP BY source"
-  ).all(req.clientId);
-  const totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads WHERE client_id = ?').get(req.clientId).count;
-  const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+  const botId = req.query.botId;
+
+  let avgResponse, sourceBreakdown, totalLeads, totalUsers;
+
+  if (botId) {
+    avgResponse = db.prepare(`
+      SELECT AVG(c.response_ms) as avg 
+      FROM chat_history c
+      INNER JOIN sessions s ON c.session_id = s.session_id
+      WHERE c.role = 'assistant' AND c.response_ms > 0 AND c.client_id = ? AND s.bot_id = ?
+    `).get(req.clientId, botId).avg || 0;
+
+    sourceBreakdown = db.prepare(`
+      SELECT c.source, COUNT(*) as count 
+      FROM chat_history c
+      INNER JOIN sessions s ON c.session_id = s.session_id
+      WHERE c.role = 'assistant' AND c.source != '' AND c.client_id = ? AND s.bot_id = ?
+      GROUP BY c.source
+    `).all(req.clientId, botId);
+
+    totalLeads = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM leads l
+      INNER JOIN sessions s ON l.session_id = s.session_id
+      WHERE l.client_id = ? AND s.bot_id = ?
+    `).get(req.clientId, botId).count;
+
+    totalUsers = db.prepare(`
+      SELECT COUNT(DISTINCT u.email) as count 
+      FROM users u
+      INNER JOIN sessions s ON u.session_id = s.session_id
+      WHERE u.client_id = ? AND s.bot_id = ?
+    `).get(req.clientId, botId).count;
+  } else {
+    avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0 AND client_id = ?").get(req.clientId).avg || 0;
+    sourceBreakdown = db.prepare("SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' AND client_id = ? GROUP BY source").all(req.clientId);
+    totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads WHERE client_id = ?').get(req.clientId).count;
+    totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+  }
+
   const conversionRate = totalUsers > 0 ? ((totalLeads / totalUsers) * 100).toFixed(1) : 0;
 
   res.json({
@@ -1392,8 +1426,9 @@ app.post('/api/apikey/regenerate', requireAuth, (req, res) => {
 // GET /api/dropoff — Drop-off analytics
 app.get('/api/dropoff', requireAuth, (req, res) => {
   if (!db) return res.json({});
+  const botId = req.query.botId;
 
-  // Mark sessions as abandoned if last user msg was > 30 min ago and no recent assistant reply
+  // Mark sessions as abandoned if last user msg was > 30 min ago
   db.prepare(`
     UPDATE sessions SET abandoned = 1
     WHERE last_user_msg_at IS NOT NULL
@@ -1401,36 +1436,69 @@ app.get('/api/dropoff', requireAuth, (req, res) => {
       AND abandoned = 0
   `).run();
 
-  const buckets = db.prepare(`
-    SELECT
-      CASE
-        WHEN msg_count = 0 THEN '0 messages'
-        WHEN msg_count BETWEEN 1 AND 3 THEN '1-3 messages'
-        WHEN msg_count BETWEEN 4 AND 10 THEN '4-10 messages'
-        ELSE '10+ messages'
-      END as bucket,
-      COUNT(*) as count
-    FROM (
-      SELECT s.session_id, COUNT(c.id) as msg_count
-      FROM sessions s
-      LEFT JOIN chat_history c ON s.session_id = c.session_id AND c.role = 'user'
-      WHERE s.client_id = ?
-      GROUP BY s.session_id
-    )
-    GROUP BY bucket
-  `).all(req.clientId);
+  let buckets, abandonedCount, totalSessions, versions;
 
-  const abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ?').get(req.clientId).count;
-  const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
+  if (botId) {
+    buckets = db.prepare(`
+      SELECT
+        CASE
+          WHEN msg_count = 0 THEN '0 messages'
+          WHEN msg_count BETWEEN 1 AND 3 THEN '1-3 messages'
+          WHEN msg_count BETWEEN 4 AND 10 THEN '4-10 messages'
+          ELSE '10+ messages'
+        END as bucket,
+        COUNT(*) as count
+      FROM (
+        SELECT s.session_id, COUNT(c.id) as msg_count
+        FROM sessions s
+        LEFT JOIN chat_history c ON s.session_id = c.session_id AND c.role = 'user'
+        WHERE s.client_id = ? AND s.bot_id = ?
+        GROUP BY s.session_id
+      )
+      GROUP BY bucket
+    `).all(req.clientId, botId);
+
+    abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+    totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+    
+    versions = db.prepare(`
+      SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
+      FROM sessions
+      WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ? AND bot_id = ?
+      GROUP BY widget_version
+    `).all(req.clientId, botId);
+  } else {
+    buckets = db.prepare(`
+      SELECT
+        CASE
+          WHEN msg_count = 0 THEN '0 messages'
+          WHEN msg_count BETWEEN 1 AND 3 THEN '1-3 messages'
+          WHEN msg_count BETWEEN 4 AND 10 THEN '4-10 messages'
+          ELSE '10+ messages'
+        END as bucket,
+        COUNT(*) as count
+      FROM (
+        SELECT s.session_id, COUNT(c.id) as msg_count
+        FROM sessions s
+        LEFT JOIN chat_history c ON s.session_id = c.session_id AND c.role = 'user'
+        WHERE s.client_id = ?
+        GROUP BY s.session_id
+      )
+      GROUP BY bucket
+    `).all(req.clientId);
+
+    abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ?').get(req.clientId).count;
+    totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
+    
+    versions = db.prepare(`
+      SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
+      FROM sessions
+      WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ?
+      GROUP BY widget_version
+    `).all(req.clientId);
+  }
+
   const abandonRate = totalSessions > 0 ? ((abandonedCount / totalSessions) * 100).toFixed(1) : 0;
-
-  // Widget version distribution
-  const versions = db.prepare(`
-    SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
-    FROM sessions
-    WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ?
-    GROUP BY widget_version
-  `).all(req.clientId);
 
   res.json({ buckets, abandonedCount, abandonRate: parseFloat(abandonRate), versions });
 });

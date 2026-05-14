@@ -2162,7 +2162,7 @@
       await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ faqs: config.faqs })
+        body: JSON.stringify({ faqs: config.faqs, botId: selectedBotId })
       });
 
       document.getElementById('newFaqQ').value = '';
@@ -2176,7 +2176,7 @@
       await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ faqs: config.faqs })
+        body: JSON.stringify({ faqs: config.faqs, botId: selectedBotId })
       });
       showToast('FAQ deleted');
       loadConfig();
@@ -2265,7 +2265,8 @@
     // ---- Analytics ------------------------------------------
     async function loadAnalytics() {
       try {
-        const res = await fetchAuth(`${API}/api/analytics`);
+        const url = selectedBotId ? `${API}/api/analytics?botId=${encodeURIComponent(selectedBotId)}` : `${API}/api/analytics`;
+        const res = await fetchAuth(url);
         const data = await res.json();
         document.getElementById('stat-avg-response').innerHTML = `${data.avgResponseMs}<span style="font-size:14px;opacity:0.8;margin-left:2px;">ms</span>`;
         document.getElementById('stat-leads').textContent = data.totalLeads || 0;
@@ -2314,7 +2315,7 @@
         const res = await fetchAuth(`${API}/api/logo`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logo: dataUrl, botId: currentWorkingBotId })
+          body: JSON.stringify({ logo: dataUrl, botId: selectedBotId })
         });
         if (res.ok) {
           document.getElementById('logo-preview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
@@ -2329,7 +2330,7 @@
       await fetchAuth(`${API}/api/logo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logo: '', botId: currentWorkingBotId })
+        body: JSON.stringify({ logo: '', botId: selectedBotId })
       });
       document.getElementById('logo-preview').innerHTML = '🤖';
       showToast('Logo removed');
@@ -2350,7 +2351,7 @@
           const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: currentWorkingBotId })
+            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: selectedBotId })
           });
           const data = await res.json();
           if (res.ok) {
@@ -2394,7 +2395,7 @@
         const res = await fetchAuth(`${API}/api/knowledge/url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, botId: currentWorkingBotId })
+          body: JSON.stringify({ url, botId: selectedBotId })
         });
         const data = await res.json();
         if (res.ok) {
@@ -2427,7 +2428,7 @@
           const res = await fetchAuth(`${API}/api/knowledge/pdf`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: currentWorkingBotId })
+            body: JSON.stringify({ fileName: file.name, fileData: reader.result, botId: selectedBotId })
           });
           const data = await res.json();
           if (res.ok) {
@@ -2471,14 +2472,15 @@
           answer: chunk.trim()
         }));
 
-        const resConf = await fetchAuth(currentWorkingBotId ? `${API}/api/config?botId=${currentWorkingBotId}` : `${API}/api/config`);
+        const url = selectedBotId ? `${API}/api/config/full?botId=${encodeURIComponent(selectedBotId)}` : `${API}/api/config/full`;
+        const resConf = await fetchAuth(url);
         const config = await resConf.json();
         const updatedFaqs = [...(config.faqs || []), ...newFaqs];
 
         const resPut = await fetchAuth(`${API}/api/config`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ faqs: updatedFaqs, botId: currentWorkingBotId })
+          body: JSON.stringify({ faqs: updatedFaqs, botId: selectedBotId })
         });
 
         if (resPut.ok) {
@@ -2503,7 +2505,7 @@
       await fetchAuth(`${API}/api/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ semanticSearch: enabled })
+        body: JSON.stringify({ semanticSearch: enabled, botId: selectedBotId })
       });
       showToast('Semantic search ' + (enabled ? 'enabled' : 'disabled'));
     }
@@ -2518,7 +2520,7 @@
         const res = await fetchAuth(`${API}/api/config`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enableAiChatbot: isEnabled })
+          body: JSON.stringify({ enableAiChatbot: isEnabled, botId: selectedBotId })
         });
         if (!res.ok) {
           toggle.classList.toggle('on', !isEnabled);

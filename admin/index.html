@@ -1645,21 +1645,29 @@
       let overlay = document.getElementById(overlayId);
       
       if (!selectedBotId) {
+        const isEmpty = allBots.length === 0;
+        const msg = isEmpty 
+          ? "You haven't created any bots yet. Please go to 'Bot Management' to create your first chatbot for your domain."
+          : "Please select a specific domain/bot from the top dropdown to manage its configuration, knowledge base, or flow.";
+        const btnAction = isEmpty ? "switchPage('bots')" : "document.getElementById('global-domain-selector').focus(); showToast('Select a bot here 👆');";
+        const btnText = isEmpty ? "Create My First Bot" : "Select Bot Now";
+
         if (!overlay) {
           overlay = document.createElement('div');
           overlay.id = overlayId;
           overlay.className = 'no-bot-overlay';
-          overlay.innerHTML = `
-            <div class="nbo-content">
-              <div class="nbo-icon">🤖</div>
-              <h3>Bot Selection Required</h3>
-              <p>Please select a specific domain/bot from the top dropdown to manage its configuration, knowledge base, or flow.</p>
-              <button class="btn btn-primary" onclick="document.getElementById('global-domain-selector').focus(); showToast('Select a bot here 👆');" style="width:100%; padding:14px; border-radius:12px;">Select Bot Now</button>
-            </div>
-          `;
           panel.style.position = 'relative';
           panel.appendChild(overlay);
         }
+        
+        overlay.innerHTML = `
+          <div class="nbo-content">
+            <div class="nbo-icon">${isEmpty ? '🚀' : '🤖'}</div>
+            <h3>${isEmpty ? 'Getting Started' : 'Bot Selection Required'}</h3>
+            <p>${msg}</p>
+            <button class="btn btn-primary" onclick="${btnAction}" style="width:100%; padding:14px; border-radius:12px;">${btnText}</button>
+          </div>
+        `;
         overlay.style.display = 'flex';
         return false;
       } else {

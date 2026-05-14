@@ -2058,60 +2058,73 @@
 
     // ---- Save Settings --------------------------------------
     async function saveSettings() {
-      const updated = {
-        botName: document.getElementById('cfg-botName').value,
-        companyName: document.getElementById('cfg-companyName').value,
-        welcomeMessage: document.getElementById('cfg-welcomeMessage').value,
-        themeColor: document.getElementById('cfg-themeColor').value,
-        aiModel: document.getElementById('cfg-aiModel').value,
-        systemPrompt: document.getElementById('cfg-systemPrompt').value,
-        placeholder: document.getElementById('cfg-placeholder').value,
-        suggestedQuestions: document.getElementById('cfg-suggestedQuestions').value.split('\n').map(s => s.trim()).filter(Boolean),
-        emailCapture: document.getElementById('toggle-emailCapture').classList.contains('on'),
-        emailCaptureTitle: document.getElementById('cfg-emailCaptureTitle').value,
-        emailCaptureSubtitle: document.getElementById('cfg-emailCaptureSubtitle').value,
-        introMessage: document.getElementById('cfg-introMessage').value,
-        leadCapture: {
-          enabled: document.getElementById('toggle-leadCapture').classList.contains('on'),
-          triggerAfter: parseInt(document.getElementById('cfg-leadTriggerAfter').value) || 3,
-          title: document.getElementById('cfg-leadTitle').value,
-          subtitle: document.getElementById('cfg-leadSubtitle').value,
-          fields: ['name', 'phone']
-        },
-        handoff: {
-          enabled: document.getElementById('toggle-handoff').classList.contains('on'),
-          buttonText: 'Talk to Agent',
-          whatsapp: document.getElementById('cfg-handoffWhatsapp').value,
-          phone: document.getElementById('cfg-handoffPhone').value,
-          email: document.getElementById('cfg-handoffEmail').value
-        },
-        fallbackMessage: document.getElementById('cfg-fallbackMessage').value,
-        offlineMessage: document.getElementById('cfg-offlineMessage').value,
-        rateLimitPerMinute: parseInt(document.getElementById('cfg-rateLimit').value) || 20,
-        allowedDomains: document.getElementById('cfg-allowedDomains').value.split('\n').map(s => s.trim()).filter(Boolean),
-        enforceApiKey: document.getElementById('toggle-enforceApiKey').classList.contains('on'),
-        emailNotifications: {
-          enabled: document.getElementById('toggle-emailNotif').classList.contains('on'),
-          adminEmail: document.getElementById('cfg-adminEmail').value,
-          brevoKey: document.getElementById('cfg-brevoKey').value,
-          smtpHost: document.getElementById('cfg-smtpHost').value,
-          smtpPort: parseInt(document.getElementById('cfg-smtpPort').value) || 587,
-          smtpUser: document.getElementById('cfg-smtpUser').value,
-          smtpPass: document.getElementById('cfg-smtpPass').value
-        },
-        enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
-        botId: selectedBotId
-      };
+      if (!selectedBotId) {
+        showToast('❌ Please select a bot first');
+        return;
+      }
+      
+      try {
+        const updated = {
+          botName: document.getElementById('cfg-botName').value,
+          companyName: document.getElementById('cfg-companyName').value,
+          welcomeMessage: document.getElementById('cfg-welcomeMessage').value,
+          themeColor: document.getElementById('cfg-themeColor').value,
+          aiModel: document.getElementById('cfg-aiModel').value,
+          systemPrompt: document.getElementById('cfg-systemPrompt').value,
+          placeholder: document.getElementById('cfg-placeholder').value,
+          suggestedQuestions: document.getElementById('cfg-suggestedQuestions').value.split('\n').map(s => s.trim()).filter(Boolean),
+          emailCapture: document.getElementById('toggle-emailCapture').classList.contains('on'),
+          emailCaptureTitle: document.getElementById('cfg-emailCaptureTitle').value,
+          emailCaptureSubtitle: document.getElementById('cfg-emailCaptureSubtitle').value,
+          introMessage: document.getElementById('cfg-introMessage').value,
+          leadCapture: {
+            enabled: document.getElementById('toggle-leadCapture').classList.contains('on'),
+            triggerAfter: parseInt(document.getElementById('cfg-leadTriggerAfter').value) || 3,
+            title: document.getElementById('cfg-leadTitle').value,
+            subtitle: document.getElementById('cfg-leadSubtitle').value,
+            fields: ['name', 'phone']
+          },
+          handoff: {
+            enabled: document.getElementById('toggle-handoff').classList.contains('on'),
+            buttonText: 'Talk to Agent',
+            whatsapp: document.getElementById('cfg-handoffWhatsapp').value,
+            phone: document.getElementById('cfg-handoffPhone').value,
+            email: document.getElementById('cfg-handoffEmail').value
+          },
+          fallbackMessage: document.getElementById('cfg-fallbackMessage').value,
+          offlineMessage: document.getElementById('cfg-offlineMessage').value,
+          rateLimitPerMinute: parseInt(document.getElementById('cfg-rateLimit').value) || 20,
+          allowedDomains: document.getElementById('cfg-allowedDomains').value.split('\n').map(s => s.trim()).filter(Boolean),
+          enforceApiKey: document.getElementById('toggle-enforceApiKey').classList.contains('on'),
+          emailNotifications: {
+            enabled: document.getElementById('toggle-emailNotif').classList.contains('on'),
+            adminEmail: document.getElementById('cfg-adminEmail').value,
+            brevoKey: document.getElementById('cfg-brevoKey').value,
+            smtpHost: document.getElementById('cfg-smtpHost').value,
+            smtpPort: parseInt(document.getElementById('cfg-smtpPort').value) || 587,
+            smtpUser: document.getElementById('cfg-smtpUser').value,
+            smtpPass: document.getElementById('cfg-smtpPass').value
+          },
+          enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
+          botId: selectedBotId
+        };
 
-      const res = await fetchAuth(`${API}/api/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
+        const res = await fetchAuth(`${API}/api/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
 
-      if (res.ok) {
-        showToast('Settings saved successfully!');
-        loadConfig();
+        if (res.ok) {
+          showToast('✅ Settings saved successfully!');
+          loadConfig();
+        } else {
+          const err = await res.json();
+          showToast('❌ Error: ' + (err.error || 'Failed to save'));
+        }
+      } catch (e) {
+        console.error('Save settings error', e);
+        showToast('❌ Network error saving settings');
       }
     }
 
@@ -2842,52 +2855,7 @@
       }
     }
 
-    // ---- Multi-bot Management -------------------------------
-    async function loadWorkingBots() {
-      try {
-        const res = await fetchAuth(`${API}/api/bots`);
-        allBots = await res.json();
-        const selector = document.getElementById('global-bot-selector');
-        
-        // Preserve current selection if possible
-        const prevValue = selector.value;
-        
-        selector.innerHTML = ''; // Removed Default Bot option
-        if (allBots.length === 0) {
-          selector.innerHTML = '<option value="">No bots found</option>';
-        }
 
-        allBots.forEach((bot, index) => {
-          const opt = document.createElement('option');
-          opt.value = bot.bot_id;
-          opt.textContent = bot.name + (bot.domain ? ` (${bot.domain})` : '');
-          selector.appendChild(opt);
-        });
-        
-        if (currentWorkingBotId && allBots.some(b => b.bot_id === currentWorkingBotId)) {
-          selector.value = currentWorkingBotId;
-        } else if (allBots.length > 0) {
-          // Auto-select first bot if none selected or selection invalid
-          selector.value = allBots[0].bot_id;
-          currentWorkingBotId = allBots[0].bot_id;
-          localStorage.setItem('current_working_bot_id', currentWorkingBotId);
-        }
-      } catch (e) { console.error('Failed to load bots for selector', e); }
-    }
-
-    function onWorkingBotChange() {
-      const selector = document.getElementById('global-bot-selector');
-      currentWorkingBotId = selector.value;
-      localStorage.setItem('current_working_bot_id', currentWorkingBotId);
-      
-      showToast(`Switched to: ${selector.options[selector.selectedIndex].text}`);
-      
-      // Refresh active page data
-      const activePanel = document.querySelector('.panel.active').id;
-      if (activePanel === 'page-knowledge' || activePanel === 'page-settings') loadConfig();
-      if (activePanel === 'page-flows') loadFlow();
-      if (activePanel === 'page-embed') initEmbedPage();
-    }
 
     // ---- Init -----------------------------------------------
     populateDomainDropdown().then(() => {
@@ -2898,7 +2866,7 @@
     });
     loadConfig();
     loadFlow();
-    setupEmbedUrls();
+    initEmbedPage();
   </script>
 
   <!-- Flow Preview Modal -->

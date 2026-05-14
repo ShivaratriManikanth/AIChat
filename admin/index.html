@@ -1623,11 +1623,15 @@
       loadSessions();
       loadLeads();
       
-      // If on a setup page, reload its data too
+      // If on a setup page, refresh its validation and reload data
       const activePanel = document.querySelector('.panel.active')?.id;
-      if (activePanel === 'page-knowledge' || activePanel === 'page-settings') loadConfig();
-      if (activePanel === 'page-flows') loadFlow();
-      if (activePanel === 'page-embed') initEmbedPage();
+      if (['page-knowledge', 'page-settings', 'page-flows', 'page-embed'].includes(activePanel)) {
+        if (checkBotSelection(activePanel)) {
+          if (activePanel === 'page-flows') loadFlow();
+          else if (activePanel === 'page-embed') initEmbedPage();
+          else loadConfig();
+        }
+      }
 
       showToast(selectedBotId
         ? '🌐 Filtered to: ' + sel.options[sel.selectedIndex].text
@@ -1997,7 +2001,7 @@
       document.getElementById('cfg-emailCaptureTitle').value = config.emailCaptureTitle || '';
       document.getElementById('cfg-emailCaptureSubtitle').value = config.emailCaptureSubtitle || '';
       document.getElementById('toggle-emailCapture').classList.toggle('on', !!config.emailCapture);
-      document.getElementById('toggle-faq-active').classList.toggle('on', config.enableFaq !== false);
+      // document.getElementById('toggle-faq-active').classList.toggle('on', config.enableFaq !== false);
 
       // Lead capture
       const lc = config.leadCapture || {};
@@ -2107,7 +2111,7 @@
             smtpUser: document.getElementById('cfg-smtpUser').value,
             smtpPass: document.getElementById('cfg-smtpPass').value
           },
-          enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
+          // enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
           botId: selectedBotId
         };
 
@@ -2131,8 +2135,8 @@
     }
 
     function toggleFaqActive() {
-      document.getElementById('toggle-faq-active').classList.toggle('on');
-      saveSettings();
+      // document.getElementById('toggle-faq-active').classList.toggle('on');
+      // saveSettings();
     }
 
     // ---- FAQ Management -------------------------------------

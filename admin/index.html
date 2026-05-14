@@ -512,7 +512,18 @@
     }
     .viewer-msg.assistant, .viewer-msg.bot {
       align-self: flex-start; background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 2px;
+    /* No Bot Overlay */
+    .no-bot-overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.85); backdrop-filter: blur(5px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; border-radius: 16px;
+      animation: fadeIn 0.3s ease;
     }
+    .nbo-content { text-align: center; max-width: 400px; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+    .nbo-icon { font-size: 64px; margin-bottom: 20px; }
+    .nbo-content h3 { font-size: 22px; color: #1e293b; margin-bottom: 12px; font-weight: 800; }
+    .nbo-content p { color: #64748b; margin-bottom: 24px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -594,13 +605,7 @@
           </div>
         </div>
 
-        <!-- Bot Setup Selector (for Knowledge/Settings/Flows) -->
-        <div id="bot-setup-selector-wrap" style="display: none; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
-          <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Working Bot:</span>
-          <select id="global-bot-selector" onchange="onWorkingBotChange()" style="background: transparent; border: none; font-size: 13px; font-weight: 600; color: #0f172a; outline: none; cursor: pointer; padding: 4px 0;">
-            <option value="">Loading bots...</option>
-          </select>
-        </div>
+
 
         <div class="server-status">Server Online</div>
         <button class="refresh-btn" onclick="logout()" style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3;">🚪 Logout</button>
@@ -1496,12 +1501,7 @@
           </div>
           <div class="card-body" style="padding: 30px;">
             
-            <div style="margin-bottom: 30px; padding: 20px; background: #F8FAFC; border-radius: 16px; border: 1px solid #E2E8F0;">
-              <label style="display: block; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Select Bot / Domain</label>
-              <select id="embed-bot-selector" style="width:100%; padding: 14px; border: 1.5px solid #E2E8F0; border-radius: 12px; font-size: 15px; font-weight: 600; color: #1E293B; outline: none; transition: all 0.2s; cursor: pointer; background: white;" onchange="updateEmbedScripts()">
-                <!-- Options populated by JS -->
-              </select>
-            </div>
+
 
             <div id="embed-scripts-container" style="display:none; animation: fadeIn 0.4s ease;">
               
@@ -1612,15 +1612,60 @@
       const sel = document.getElementById('global-domain-selector');
       selectedBotId = sel.value;
       localStorage.setItem('dashboard_domain_filter', selectedBotId);
+      
+      // Keep working bot ID in sync for setup pages
+      if (selectedBotId) {
+        currentWorkingBotId = selectedBotId;
+        localStorage.setItem('current_working_bot_id', currentWorkingBotId);
+      }
+
       updateDomainBanner();
-      // Reload data for all active sections
+      
+      // Reload data for all sections
       loadStats();
       loadUsers();
       loadSessions();
       loadLeads();
+      
+      // If on a setup page, reload its data too
+      const activePanel = document.querySelector('.panel.active')?.id;
+      if (activePanel === 'page-knowledge' || activePanel === 'page-settings') loadConfig();
+      if (activePanel === 'page-flows') loadFlow();
+      if (activePanel === 'page-embed') initEmbedPage();
+
       showToast(selectedBotId
         ? '🌐 Filtered to: ' + sel.options[sel.selectedIndex].text
         : '🌐 Showing all domains');
+    }
+
+    function checkBotSelection(pageId) {
+      const panel = document.getElementById(pageId);
+      if (!panel) return false;
+      const overlayId = pageId + '-no-bot-overlay';
+      let overlay = document.getElementById(overlayId);
+      
+      if (!selectedBotId) {
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = overlayId;
+          overlay.className = 'no-bot-overlay';
+          overlay.innerHTML = `
+            <div class="nbo-content">
+              <div class="nbo-icon">🤖</div>
+              <h3>Bot Selection Required</h3>
+              <p>Please select a specific domain/bot from the top dropdown to manage its configuration, knowledge base, or flow.</p>
+              <button class="btn btn-primary" onclick="document.getElementById('global-domain-selector').focus(); showToast('Select a bot here 👆');" style="width:100%; padding:14px; border-radius:12px;">Select Bot Now</button>
+            </div>
+          `;
+          panel.style.position = 'relative';
+          panel.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+        return false;
+      } else {
+        if (overlay) overlay.style.display = 'none';
+        return true;
+      }
     }
 
     function updateDomainBanner() {
@@ -1667,18 +1712,15 @@
       if (page === 'broadcast') initBroadcastPage();
       if (page === 'embed') initEmbedPage();
       
-      // Show/Hide Bot Selector based on page
-      const botSetupPages = ['knowledge', 'flows', 'settings', 'embed'];
-      const selectorWrap = document.getElementById('bot-setup-selector-wrap');
-      if (botSetupPages.includes(page)) {
-        selectorWrap.style.display = 'flex';
-        loadWorkingBots();
-      } else {
-        selectorWrap.style.display = 'none';
+      if (page === 'flows') {
+        if (checkBotSelection('page-flows')) loadFlow();
       }
-
-      if (page === 'flows') loadFlow();
-      if (page === 'settings' || page === 'knowledge') loadConfig();
+      if (page === 'settings' || page === 'knowledge') {
+        if (checkBotSelection('page-' + page)) loadConfig();
+      }
+      if (page === 'embed') {
+        if (checkBotSelection('page-embed')) initEmbedPage();
+      }
     }
 
     // ---- Email Broadcast -----------------------------------
@@ -1933,7 +1975,8 @@
 
     // ---- Load Config ----------------------------------------
     async function loadConfig() {
-      const url = currentWorkingBotId ? `${API}/api/config/full?botId=${currentWorkingBotId}` : `${API}/api/config/full`;
+      if (!selectedBotId) return;
+      const url = `${API}/api/config/full?botId=${encodeURIComponent(selectedBotId)}`;
       const res = await fetchAuth(url);
       config = await res.json();
 
@@ -2057,7 +2100,7 @@
           smtpPass: document.getElementById('cfg-smtpPass').value
         },
         enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
-        botId: currentWorkingBotId
+        botId: selectedBotId
       };
 
       const res = await fetchAuth(`${API}/api/config`, {
@@ -2481,26 +2524,18 @@
     let allBotsForEmbed = [];
 
     async function initEmbedPage() {
+      if (!checkBotSelection('page-embed')) return;
+      
       try {
         const res = await fetchAuth(`${API}/api/bots`);
-        allBotsForEmbed = await res.json();
+        const bots = await res.json();
         
-        const selector = document.getElementById('embed-bot-selector');
-        const emptyState = document.getElementById('embed-empty-state');
-        const scriptsContainer = document.getElementById('embed-scripts-container');
-
-        if (!allBotsForEmbed || allBotsForEmbed.length === 0) {
-          emptyState.style.display = 'block';
-          scriptsContainer.style.display = 'none';
-          selector.innerHTML = '<option value="">No bots available</option>';
+        if (bots.length === 0) {
+          document.getElementById('embed-empty-state').style.display = 'block';
+          document.getElementById('embed-scripts-container').style.display = 'none';
         } else {
-          emptyState.style.display = 'none';
-          scriptsContainer.style.display = 'block';
-          
-          selector.innerHTML = allBotsForEmbed.map(b => 
-            `<option value="${b.bot_id}">${b.name} (${b.domain || 'no domain'})</option>`
-          ).join('');
-          
+          document.getElementById('embed-empty-state').style.display = 'none';
+          document.getElementById('embed-scripts-container').style.display = 'block';
           updateEmbedScripts();
         }
       } catch (e) {
@@ -2509,12 +2544,13 @@
     }
 
     function updateEmbedScripts() {
-      const botId = document.getElementById('embed-bot-selector').value;
-      const bot = allBotsForEmbed.find(b => b.bot_id === botId);
+      if (!selectedBotId) return;
+      const bot = allBots.find(b => b.bot_id === selectedBotId);
       if (!bot) return;
 
       const serverUrl = API;
       const apiKey = bot.api_key;
+      const botId = bot.bot_id;
 
       // Universal Script
       const universal = `<script\n  src="${serverUrl}/widget/chatbot.js"\n  data-server="${serverUrl}"\n  data-bot-id="${botId}"\n  data-api-key="${apiKey}"\n><\/script>`;
@@ -2634,8 +2670,9 @@
     let isFlowActive = false;
 
     async function loadFlow() {
+      if (!selectedBotId) return;
       try {
-        const url = currentWorkingBotId ? `${API}/api/flows?botId=${currentWorkingBotId}` : `${API}/api/flows`;
+        const url = `${API}/api/flows?botId=${encodeURIComponent(selectedBotId)}`;
         const res = await fetchAuth(url);
         const flows = await res.json();
         if (flows && flows.length > 0) {
@@ -2787,7 +2824,7 @@
           name: 'Main Flow',
           flow_data: flowNodes,
           is_active: isFlowActive,
-          botId: currentWorkingBotId
+          botId: selectedBotId
         };
         const res = await fetchAuth(`${API}/api/flows`, {
           method: 'POST',

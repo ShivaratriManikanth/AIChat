@@ -639,6 +639,8 @@ app.post('/api/register', checkApiKey, (req, res) => {
 
 app.get('/api/users', requireAuth, (req, res) => {
   const domainFilter = req.query.domain;
+  const botId = req.query.botId;
+
   if (db) {
     let query = `
       SELECT u.email, u.session_id, u.created_at,
@@ -653,7 +655,10 @@ app.get('/api/users', requireAuth, (req, res) => {
     `;
     let params = [req.clientId];
 
-    if (domainFilter) {
+    if (botId) {
+      query += ` AND s.bot_id = ?`;
+      params.push(botId);
+    } else if (domainFilter) {
       query += ` AND b.domain = ?`;
       params.push(domainFilter);
     }

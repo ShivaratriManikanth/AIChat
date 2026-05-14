@@ -673,15 +673,35 @@ app.get('/api/users', requireAuth, (req, res) => {
   res.json(users);
 });
 
-// GET /api/stats - Admin: dashboard stats
+// GET /api/stats - Admin: dashboard stats (optionally filtered by botId)
 app.get('/api/stats', requireAuth, (req, res) => {
   if (db) {
-    const totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
-    const totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history WHERE client_id = ?').get(req.clientId).count;
-    const totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
-    const activeSessions = db.prepare(
-      "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND updated_at > datetime('now', '-30 minutes')"
-    ).get(req.clientId).count;
+    const botId = req.query.botId;
+
+    let totalUsers, totalChats, totalSessions, activeSessions;
+    if (botId) {
+      totalUsers = db.prepare(`
+        SELECT COUNT(DISTINCT u.email) as count FROM users u
+        INNER JOIN sessions s ON u.session_id = s.session_id
+        WHERE u.client_id = ? AND s.bot_id = ?
+      `).get(req.clientId, botId).count;
+      totalChats = db.prepare(`
+        SELECT COUNT(*) as count FROM chat_history c
+        INNER JOIN sessions s ON c.session_id = s.session_id
+        WHERE c.client_id = ? AND s.bot_id = ?
+      `).get(req.clientId, botId).count;
+      totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+      activeSessions = db.prepare(
+        "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ? AND updated_at > datetime('now', '-30 minutes')"
+      ).get(req.clientId, botId).count;
+    } else {
+      totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+      totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history WHERE client_id = ?').get(req.clientId).count;
+      totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
+      activeSessions = db.prepare(
+        "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND updated_at > datetime('now', '-30 minutes')"
+      ).get(req.clientId).count;
+    }
     
     // Get plan info
     const client = db.prepare(`
@@ -1104,9 +1124,19 @@ app.post('/api/test-email', async (req, res) => {
   }
 });
 
-// GET /api/leads — Admin: list all leads
+// GET /api/leads — Admin: list all leads (optionally filtered by botId/session bot)
 app.get('/api/leads', requireAuth, (req, res) => {
   if (db) {
+    const botId = req.query.botId;
+    if (botId) {
+      const leads = db.prepare(`
+        SELECT l.* FROM leads l
+        INNER JOIN sessions s ON l.session_id = s.session_id
+        WHERE l.client_id = ? AND s.bot_id = ?
+        ORDER BY l.created_at DESC
+      `).all(req.clientId, botId);
+      return res.json(leads);
+    }
     return res.json(db.prepare('SELECT * FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
   }
   res.json([]);
@@ -1179,18 +1209,32 @@ app.get('/api/history/:sessionId', (req, res) => {
   res.json(history);
 });
 
-// GET /api/sessions — Admin: list all sessions
+// GET /api/sessions — Admin: list all sessions (optionally filtered by botId)
 app.get('/api/sessions', requireAuth, (req, res) => {
   if (db) {
-    const sessions = db.prepare(`
-      SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
-             COUNT(c.id) as message_count
-      FROM sessions s
-      LEFT JOIN chat_history c ON s.session_id = c.session_id
-      WHERE s.client_id = ?
-      GROUP BY s.session_id
-      ORDER BY s.updated_at DESC
-    `).all(req.clientId);
+    const botId = req.query.botId;
+    let sessions;
+    if (botId) {
+      sessions = db.prepare(`
+        SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+               COUNT(c.id) as message_count
+        FROM sessions s
+        LEFT JOIN chat_history c ON s.session_id = c.session_id
+        WHERE s.client_id = ? AND s.bot_id = ?
+        GROUP BY s.session_id
+        ORDER BY s.updated_at DESC
+      `).all(req.clientId, botId);
+    } else {
+      sessions = db.prepare(`
+        SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+               COUNT(c.id) as message_count
+        FROM sessions s
+        LEFT JOIN chat_history c ON s.session_id = c.session_id
+        WHERE s.client_id = ?
+        GROUP BY s.session_id
+        ORDER BY s.updated_at DESC
+      `).all(req.clientId);
+    }
     return res.json(sessions);
   }
   res.json([]);

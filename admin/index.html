@@ -1115,6 +1115,23 @@
           </div>
         </div>
 
+        <!-- Trained Knowledge List -->
+        <div class="card">
+          <div class="card-header" style="background:white;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">📚</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:#0f172a;">Trained Knowledge</div>
+                <div style="font-size:12px;color:#64748b;" id="faq-count-label">Loading...</div>
+              </div>
+            </div>
+            <button class="btn btn-danger" style="padding:6px 14px;font-size:12px;" onclick="clearAllKnowledge()">🗑 Clear All</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div id="faq-list" style="max-height:420px;overflow-y:auto;"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ======== SETTINGS PAGE ======== -->
@@ -2110,19 +2127,55 @@
     // ---- FAQ Management -------------------------------------
     function renderFaqs() {
       const list = document.getElementById('faq-list');
+      const countLabel = document.getElementById('faq-count-label');
+      if (!list) return;
       if (!config.faqs || config.faqs.length === 0) {
-        list.innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div>No FAQs added yet</div>';
+        list.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;">No knowledge entries yet. Add content above to train the bot.</div>';
+        if (countLabel) countLabel.textContent = '0 entries';
         return;
       }
+      if (countLabel) countLabel.textContent = config.faqs.length + ' entries trained';
       list.innerHTML = config.faqs.map((f, i) => `
-        <div class="faq-item">
-          <div style="flex:1">
-            <div class="faq-q">Q: ${f.question}</div>
-            <div class="faq-a">A: ${f.answer}</div>
+        <div style="border-bottom:1px solid #f1f5f9;">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(f.question)}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
+              <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+            </div>
           </div>
-          <button class="btn btn-danger" style="padding:6px 14px;font-size:12px;" onclick="deleteFaq(${i})">Delete</button>
+          <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
+            <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+          </div>
         </div>
       `).join('');
+    }
+
+    function toggleFaqItem(i) {
+      const body = document.getElementById('faq-body-' + i);
+      const chevron = document.getElementById('faq-chevron-' + i);
+      if (!body) return;
+      const open = body.style.display === 'block';
+      body.style.display = open ? 'none' : 'block';
+      if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function clearAllKnowledge() {
+      if (!confirm('Delete ALL trained knowledge? This cannot be undone.')) return;
+      config.faqs = [];
+      await fetchAuth(`${API}/api/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faqs: [], botId: selectedBotId })
+      });
+      showToast('All knowledge cleared');
+      loadConfig();
     }
 
     async function addFaq() {

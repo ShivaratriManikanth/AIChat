@@ -925,6 +925,25 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
 
   const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + advancedInstructions;
 
+  // Build knowledge context from trained FAQs (top 10 most relevant chunks)
+  let knowledgeContext = '';
+  if (config.faqs && config.faqs.length > 0) {
+    const faqs = config.faqs;
+    // Score each FAQ by relevance to the current message
+    const msgWords = new Set(message.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length > 2));
+    const scored = faqs.map(f => {
+      const combined = ((f.question || '') + ' ' + (f.answer || '')).toLowerCase();
+      let score = 0;
+      for (const word of msgWords) { if (combined.includes(word)) score++; }
+      return { f, score };
+    }).sort((a, b) => b.score - a.score);
+    const topChunks = scored.slice(0, 10).filter(s => s.score > 0).map(s => s.f);
+    // If no scored match, still include top 5 chunks as general context
+    const chunks = topChunks.length > 0 ? topChunks : faqs.slice(0, 5);
+    knowledgeContext = '\n\nKNOWLEDGE BASE (use this to answer questions):\n' +
+      chunks.map(f => `---\n${f.answer}`).join('\n');
+  }
+
   const enableAi = config.enableAiChatbot !== false; // true by default
 
   // Use OpenAI if available
@@ -934,7 +953,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     try {
       const history = getHistory(sessionId, req.clientId, 10);
       const messages = [
-        { role: 'system', content: (config.systemPrompt || '') + contextHint },
+        { role: 'system', content: (config.systemPrompt || '') + knowledgeContext + contextHint },
         ...history.map(h => ({ role: h.role, content: h.content })),
       ];
 
@@ -983,7 +1002,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     try {
       const https = require('https');
       const payload = JSON.stringify({
-        systemInstruction: { parts: [{ text: (config.systemPrompt || '') + contextHint }] },
+        systemInstruction: { parts: [{ text: (config.systemPrompt || '') + knowledgeContext + contextHint }] },
         contents: [{ role: 'user', parts: [{ text: message }] }]
       });
 

@@ -1286,45 +1286,20 @@
             <div style="margin-top:20px; padding:15px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; display:flex; gap:12px; align-items:center;">
               <div style="font-size:20px;">💡</div>
               <div style="font-size:13px; color:#0369a1;">
-                <b>Reliable Email Delivery:</b> We recommend using <b>Brevo</b> for broadcasts. It's free (300 emails/day) and bypasses technical server blocks. 
-                <a href="https://www.brevo.com/" target="_blank" style="font-weight:600; text-decoration:underline;">Get Free API Key here</a>.
+                Emails are sent via the platform's shared mail server. Enter your email below — it will appear as the <b>sender address</b> on all emails to your users.
               </div>
             </div>
 
             <div class="form-group" style="margin-top:20px;">
-              <label>Brevo API Key (for Broadcasts)</label>
-              <input type="password" id="cfg-brevoKey" placeholder="xkeysib-...">
+              <label>Your Email Address <span style="color:#64748b;font-weight:400;">(shown as From on outgoing emails)</span></label>
+              <input type="email" id="cfg-fromEmail" placeholder="you@yourcompany.com">
             </div>
 
             <div class="form-group">
-              <label>Admin Email (receives lead notifications)</label>
+              <label>Notification Email <span style="color:#64748b;font-weight:400;">(receives lead &amp; complaint alerts)</span></label>
               <input type="email" id="cfg-adminEmail" placeholder="admin@yourcompany.com">
             </div>
 
-            <div style="border-top:1px solid #eee; margin-top:20px; padding-top:20px;">
-              <h3 style="font-size:14px; color:#64748b; margin-bottom:12px;">Advanced SMTP (Fallback)</h3>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>SMTP Host</label>
-                  <input type="text" id="cfg-smtpHost" placeholder="smtp.gmail.com">
-                </div>
-                <div class="form-group">
-                  <label>SMTP Port</label>
-                  <input type="number" id="cfg-smtpPort" placeholder="587">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>SMTP Username</label>
-                  <input type="text" id="cfg-smtpUser" placeholder="your-email@gmail.com">
-                </div>
-                <div class="form-group">
-                  <label>SMTP Password</label>
-                  <input type="password" id="cfg-smtpPass" placeholder="••••••••••••">
-                </div>
-              </div>
-            </div>
-            
             <button class="btn btn-outline" onclick="testEmail()">📧 Send Test Email</button>
           </div>
         </div>
@@ -1765,13 +1740,13 @@
         const cfg = await res.json();
         const company = cfg.companyName || cfg.botName || 'Your Company';
         document.getElementById('preview-company').textContent = company;
-        // Check SMTP
-        const smtp = cfg.emailNotifications || {};
+        // Check email config
+        const emailCfg = cfg.emailNotifications || {};
         const statusEl = document.getElementById('broadcast-smtp-status');
-        if (smtp.smtpUser && smtp.smtpPass) {
-          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#10b981;"></div><span style="font-size:13px;font-weight:600;color:#10b981;">SMTP Ready</span>';
+        if (emailCfg.fromEmail) {
+          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#10b981;"></div><span style="font-size:13px;font-weight:600;color:#10b981;">Email Ready (' + emailCfg.fromEmail + ')</span>';
         } else {
-          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div><span style="font-size:13px;font-weight:600;color:#f59e0b;">Configure SMTP in Settings</span>';
+          statusEl.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div><span style="font-size:13px;font-weight:600;color:#f59e0b;">Set your email in Settings</span>';
         }
       } catch(e) { console.error(e); }
     }
@@ -2049,12 +2024,8 @@
       // Email notifications
       const em = config.emailNotifications || {};
       document.getElementById('toggle-emailNotif').classList.toggle('on', !!em.enabled);
+      document.getElementById('cfg-fromEmail').value = em.fromEmail || '';
       document.getElementById('cfg-adminEmail').value = em.adminEmail || '';
-      document.getElementById('cfg-brevoKey').value = em.brevoKey || '';
-      document.getElementById('cfg-smtpHost').value = em.smtpHost || '';
-      document.getElementById('cfg-smtpPort').value = em.smtpPort || 587;
-      document.getElementById('cfg-smtpUser').value = em.smtpUser || '';
-      document.getElementById('cfg-smtpPass').value = em.smtpPass || '';
 
       renderFaqs();
     }
@@ -2105,12 +2076,8 @@
           enforceApiKey: document.getElementById('toggle-enforceApiKey').classList.contains('on'),
           emailNotifications: {
             enabled: document.getElementById('toggle-emailNotif').classList.contains('on'),
-            adminEmail: document.getElementById('cfg-adminEmail').value,
-            brevoKey: document.getElementById('cfg-brevoKey').value,
-            smtpHost: document.getElementById('cfg-smtpHost').value,
-            smtpPort: parseInt(document.getElementById('cfg-smtpPort').value) || 587,
-            smtpUser: document.getElementById('cfg-smtpUser').value,
-            smtpPass: document.getElementById('cfg-smtpPass').value
+            fromEmail: document.getElementById('cfg-fromEmail').value,
+            adminEmail: document.getElementById('cfg-adminEmail').value
           },
           // enableFaq: document.getElementById('toggle-faq-active').classList.contains('on'),
           botId: selectedBotId

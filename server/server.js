@@ -423,27 +423,38 @@ function restrictDomain(req, res, next) {
   next();
 }
 
-// Email notification helper
-async function sendLeadEmail(lead) {
-  try {
-    const config = loadConfig();
-    const emailCfg = config.emailNotifications || {};
-    if (!emailCfg.enabled || !emailCfg.smtpUser || !emailCfg.adminEmail) return;
+// Global SMTP transporter using server env vars (single shared SMTP)
+function createGlobalTransporter() {
+  const user = process.env.SMTP_USER || process.env.SMTP_EMAIL;
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
+  if (!user || !pass) return null;
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT) || 465;
+  return nodemailer.createTransport({
+    host, port, secure: port === 465,
+    auth: { user, pass }
+  });
+}
 
-    const transporter = nodemailer.createTransport({
-      host: emailCfg.smtpHost,
-      port: emailCfg.smtpPort || 587,
-      secure: emailCfg.smtpPort === 465,
-      auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass }
-    });
+// Email notification helper — sends via global SMTP, From = client's fromEmail
+async function sendLeadEmail(lead, clientEmailCfg) {
+  try {
+    const emailCfg = clientEmailCfg || {};
+    if (!emailCfg.enabled || !emailCfg.adminEmail) return;
+
+    const transporter = createGlobalTransporter();
+    if (!transporter) return;
+
+    const fromEmail = emailCfg.fromEmail || process.env.SMTP_USER || process.env.SMTP_EMAIL;
+    const companyName = emailCfg.companyName || 'Chatbot';
 
     await transporter.sendMail({
-      from: `"${config.companyName || 'Chatbot'}" <${emailCfg.smtpUser}>`,
+      from: `"${companyName}" <${fromEmail}>`,
       to: emailCfg.adminEmail,
       subject: `🎯 New Lead Captured: ${lead.name || lead.email}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-          <h2 style="color:${config.themeColor || '#4F46E5'};">New Lead from ${config.companyName}</h2>
+          <h2 style="color:#4F46E5;">New Lead from ${companyName}</h2>
           <table style="border-collapse:collapse;width:100%;margin-top:16px;">
             <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Name:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.name || '-'}</td></tr>
             <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Email:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.email || '-'}</td></tr>
@@ -451,7 +462,7 @@ async function sendLeadEmail(lead) {
             <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Page:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${lead.pageUrl || '-'}</td></tr>
             <tr><td style="padding:8px;"><b>Time:</b></td><td style="padding:8px;">${new Date().toLocaleString()}</td></tr>
           </table>
-          <p style="margin-top:20px;color:#888;font-size:12px;">Captured by ${config.botName} AI Chatbot</p>
+          <p style="margin-top:20px;color:#888;font-size:12px;">Captured by AI Chatbot</p>
         </div>
       `
     });
@@ -1071,7 +1082,11 @@ app.post('/api/lead', checkApiKey, (req, res) => {
   }
 
   // Send email notification to admin (async, non-blocking)
-  sendLeadEmail({ name: safeName, email: safeEmail, phone: safePhone, pageUrl: safeUrl });
+  const _leadCfg = loadClientBotConfig(req.clientId, req.bot?.bot_id);
+  sendLeadEmail(
+    { name: safeName, email: safeEmail, phone: safePhone, pageUrl: safeUrl },
+    { ...(_leadCfg.emailNotifications || {}), companyName: _leadCfg.companyName || _leadCfg.botName }
+  );
 
   res.json({ success: true });
 });
@@ -1120,9 +1135,12 @@ app.post('/api/logo', requireAuth, (req, res) => {
 });
 
 // POST /api/test-email — Test email configuration
-app.post('/api/test-email', async (req, res) => {
+app.post('/api/test-email', requireAuth, async (req, res) => {
   try {
-    await sendLeadEmail({ name: 'Test User', email: 'test@test.com', phone: '1234567890', pageUrl: 'http://test.com' });
+    const botId = req.query.botId || req.body?.botId;
+    const cfg = loadClientBotConfig(req.clientId, botId);
+    const emailCfg = { ...(cfg.emailNotifications || {}), companyName: cfg.companyName || cfg.botName };
+    await sendLeadEmail({ name: 'Test User', email: 'test@example.com', phone: '1234567890', pageUrl: 'http://test.com' }, emailCfg);
     res.json({ success: true, message: 'Test email sent' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1527,32 +1545,31 @@ app.post('/api/complaint', checkApiKey, (req, res) => {
     ).run(sessionId, safeEmail, safeName, safePhone, safeCategory, safeSubject, safeMessage, safeUrl, req.clientId);
   }
 
-  // Send notification email (reuse sendLeadEmail-like path)
+  // Send notification email via global SMTP
   try {
-    const config = loadConfig();
-    const emailCfg = config.emailNotifications || {};
-    if (emailCfg.enabled && emailCfg.smtpUser && emailCfg.adminEmail) {
-      const transporter = nodemailer.createTransport({
-        host: emailCfg.smtpHost,
-        port: emailCfg.smtpPort || 587,
-        secure: emailCfg.smtpPort === 465,
-        auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass }
-      });
-      transporter.sendMail({
-        from: `"${config.companyName || 'Chatbot'}" <${emailCfg.smtpUser}>`,
-        to: emailCfg.adminEmail,
-        subject: `⚠️ New Complaint: ${safeSubject || safeCategory}`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-            <h2 style="color:#EF4444;">⚠️ New Complaint Received</h2>
-            <table style="border-collapse:collapse;width:100%;margin-top:16px;">
-              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Name:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeName || '-'}</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Mobile:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safePhone || '-'}</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Email:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeEmail || '-'}</td></tr>
-              <tr><td style="padding:8px;"><b>Issue:</b></td><td style="padding:8px;">${safeMessage}</td></tr>
-            </table>
-          </div>`
-      }).catch(e => console.error('Complaint email failed:', e.message));
+    const _cCfg = loadClientBotConfig(req.clientId, req.bot?.bot_id);
+    const emailCfg = _cCfg.emailNotifications || {};
+    if (emailCfg.enabled && emailCfg.adminEmail) {
+      const transporter = createGlobalTransporter();
+      if (transporter) {
+        const fromEmail = emailCfg.fromEmail || process.env.SMTP_USER || process.env.SMTP_EMAIL;
+        const companyName = _cCfg.companyName || _cCfg.botName || 'Chatbot';
+        transporter.sendMail({
+          from: `"${companyName}" <${fromEmail}>`,
+          to: emailCfg.adminEmail,
+          subject: `⚠️ New Complaint: ${safeSubject || safeCategory}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+              <h2 style="color:#EF4444;">⚠️ New Complaint Received</h2>
+              <table style="border-collapse:collapse;width:100%;margin-top:16px;">
+                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Name:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeName || '-'}</td></tr>
+                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Mobile:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safePhone || '-'}</td></tr>
+                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Email:</b></td><td style="padding:8px;border-bottom:1px solid #eee;">${safeEmail || '-'}</td></tr>
+                <tr><td style="padding:8px;"><b>Issue:</b></td><td style="padding:8px;">${safeMessage}</td></tr>
+              </table>
+            </div>`
+        }).catch(e => console.error('Complaint email failed:', e.message));
+      }
     }
   } catch (e) { /* email optional */ }
 
@@ -1961,14 +1978,9 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     emailCfg = cfg.emailNotifications || {};
   } catch(e) {}
 
-  // System SMTP Fallback creds (used only if Brevo is not set)
-  const smtpUser = process.env.SMTP_EMAIL;
-  const smtpPass = process.env.SMTP_PASSWORD;
-  const smtpHost = 'smtp.gmail.com';
-  const smtpPort = 587; 
-
-  if (!emailCfg.brevoKey && (!smtpUser || !smtpPass)) {
-    return res.status(500).json({ error: 'Email system not configured. Please set Brevo API Key in Settings.' });
+  const globalTransporter = createGlobalTransporter();
+  if (!globalTransporter) {
+    return res.status(500).json({ error: 'Email system not configured. Contact your administrator.' });
   }
 
   // Collect target emails — same proven query style as /api/users and /api/stats
@@ -2061,68 +2073,15 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     </div>
   `;
 
-  // Send one email using the best available method
+  // Send one broadcast email via the global SMTP, From = client's fromEmail
+  const fromEmail = emailCfg.fromEmail || process.env.SMTP_USER || process.env.SMTP_EMAIL;
   async function sendOneBroadcast(to) {
-    // 1. Priority: Client's own Brevo API Key (Modern HTTP, Reliable)
-    const clientBrevoKey = emailCfg.brevoKey;
-    const clientEmail = emailCfg.smtpUser || emailCfg.adminEmail; // Use client's configured email
-    
-    if (clientBrevoKey) {
-      const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'api-key': clientBrevoKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender: { name: companyName, email: clientEmail || 'noreply@yourbot.com' },
-          to: [{ email: to }],
-          subject: subject,
-          htmlContent: emailHtml
-        })
-      });
-      if (r.ok) return;
-      console.warn(`[Broadcast] Client Brevo failed, falling back...`);
-    }
-
-    // 2. System Fallback: Resend HTTP API (Admin's account)
-    if (process.env.RESEND_API_KEY) {
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: `${companyName} <onboarding@resend.dev>`, to, subject, html: emailHtml })
-      });
-      if (r.ok) return;
-    }
-
-    // 3. System Fallback: SendGrid HTTP API (Admin's account)
-    if (process.env.SENDGRID_API_KEY) {
-      const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: to }] }],
-          from: { email: process.env.SMTP_EMAIL || 'noreply@aichat.com', name: companyName },
-          subject, content: [{ type: 'text/html', value: emailHtml }]
-        })
-      });
-      if (r.ok) return;
-    }
-
-    // 4. Final Fallback: Client's SMTP (if they filled it in)
-    if (emailCfg.smtpHost && emailCfg.smtpUser && emailCfg.smtpPass) {
-      const dnsP = require('dns').promises;
-      let host = emailCfg.smtpHost;
-      try { const addrs = await dnsP.resolve4(host); if(addrs.length) host = addrs[0]; } catch(e){}
-      
-      const transporter = nodemailer.createTransport({
-        host: host, port: parseInt(emailCfg.smtpPort) || 587, secure: false,
-        auth: { user: emailCfg.smtpUser, pass: emailCfg.smtpPass },
-        connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
-      });
-      await transporter.sendMail({ from: `"${companyName}" <${emailCfg.smtpUser}>`, to, subject, html: emailHtml });
-      transporter.close();
-      return;
-    }
-
-    throw new Error('No valid email configuration found (Brevo, Resend, SendGrid, or SMTP).');
+    await globalTransporter.sendMail({
+      from: `"${companyName}" <${fromEmail}>`,
+      to,
+      subject,
+      html: emailHtml
+    });
   }
 
   let sent = 0, failed = 0, failedEmails = [];

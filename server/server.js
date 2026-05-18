@@ -871,7 +871,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     return res.status(400).json({ error: 'Empty message' });
   }
 
-  const config = loadClientBotConfig(req.clientId);
+  const config = loadClientBotConfig(req.clientId, req.bot?.bot_id);
   const startTime = Date.now();
 
   // Track bot_id, widget version, last user msg time
@@ -1446,14 +1446,20 @@ app.delete('/api/bots/:id', requireAuth, (req, res) => {
 
 // POST /api/apikey/regenerate — Regenerate default API key
 app.post('/api/apikey/regenerate', requireAuth, (req, res) => {
-  const config = loadClientBotConfig(req.clientId);
+  const botId = req.query.botId || req.body?.botId;
+  const config = loadClientBotConfig(req.clientId, botId);
   const newApiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
   config.apiKey = newApiKey;
   
   // Update both the specific field and the JSON config in DB
   if (db) {
-    db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ?')
-      .run(newApiKey, JSON.stringify(config), req.clientId);
+    if (botId) {
+      db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ? AND bot_id = ?')
+        .run(newApiKey, JSON.stringify(config), req.clientId, botId);
+    } else {
+      db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ?')
+        .run(newApiKey, JSON.stringify(config), req.clientId);
+    }
   } else {
     saveConfig(config);
   }

@@ -2713,7 +2713,10 @@
 
     async function regenerateApiKey() {
       if (!confirm('Regenerate API key? Old key will stop working.')) return;
-      const res = await fetchAuth(`${API}/api/apikey/regenerate`, { method: 'POST' });
+      const url = selectedBotId 
+        ? `${API}/api/apikey/regenerate?botId=${encodeURIComponent(selectedBotId)}` 
+        : `${API}/api/apikey/regenerate`;
+      const res = await fetchAuth(url, { method: 'POST' });
       const data = await res.json();
       document.getElementById('cfg-apiKey').value = data.apiKey;
       showToast('New API key generated!');

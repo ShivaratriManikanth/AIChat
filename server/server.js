@@ -903,7 +903,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       });
     }
 
-    if (faqMatch) {
+    if (faqMatch && (!faqMatch.question || !faqMatch.question.startsWith('[From '))) {
       const responseMs = Date.now() - startTime;
       saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs }, email);
       return res.json({ reply: faqMatch.answer, source: 'faq' });

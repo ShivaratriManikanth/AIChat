@@ -721,7 +721,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
     
     // Get plan info
     const client = db.prepare(`
-      SELECT c.created_at, p.name as plan_name, p.duration
+      SELECT c.created_at, c.plan_id, p.name as plan_name, p.duration
       FROM clients c
       LEFT JOIN plans p ON c.plan_id = p.id
       WHERE c.id = ?
@@ -730,7 +730,8 @@ app.get('/api/stats', requireAuth, (req, res) => {
     let daysRemaining = 0;
     let planName = 'Trial';
     if (client) {
-      planName = client.plan_name || 'Free Plan';
+      // Use plans table name if available, otherwise fall back to PLAN_LIMITS hardcoded names
+      planName = client.plan_name || (PLAN_LIMITS[client.plan_id] && PLAN_LIMITS[client.plan_id].name) || 'Free Plan';
       const created = new Date(client.created_at);
       const durationDays = client.duration && client.duration.toLowerCase().includes('month') ? 30 : 365;
       const expiry = new Date(created.getTime() + durationDays * 24 * 60 * 60 * 1000);

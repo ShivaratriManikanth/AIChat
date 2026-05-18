@@ -1011,7 +1011,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           geminiReply = await new Promise((resolve, reject) => {
-            const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
+            const req = https.request('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

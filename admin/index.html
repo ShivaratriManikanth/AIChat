@@ -1637,6 +1637,21 @@
       const overlayId = pageId + '-no-bot-overlay';
       let overlay = document.getElementById(overlayId);
       
+      // Auto-select the first bot if available and none selected
+      if (!selectedBotId && allBots.length > 0) {
+        selectedBotId = allBots[0].bot_id;
+        const sel = document.getElementById('global-domain-selector');
+        if (sel) {
+          sel.value = selectedBotId;
+          localStorage.setItem('dashboard_domain_filter', selectedBotId);
+        }
+        updateDomainBanner();
+        loadStats();
+        loadUsers();
+        loadSessions();
+        loadLeads();
+      }
+      
       if (!selectedBotId) {
         const isEmpty = allBots.length === 0;
         const msg = isEmpty 

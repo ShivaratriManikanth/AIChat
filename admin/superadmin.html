@@ -554,10 +554,10 @@
                   </div>
                   <div class="form-group">
                     <label>Enable AI Responses</label>
-                    <select id="dbot-enableAi">
-                      <option value="true">Enabled</option>
-                      <option value="false">Disabled</option>
-                    </select>
+                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                      <div class="toggle-switch" id="dbot-toggle-ai-active" onclick="toggleDemoAiActive()"></div>
+                      <span style="font-size:12px; color:#555; font-weight: 500;" id="dbot-ai-status-label">Active</span>
+                    </div>
                   </div>
                   <div class="form-group">
                     <label>Enable FAQ Searching</label>
@@ -634,9 +634,15 @@
 
           <!-- SUB-TAB: AI CHATBOT KNOWLEDGE BASE -->
           <div class="sub-tab-content" id="sub-dbot-aichat">
-            <div style="margin-bottom:24px;">
-              <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
-              <p style="color:#666;font-size:13px;margin-top:4px;">Train your landing page chatbot on your custom domain, texts, and PDF documents.</p>
+            <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div>
+                <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
+                <p style="color:#666;font-size:13px;margin-top:4px;">Train your landing page chatbot on your custom domain, texts, and PDF documents.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:10px 16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <span style="font-size:13px; font-weight:700; color:#1e293b;">AI Responses</span>
+                <div class="toggle-switch" id="dbot-toggle-ai-kb-active" onclick="toggleDemoAiActive()"></div>
+              </div>
             </div>
 
             <!-- Training Methods Grid -->
@@ -1359,7 +1365,14 @@
         document.getElementById('dbot-themeColor').value = config.themeColor || '#4F46E5';
         document.getElementById('dbot-aiModel').value = config.aiModel || 'gpt-3.5-turbo';
         document.getElementById('dbot-systemPrompt').value = config.systemPrompt || '';
-        document.getElementById('dbot-enableAi').value = config.enableAiChatbot !== false ? 'true' : 'false';
+        isDemoAiActive = config.enableAiChatbot !== false;
+        const t1 = document.getElementById('dbot-toggle-ai-active');
+        if (t1) t1.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
+        const t2 = document.getElementById('dbot-toggle-ai-kb-active');
+        if (t2) t2.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
+        const aiLabel = document.getElementById('dbot-ai-status-label');
+        if (aiLabel) aiLabel.textContent = isDemoAiActive ? 'Active' : 'Inactive';
+
         document.getElementById('dbot-enableFaq').value = config.enableFaq !== false ? 'true' : 'false';
 
         // Chatbot Mode Selection
@@ -1424,7 +1437,7 @@
       const aiModel = document.getElementById('dbot-aiModel').value;
       const systemPrompt = document.getElementById('dbot-systemPrompt').value.trim();
       const suggestedQuestionsText = document.getElementById('dbot-suggestedQuestions').value.trim();
-      const enableAiChatbot = document.getElementById('dbot-enableAi').value === 'true';
+      const enableAiChatbot = isDemoAiActive;
       const enableFaq = document.getElementById('dbot-enableFaq').value === 'true';
       
       const fallbackMessage = document.getElementById('dbot-fallbackMessage').value.trim();
@@ -1476,6 +1489,19 @@
         msg.className = 'error';
         msg.style.display = 'block';
       }
+    }
+
+    // ---- Demo Bot AI Active State ----
+    let isDemoAiActive = true;
+    function toggleDemoAiActive() {
+      isDemoAiActive = !isDemoAiActive;
+      const t1 = document.getElementById('dbot-toggle-ai-active');
+      if (t1) t1.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
+      const t2 = document.getElementById('dbot-toggle-ai-kb-active');
+      if (t2) t2.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
+      const label = document.getElementById('dbot-ai-status-label');
+      if (label) label.textContent = isDemoAiActive ? 'Active' : 'Inactive';
+      saveDemoBotConfig();
     }
 
     // ---- Demo Bot Flow Builder Logic ----

@@ -884,6 +884,196 @@
           font-size: 14px;
         }
       }
+
+      /* ---- Appointment Booking Widget ---- */
+      .chatbot-appointment-card {
+        align-self: flex-start;
+        width: 96%; max-width: 320px;
+        margin: 6px 0 8px;
+        border-radius: 16px;
+        background: #ffffff;
+        border: 2px solid ${theme};
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        overflow: hidden;
+        animation: complaintSlide 0.35s ease;
+      }
+      .appt-title {
+        background: linear-gradient(135deg, ${theme}, ${theme}dd);
+        color: white;
+        padding: 12px 16px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .appt-layout {
+        padding: 12px;
+      }
+      .appt-cal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .appt-month-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      .appt-nav-btn {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+        background: white;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 700;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .appt-nav-btn:hover {
+        background: ${theme};
+        color: white;
+        border-color: ${theme};
+      }
+      .appt-cal-days-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        margin-bottom: 4px;
+      }
+      .appt-cal-days-header span {
+        font-size: 10px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        padding: 4px 0;
+      }
+      .appt-cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+      }
+      .appt-day {
+        width: 100%;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1.5px solid transparent;
+      }
+      .appt-day:hover:not(.blocked):not(.empty) {
+        background: ${theme}18;
+        border-color: ${theme}60;
+      }
+      .appt-day.selected {
+        background: ${theme};
+        color: white !important;
+        border-color: ${theme};
+        box-shadow: 0 2px 8px ${theme}40;
+      }
+      .appt-day.blocked {
+        color: #cbd5e1;
+        cursor: not-allowed;
+        text-decoration: line-through;
+      }
+      .appt-day.empty {
+        cursor: default;
+      }
+      .appt-time-section {
+        margin-top: 12px;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 10px;
+      }
+      .appt-time-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+      .appt-time-hint {
+        font-size: 12px;
+        color: #94a3b8;
+        font-style: italic;
+        padding: 8px 0;
+      }
+      .appt-time-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .appt-time-slot {
+        padding: 7px 4px;
+        text-align: center;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .appt-time-slot:hover {
+        border-color: ${theme};
+        background: ${theme}0d;
+      }
+      .appt-time-slot.selected {
+        background: ${theme};
+        color: white;
+        border-color: ${theme};
+        box-shadow: 0 2px 6px ${theme}35;
+      }
+      .appt-summary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 10px 12px;
+        margin: 10px 12px 0;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #166534;
+      }
+      .appt-summary-hint {
+        text-align: center;
+        padding: 8px 12px 4px;
+        font-size: 11.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .appt-confirm-btn {
+        display: block;
+        width: calc(100% - 24px);
+        margin: 10px 12px 12px;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, ${theme}, ${theme}cc);
+        color: white;
+        font-size: 13.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 3px 10px ${theme}30;
+      }
+      .appt-confirm-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 16px ${theme}45;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1289,12 +1479,158 @@
       const label = node.config.buttonLabel || 'Open Link';
       linkBtn = { url, label };
     }
+
+    // Appointment type — render a custom calendar + time slot picker
+    if (node.type === 'appointment') {
+      setTimeout(() => {
+        addMessage(node.config.question || '📅 Please pick a date and time for your appointment:', 'bot', {});
+        setTimeout(() => renderAppointmentPicker(node), 400);
+      }, 500);
+      return;
+    }
     
     setTimeout(() => {
       addMessage(node.config.question || node.label, 'bot', { quickReplies: qr, linkButton: linkBtn });
-      // Depending on type, we could render specific inputs in the chat.
-      // For now, quickReplies handle choices. Other types expect text/file.
     }, 500);
+  }
+
+  // ---- Appointment Picker Widget ----
+  function renderAppointmentPicker(node) {
+    const messages = document.getElementById('chatbot-messages');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chatbot-msg-wrapper bot';
+    
+    const card = document.createElement('div');
+    card.className = 'chatbot-appointment-card';
+    
+    const timeSlots = node.config.timeSlots && node.config.timeSlots.length > 0
+      ? node.config.timeSlots
+      : ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+    const minDaysAhead = node.config.minDaysAhead || 1;
+    const blockedDays = (node.config.blockedDays || []).map(d => d.toLowerCase());
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    // State
+    const today = new Date();
+    let viewMonth = today.getMonth();
+    let viewYear = today.getFullYear();
+    let selectedDate = null;
+    let selectedTime = null;
+
+    function isBlocked(date) {
+      const dayDiff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+      if (dayDiff < minDaysAhead) return true;
+      if (blockedDays.includes(dayNames[date.getDay()])) return true;
+      return false;
+    }
+
+    function renderCalendar() {
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      let calHtml = `
+        <div class="appt-cal-header">
+          <button class="appt-nav-btn" id="appt-prev-month">‹</button>
+          <span class="appt-month-title">${monthName}</span>
+          <button class="appt-nav-btn" id="appt-next-month">›</button>
+        </div>
+        <div class="appt-cal-days-header">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div class="appt-cal-grid">
+      `;
+      
+      // Empty cells before first day
+      for (let e = 0; e < firstDay; e++) {
+        calHtml += '<div class="appt-day empty"></div>';
+      }
+      
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(viewYear, viewMonth, d);
+        const blocked = isBlocked(date);
+        const isSelected = selectedDate && selectedDate.getDate() === d && selectedDate.getMonth() === viewMonth && selectedDate.getFullYear() === viewYear;
+        const cls = blocked ? 'appt-day blocked' : (isSelected ? 'appt-day selected' : 'appt-day');
+        calHtml += `<div class="${cls}" data-day="${d}" ${blocked ? '' : 'data-selectable="1"'}>${d}</div>`;
+      }
+      
+      calHtml += '</div>';
+      return calHtml;
+    }
+
+    function renderTimeSlots() {
+      if (!selectedDate) return '<div class="appt-time-hint">← Select a date first</div>';
+      let html = '<div class="appt-time-grid">';
+      timeSlots.forEach(slot => {
+        const isActive = selectedTime === slot;
+        html += `<div class="appt-time-slot${isActive ? ' selected' : ''}" data-time="${slot}">${slot}</div>`;
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function render() {
+      card.innerHTML = `
+        <div class="appt-title">🗓️ Book Appointment</div>
+        <div class="appt-layout">
+          <div class="appt-calendar-section" id="appt-calendar-section">
+            ${renderCalendar()}
+          </div>
+          <div class="appt-time-section" id="appt-time-section">
+            <div class="appt-time-label">Available Slots</div>
+            ${renderTimeSlots()}
+          </div>
+        </div>
+        ${selectedDate && selectedTime ? `
+          <div class="appt-summary">
+            <span>📅 ${selectedDate.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'})}</span>
+            <span>🕒 ${selectedTime}</span>
+          </div>
+          <button class="appt-confirm-btn" id="appt-confirm-btn">✅ Confirm Appointment</button>
+        ` : `
+          <div class="appt-summary-hint">Select a date and time to continue</div>
+        `}
+      `;
+      attachCalendarEvents();
+    }
+
+    function attachCalendarEvents() {
+      const prevBtn = card.querySelector('#appt-prev-month');
+      const nextBtn = card.querySelector('#appt-next-month');
+      if (prevBtn) prevBtn.onclick = () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } selectedDate = null; selectedTime = null; render(); };
+      if (nextBtn) nextBtn.onclick = () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } selectedDate = null; selectedTime = null; render(); };
+      
+      card.querySelectorAll('.appt-day[data-selectable]').forEach(el => {
+        el.onclick = () => {
+          const day = parseInt(el.dataset.day);
+          selectedDate = new Date(viewYear, viewMonth, day);
+          selectedTime = null;
+          render();
+        };
+      });
+      
+      card.querySelectorAll('.appt-time-slot').forEach(el => {
+        el.onclick = () => {
+          selectedTime = el.dataset.time;
+          render();
+        };
+      });
+      
+      const confirmBtn = card.querySelector('#appt-confirm-btn');
+      if (confirmBtn) {
+        confirmBtn.onclick = () => {
+          const dateStr = selectedDate.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'});
+          const appointmentText = `${dateStr} at ${selectedTime}`;
+          card.remove();
+          sendMessage(appointmentText);
+        };
+      }
+    }
+
+    render();
+    wrapper.appendChild(card);
+    messages.appendChild(wrapper);
+    messages.scrollTop = messages.scrollHeight;
   }
 
   // ---- Send Message -----------------------------------------

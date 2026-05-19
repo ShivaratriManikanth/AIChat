@@ -2886,6 +2886,23 @@
               </div>
             </div>
           `;
+        } else if (node.type === 'appointment') {
+          configHtml = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Available Time Slots</label>
+                <input type="text" class="flow-node-input" placeholder="e.g. 09:00, 10:00, 11:00, 14:00" value="${(node.config.timeSlots||[]).join(', ')}" onchange="updateNodeConfig(${i}, 'timeSlots', this.value.split(',').map(s=>s.trim()))" style="margin-top:2px;">
+              </div>
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Min Days Ahead</label>
+                <input type="number" class="flow-node-input" placeholder="e.g. 1" min="0" max="90" value="${node.config.minDaysAhead || 1}" onchange="updateNodeConfig(${i}, 'minDaysAhead', parseInt(this.value)||1)" style="margin-top:2px;">
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label style="font-size:10px; font-weight:600; color:#888;">Blocked Weekdays (comma separated, e.g. Sunday, Saturday)</label>
+              <input type="text" class="flow-node-input" placeholder="e.g. Sunday, Saturday" value="${(node.config.blockedDays||[]).join(', ')}" onchange="updateNodeConfig(${i}, 'blockedDays', this.value.split(',').map(s=>s.trim()))" style="margin-top:2px;">
+            </div>
+          `;
         }
         
         html += `

@@ -755,6 +755,7 @@
                   <div class="flow-component-btn" onclick="addDemoFlowNode('rating', '⭐ Rating')"><div class="icon">⭐</div>Rating</div>
                   <div class="flow-component-btn" onclick="addDemoFlowNode('date_picker', '📅 Date Picker')"><div class="icon">📅</div>Date Picker</div>
                   <div class="flow-component-btn" onclick="addDemoFlowNode('website', '🔗 Website Link')"><div class="icon">🔗</div>Website Link</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('appointment', '🗓️ Appointment')"><div class="icon">🗓️</div>Appointment</div>
                 </div>
               </div>
               <div class="flow-workspace">
@@ -1611,6 +1612,23 @@
                 <label style="font-size:10px; font-weight:600; color:#888;">Redirect URL</label>
                 <input type="url" class="flow-node-input" placeholder="e.g. https://yoursite.com" value="${node.config.url || ''}" onchange="updateDemoNodeConfig(${i}, 'url', this.value)" style="margin-top:2px;">
               </div>
+            </div>
+          `;
+        } else if (node.type === 'appointment') {
+          configHtml = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Available Time Slots</label>
+                <input type="text" class="flow-node-input" placeholder="e.g. 09:00, 10:00, 11:00, 14:00" value="${(node.config.timeSlots||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'timeSlots', this.value.split(',').map(s=>s.trim()))" style="margin-top:2px;">
+              </div>
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Min Days Ahead</label>
+                <input type="number" class="flow-node-input" placeholder="e.g. 1" min="0" max="90" value="${node.config.minDaysAhead || 1}" onchange="updateDemoNodeConfig(${i}, 'minDaysAhead', parseInt(this.value)||1)" style="margin-top:2px;">
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label style="font-size:10px; font-weight:600; color:#888;">Blocked Weekdays (comma separated, e.g. Sunday, Saturday)</label>
+              <input type="text" class="flow-node-input" placeholder="e.g. Sunday, Saturday" value="${(node.config.blockedDays||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'blockedDays', this.value.split(',').map(s=>s.trim()))" style="margin-top:2px;">
             </div>
           `;
         }

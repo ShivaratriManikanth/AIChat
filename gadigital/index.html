@@ -208,6 +208,18 @@
       .cta-section h2 { font-size: 36px; }
       .footer-grid { grid-template-columns: 1fr; }
     }
+
+    /* Gallery Tabs styling */
+    .gallery-tab-btn {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .gallery-tab-btn.active {
+      background: var(--primary) !important;
+      border-color: var(--primary) !important;
+      color: white !important;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -295,6 +307,85 @@
         <div class="feature-icon">📊</div>
         <h3>Advanced Analytics</h3>
         <p>Make data-driven decisions. Monitor chat volumes, user sentiment, message drop-offs, and complete chat histories in real-time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard Preview Section -->
+  <section class="section" id="dashboard-preview" style="background: rgba(255, 255, 255, 0.01); border-top: 1px solid var(--glass-border);">
+    <div class="section-header">
+      <h2>Explore the Client Dashboard</h2>
+      <p>Get a sneak peek inside the powerful control center where you configure and monitor your AI chatbot.</p>
+    </div>
+    
+    <div class="dashboard-gallery-container" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px;">
+      <!-- Tab Buttons -->
+      <div class="gallery-tabs" style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+        <button class="btn btn-outline gallery-tab-btn active" onclick="showGalleryTab('analytics')" id="tab-analytics" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">📊 Conversational Analytics</button>
+        <button class="btn btn-outline gallery-tab-btn" onclick="showGalleryTab('flow')" id="tab-flow" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">🔀 Manual Flow Builder</button>
+        <button class="btn btn-outline gallery-tab-btn" onclick="showGalleryTab('knowledge')" id="tab-knowledge" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">🧠 AI Knowledge Base</button>
+      </div>
+
+      <!-- Tab Content Cards -->
+      <div class="gallery-content-wrapper" style="position: relative; border-radius: 24px; overflow: hidden; border: 1px solid var(--glass-border); background: var(--bg-card); box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+        
+        <!-- Tab 1: Analytics -->
+        <div class="gallery-slide" id="slide-analytics" style="display: flex; flex-wrap: wrap;">
+          <div style="flex: 1 1 500px; padding: 48px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="background: rgba(79, 70, 229, 0.1); width: fit-content; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">Real-Time Insights</div>
+            <h3 style="font-size: 32px; font-weight: 700; margin-bottom: 16px; line-height: 1.2;">Track Chats, Leads & Customer Satisfaction</h3>
+            <p style="color: var(--text-muted); font-size: 16px; margin-bottom: 24px;">
+              Get deep visibility into patient/customer chats, capture rates, and message volume analytics. Understand what queries are trending and review comprehensive message histories anytime.
+            </p>
+            <ul style="display: flex; flex-direction: column; gap: 12px; color: var(--text-muted); font-size: 15px;">
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Interactive chat histories list</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Sentiment analysis & resolution trackers</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Easy exportable captured lead lists</li>
+            </ul>
+          </div>
+          <div style="flex: 1 1 500px; min-height: 400px; background: url('dashboard-analytics.png') center/cover; position: relative;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to right, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%), linear-gradient(to bottom, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%); pointer-events: none;"></div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Flow Builder -->
+        <div class="gallery-slide" id="slide-flow" style="display: none; flex-wrap: wrap;">
+          <div style="flex: 1 1 500px; padding: 48px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="background: rgba(236, 72, 153, 0.1); width: fit-content; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--secondary); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">Visual Conversational Design</div>
+            <h3 style="font-size: 32px; font-weight: 700; margin-bottom: 16px; line-height: 1.2;">Create No-Code Interactive Paths</h3>
+            <p style="color: var(--text-muted); font-size: 16px; margin-bottom: 24px;">
+              Design interactive forms, multiple-choice option trees, surveys, and website redirect flows visually. Drag, reorder, and activate flows that intercept conversation flow instantly.
+            </p>
+            <ul style="display: flex; flex-direction: column; gap: 12px; color: var(--text-muted); font-size: 15px;">
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Drag-and-drop conversational components</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Support for buttons, drop-downs, and file uploads</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Real-time active/inactive status toggles</li>
+            </ul>
+          </div>
+          <div style="flex: 1 1 500px; min-height: 400px; background: url('dashboard-flow.png') center/cover; position: relative;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to right, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%), linear-gradient(to bottom, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%); pointer-events: none;"></div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Knowledge Base -->
+        <div class="gallery-slide" id="slide-knowledge" style="display: none; flex-wrap: wrap;">
+          <div style="flex: 1 1 500px; padding: 48px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="background: rgba(139, 92, 246, 0.1); width: fit-content; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">Cognitive AI Training</div>
+            <h3 style="font-size: 32px; font-weight: 700; margin-bottom: 16px; line-height: 1.2;">Train the AI Agent in Seconds</h3>
+            <p style="color: var(--text-muted); font-size: 16px; margin-bottom: 24px;">
+              Simply feed your chatbot with documents, public website URLs, or custom text segments. The AI processes inputs automatically and answers visitor questions instantly.
+            </p>
+            <ul style="display: flex; flex-direction: column; gap: 12px; color: var(--text-muted); font-size: 15px;">
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Drag-and-drop secure PDF context parser</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Automated public web scraping inputs</li>
+              <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Fully editable Q&A database chunks</li>
+            </ul>
+          </div>
+          <div style="flex: 1 1 500px; min-height: 400px; background: url('dashboard-knowledge.png') center/cover; position: relative;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to right, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%), linear-gradient(to bottom, var(--bg-card) 0%, transparent 15%, transparent 85%, var(--bg-card) 100%); pointer-events: none;"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -603,6 +694,21 @@
         btn.disabled = false;
       }
     });
+
+    function showGalleryTab(tabId) {
+      document.querySelectorAll('.gallery-slide').forEach(slide => {
+        slide.style.display = 'none';
+      });
+      document.querySelectorAll('.gallery-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      const targetSlide = document.getElementById('slide-' + tabId);
+      if (targetSlide) targetSlide.style.display = 'flex';
+      
+      const targetTab = document.getElementById('tab-' + tabId);
+      if (targetTab) targetTab.classList.add('active');
+    }
   </script>
   <!-- 🤖 AI CHATBOT WIDGET INTEGRATION -->
   <script src="/widget/chatbot.js" 

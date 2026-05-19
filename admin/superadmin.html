@@ -375,54 +375,6 @@
       </div>
     </div>
 
-    <!-- Demo Bot Settings Card -->
-    <div class="card" style="margin-top:24px;">
-      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-        <h2>🤖 Demo Chatbot Settings <span style="font-size:13px;font-weight:400;color:#64748b;margin-left:8px;">(shown on landing page)</span></h2>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-outline" onclick="loadDemoConfig()" style="font-size:13px;padding:8px 16px;">🔄 Load</button>
-          <button class="btn btn-primary" onclick="saveDemoConfig()" style="font-size:13px;padding:8px 16px;">💾 Save Settings</button>
-        </div>
-      </div>
-      <div style="padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="demo-settings-body">
-
-        <div class="form-group">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Bot Name</label>
-          <input type="text" id="demo-botName" placeholder="GAdigital Assistant" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;">
-        </div>
-
-        <div class="form-group">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Company Name</label>
-          <input type="text" id="demo-companyName" placeholder="GAdigital Solution" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;">
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1;">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Welcome Message</label>
-          <input type="text" id="demo-welcomeMessage" placeholder="Hi! 👋 How can I help you today?" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;">
-        </div>
-
-        <div class="form-group">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Theme Color</label>
-          <input type="color" id="demo-themeColor" value="#4F46E5" style="width:100%;height:44px;padding:4px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;">
-        </div>
-
-        <div class="form-group">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Suggested Questions <span style="font-weight:400;color:#94a3b8;">(one per line)</span></label>
-          <textarea id="demo-suggestedQuestions" rows="3" placeholder="What features do you offer?&#10;How much does it cost?&#10;How do I get started?" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;resize:vertical;font-family:inherit;"></textarea>
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1;">
-          <label style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">AI System Prompt <span style="font-weight:400;color:#94a3b8;">(bot personality & instructions)</span></label>
-          <textarea id="demo-systemPrompt" rows="4" placeholder="You are a helpful assistant for GAdigital Solution..." style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
-        </div>
-
-        <div style="grid-column:1/-1;">
-          <div id="demo-save-status" style="font-size:13px;margin-top:4px;"></div>
-        </div>
-
-      </div>
-    </div>
-
   </div>
 
   <!-- Edit Modal -->
@@ -721,54 +673,8 @@
       } catch (e) { alert('Network error.'); }
     }
 
-    // ---- Demo Bot Settings ----
-    async function loadDemoConfig() {
-      try {
-        const res = await fetchAuth('/api/super/demo-config');
-        const cfg = await res.json();
-        document.getElementById('demo-botName').value = cfg.botName || '';
-        document.getElementById('demo-companyName').value = cfg.companyName || '';
-        document.getElementById('demo-welcomeMessage').value = cfg.welcomeMessage || '';
-        document.getElementById('demo-themeColor').value = cfg.themeColor || '#4F46E5';
-        document.getElementById('demo-systemPrompt').value = cfg.systemPrompt || '';
-        const sq = Array.isArray(cfg.suggestedQuestions) ? cfg.suggestedQuestions.join('\n') : (cfg.suggestedQuestions || '');
-        document.getElementById('demo-suggestedQuestions').value = sq;
-      } catch(e) { console.error('Failed to load demo config', e); }
-    }
-
-    async function saveDemoConfig() {
-      const statusEl = document.getElementById('demo-save-status');
-      statusEl.textContent = '⏳ Saving...';
-      statusEl.style.color = '#64748b';
-      try {
-        const body = {
-          botName: document.getElementById('demo-botName').value.trim(),
-          companyName: document.getElementById('demo-companyName').value.trim(),
-          welcomeMessage: document.getElementById('demo-welcomeMessage').value.trim(),
-          themeColor: document.getElementById('demo-themeColor').value,
-          systemPrompt: document.getElementById('demo-systemPrompt').value.trim(),
-          suggestedQuestions: document.getElementById('demo-suggestedQuestions').value.split('\n').map(s => s.trim()).filter(Boolean)
-        };
-        const res = await fetchAuth('/api/super/demo-config', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        if (res.ok) {
-          statusEl.textContent = '✅ Demo bot settings saved!';
-          statusEl.style.color = '#10b981';
-        } else {
-          statusEl.textContent = '❌ Failed to save.';
-          statusEl.style.color = '#ef4444';
-        }
-      } catch(e) {
-        statusEl.textContent = '❌ Network error.';
-        statusEl.style.color = '#ef4444';
-      }
-    }
-
     // Init
-    loadPlans().then(() => { loadClients(); loadDemoConfig(); });
+    loadPlans().then(() => loadClients());
   </script>
 </body>
 </html>

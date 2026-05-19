@@ -229,32 +229,6 @@ try {
     db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
   }
 
-  // Ensure demo bot exists for landing page
-  const DEMO_CLIENT_ID = 'system_demo_client';
-  const DEMO_BOT_ID    = 'bot_demo_landing';
-  const DEMO_API_KEY   = 'key_gadigital_demo_bot';
-  const demoClient = db.prepare('SELECT id FROM clients WHERE id = ?').get(DEMO_CLIENT_ID);
-  if (!demoClient) {
-    db.prepare("INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)").run(
-      DEMO_CLIENT_ID, 'demo@gadigital.internal', 'demo_locked', 'GAdigital Demo', 3, 'active'
-    );
-  }
-  const demoBot = db.prepare('SELECT bot_id FROM bots WHERE bot_id = ?').get(DEMO_BOT_ID);
-  if (!demoBot) {
-    const defaultDemoCfg = JSON.stringify({
-      botName: 'GAdigital Assistant',
-      companyName: 'GAdigital Solution',
-      welcomeMessage: 'Hi! 👋 I\'m your AI assistant demo. Ask me anything about our chatbot platform!',
-      themeColor: '#4F46E5',
-      systemPrompt: 'You are a helpful demo assistant for GAdigital Solution, an AI chatbot SaaS platform. Help visitors understand the product features, pricing, and how to get started. Be friendly, concise, and persuasive.',
-      suggestedQuestions: ['What features do you offer?', 'How much does it cost?', 'How do I get started?'],
-      enableAiChatbot: true
-    });
-    db.prepare("INSERT INTO bots (bot_id, client_id, api_key, domain, config) VALUES (?, ?, ?, ?, ?)").run(
-      DEMO_BOT_ID, DEMO_CLIENT_ID, DEMO_API_KEY, null, defaultDemoCfg
-    );
-  }
-
   db.exec(`
     CREATE TABLE IF NOT EXISTS flows (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1967,25 +1941,6 @@ app.delete('/api/super/plans/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
   res.json({ success: true });
-});
-
-// ---- Demo Bot Config ----
-const DEMO_CLIENT_ID = 'system_demo_client';
-const DEMO_BOT_ID    = 'bot_demo_landing';
-
-app.get('/api/super/demo-config', requireSuperAuth, (req, res) => {
-  res.json(loadClientBotConfig(DEMO_CLIENT_ID, DEMO_BOT_ID));
-});
-
-app.put('/api/super/demo-config', requireSuperAuth, (req, res) => {
-  try {
-    const current = loadClientBotConfig(DEMO_CLIENT_ID, DEMO_BOT_ID);
-    const updated = { ...current, ...req.body };
-    saveClientBotConfig(DEMO_CLIENT_ID, updated, DEMO_BOT_ID);
-    res.json({ success: true, config: updated });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save demo config' });
-  }
 });
 
 // ---- Clients ----

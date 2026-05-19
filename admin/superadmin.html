@@ -320,6 +320,61 @@
       </div>
     </div>
 
+    <!-- Create client -->
+    <div class="card">
+      <div class="card-header"><h2>➕ Onboard New Client</h2></div>
+      <div class="card-body">
+        <div class="create-form">
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="companyName" placeholder="e.g. Acme Corp">
+          </div>
+          <div class="form-group">
+            <label>Client Email</label>
+            <input type="email" id="clientEmail" placeholder="client@company.com">
+          </div>
+          <div class="form-group">
+            <label>Subscription Plan</label>
+            <select id="planId"></select>
+          </div>
+          <div class="form-group">
+            <label>Temporary Password</label>
+            <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
+            <div id="statusMsg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clients table -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🏢 Active Clients</h2>
+        <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
+      </div>
+      <div style="padding:0;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Email</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Password</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientTable">
+            <tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Demo Chatbot Settings -->
     <div class="card">
       <div class="card-header"><h2>⚙️ Landing Page Demo Chatbot Settings</h2></div>
@@ -377,61 +432,6 @@
         <div class="form-actions">
           <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Create client -->
-    <div class="card">
-      <div class="card-header"><h2>➕ Onboard New Client</h2></div>
-      <div class="card-body">
-        <div class="create-form">
-          <div class="form-group">
-            <label>Company Name</label>
-            <input type="text" id="companyName" placeholder="e.g. Acme Corp">
-          </div>
-          <div class="form-group">
-            <label>Client Email</label>
-            <input type="email" id="clientEmail" placeholder="client@company.com">
-          </div>
-          <div class="form-group">
-            <label>Subscription Plan</label>
-            <select id="planId"></select>
-          </div>
-          <div class="form-group">
-            <label>Temporary Password</label>
-            <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
-            <div id="statusMsg"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Clients table -->
-    <div class="card">
-      <div class="card-header">
-        <h2>🏢 Active Clients</h2>
-        <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
-      </div>
-      <div style="padding:0;">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Email</th>
-              <th>Plan</th>
-              <th>Status</th>
-              <th>Joined</th>
-              <th>Password</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="clientTable">
-            <tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
 

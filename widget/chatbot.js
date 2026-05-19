@@ -423,11 +423,12 @@
       }
 
       .msg-time {
-        font-size: 9.5px; opacity: 0.45;
-        margin-top: 5px; display: block;
-        text-align: right;
+        font-size: 9.5px; opacity: 0.55;
+        margin-top: 4px; display: block;
+        width: 100%;
       }
-      .chatbot-msg.bot .msg-time { text-align: left; }
+      .chatbot-msg-wrapper.bot .msg-time { text-align: left; padding-left: 2px; }
+      .chatbot-msg-wrapper.user .msg-time { text-align: right; padding-right: 2px; }
 
       /* Markdown styles inside messages */
       .chatbot-msg strong { font-weight: 700; }
@@ -1423,12 +1424,12 @@
     }
 
     bubbleContainer.appendChild(bubble);
+    bubbleContainer.appendChild(timeSpan);
 
     if (sender === 'bot' && !options.noAnimate) {
       const textNode = document.createElement('span');
       textNode.className = 'msg-text';
       bubble.appendChild(textNode);
-      bubble.appendChild(timeSpan);
       messages.appendChild(wrapper);
       messages.scrollTop = messages.scrollHeight;
 
@@ -1453,7 +1454,6 @@
         }
         bubble.appendChild(textNode);
       }
-      bubble.appendChild(timeSpan);
       messages.appendChild(wrapper);
       messages.scrollTop = messages.scrollHeight;
       if (sender === 'bot' && options.linkButton) {

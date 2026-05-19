@@ -332,30 +332,99 @@
       #chatbot-messages::-webkit-scrollbar-thumb { background: #bbb; border-radius: 10px; }
       .dark #chatbot-messages::-webkit-scrollbar-thumb { background: #444; }
 
-      .chatbot-msg-wrapper { display: flex; flex-direction: column; margin-bottom: 2px; }
-      .chatbot-msg-wrapper.user { align-items: flex-end; }
-      .chatbot-msg-wrapper.bot { align-items: flex-start; }
+      .chatbot-msg-wrapper {
+        display: flex;
+        margin-bottom: 12px;
+        width: 100%;
+        animation: chatbot-fade-in 0.25s ease;
+      }
+      @keyframes chatbot-fade-in {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .chatbot-msg-wrapper.user {
+        justify-content: flex-end;
+      }
+      .chatbot-msg-wrapper.bot {
+        justify-content: flex-start;
+        gap: 10px;
+      }
+
+      .chatbot-msg-col {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        max-width: 82%;
+      }
+      .chatbot-msg-wrapper.user .chatbot-msg-col {
+        align-items: flex-end;
+      }
+
+      .chatbot-msg-sender-name {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 4px;
+        margin-left: 2px;
+      }
+      .dark .chatbot-msg-sender-name {
+        color: #94a3b8;
+      }
+
+      .chatbot-msg-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+        font-size: 14px;
+        align-self: flex-start;
+      }
+      .dark .chatbot-msg-avatar {
+        background: #1e293b;
+        border-color: #334155;
+      }
 
       .chatbot-msg {
-        max-width: 82%; padding: 10px 14px;
-        border-radius: 8px; font-size: 13.5px;
-        line-height: 1.6;
+        padding: 11px 15px;
+        border-radius: 12px;
+        font-size: 13.5px;
+        line-height: 1.5;
         word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;
         width: fit-content;
       }
       .chatbot-msg .msg-text {
         display: inline;
       }
-      .light .chatbot-msg.bot { background: white; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-bottom-left-radius: 2px; }
-      .dark .chatbot-msg.bot { background: #16213e; color: #e0e0e0; border-bottom-left-radius: 2px; }
+      .light .chatbot-msg.bot {
+        background: #f3f4f6;
+        color: #1f2937;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      }
+      .dark .chatbot-msg.bot {
+        background: #1e293b;
+        color: #f1f5f9;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
       .chatbot-msg.user {
-        background: ${theme}; color: white;
-        border-bottom-right-radius: 2px;
+        background: ${theme}0a;
+        color: ${theme};
+        border: 1px solid ${theme}20;
+      }
+      .dark .chatbot-msg.user {
+        background: ${theme}15;
+        color: #e0e7ff;
+        border: 1px solid ${theme}40;
       }
 
       .msg-time {
-        font-size: 10px; opacity: 0.5;
-        margin-top: 4px; display: block;
+        font-size: 9.5px; opacity: 0.45;
+        margin-top: 5px; display: block;
         text-align: right;
       }
       .chatbot-msg.bot .msg-time { text-align: left; }
@@ -1289,6 +1358,17 @@
     return div;
   }
 
+  function createAvatarElement() {
+    const avatar = document.createElement('div');
+    avatar.className = 'chatbot-msg-avatar';
+    if (CONFIG.logo) {
+      avatar.innerHTML = `<img src="${CONFIG.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      avatar.innerHTML = '🤖';
+    }
+    return avatar;
+  }
+
   // ---- Message Rendering ------------------------------------
   function addMessage(text, sender, options = {}) {
     const messages = document.getElementById('chatbot-messages');
@@ -1298,6 +1378,27 @@
 
     const wrapper = document.createElement('div');
     wrapper.className = `chatbot-msg-wrapper ${sender}`;
+
+    let bubbleContainer = wrapper;
+    if (sender === 'bot') {
+      wrapper.appendChild(createAvatarElement());
+
+      const col = document.createElement('div');
+      col.className = 'chatbot-msg-col';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'chatbot-msg-sender-name';
+      nameSpan.textContent = CONFIG.botName || 'Assistant';
+      col.appendChild(nameSpan);
+
+      wrapper.appendChild(col);
+      bubbleContainer = col;
+    } else {
+      const col = document.createElement('div');
+      col.className = 'chatbot-msg-col';
+      wrapper.appendChild(col);
+      bubbleContainer = col;
+    }
 
     const bubble = document.createElement('div');
     bubble.className = `chatbot-msg ${sender}`;
@@ -1321,7 +1422,7 @@
       bubble.appendChild(preview);
     }
 
-    wrapper.appendChild(bubble);
+    bubbleContainer.appendChild(bubble);
 
     if (sender === 'bot' && !options.noAnimate) {
       const textNode = document.createElement('span');
@@ -1333,12 +1434,12 @@
 
       typeText(textNode, text, () => {
         playSound('receive');
-        wrapper.appendChild(createReactions(msgId));
+        bubbleContainer.appendChild(createReactions(msgId));
         if (options.quickReplies) {
-          wrapper.appendChild(createQuickReplies(options.quickReplies));
+          bubbleContainer.appendChild(createQuickReplies(options.quickReplies));
         }
         if (options.linkButton) {
-          wrapper.appendChild(createLinkButton(options.linkButton));
+          bubbleContainer.appendChild(createLinkButton(options.linkButton));
         }
       });
     } else {
@@ -1356,21 +1457,39 @@
       messages.appendChild(wrapper);
       messages.scrollTop = messages.scrollHeight;
       if (sender === 'bot' && options.linkButton) {
-        wrapper.appendChild(createLinkButton(options.linkButton));
+        bubbleContainer.appendChild(createLinkButton(options.linkButton));
       }
       if (sender === 'user') playSound('send');
     }
 
-    saveToLocal(sender, text);
+    if (!options.noSave) {
+      saveToLocal(sender, text);
+    }
   }
 
   function showTyping() {
     const messages = document.getElementById('chatbot-messages');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chatbot-msg-wrapper bot';
+    wrapper.id = 'chatbot-typing-indicator';
+
+    wrapper.appendChild(createAvatarElement());
+
+    const col = document.createElement('div');
+    col.className = 'chatbot-msg-col';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'chatbot-msg-sender-name';
+    nameSpan.textContent = CONFIG.botName || 'Assistant';
+    col.appendChild(nameSpan);
+
     const div = document.createElement('div');
     div.className = 'chatbot-typing';
-    div.id = 'chatbot-typing-indicator';
     div.innerHTML = '<span></span><span></span><span></span>';
-    messages.appendChild(div);
+    col.appendChild(div);
+
+    wrapper.appendChild(col);
+    messages.appendChild(wrapper);
     messages.scrollTop = messages.scrollHeight;
     document.getElementById('chatbot-status-text').textContent = `${CONFIG.botName} is typing...`;
   }
@@ -1402,32 +1521,13 @@
       const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
       const messages = document.getElementById('chatbot-messages');
       history.forEach(h => {
-        const time = new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const wrapper = document.createElement('div');
-        wrapper.className = `chatbot-msg-wrapper ${h.role === 'user' ? 'user' : 'bot'}`;
-        const div = document.createElement('div');
-        div.className = `chatbot-msg ${h.role === 'user' ? 'user' : 'bot'}`;
-        const textSpan = document.createElement('span');
-        textSpan.className = 'msg-text';
-        if (h.role !== 'user') {
-          textSpan.innerHTML = renderMarkdown(h.content);
-        } else {
-          textSpan.textContent = h.content;
-        }
-        div.appendChild(textSpan);
-        const timeEl = document.createElement('span');
-        timeEl.className = 'msg-time';
-        timeEl.textContent = time;
-        div.appendChild(timeEl);
-        wrapper.appendChild(div);
-        messages.appendChild(wrapper);
-        messageCount++;
+        addMessage(h.content, h.role === 'user' ? 'user' : 'bot', { noAnimate: true, noSave: true });
       });
       if (history.length > 0) {
         messages.scrollTop = messages.scrollHeight;
         document.getElementById('chatbot-suggestions').style.display = 'none';
       }
-    } catch (e) {}
+    } catch (e) { console.error(e); }
   }
 
   // ---- Flow Execution Logic ---------------------------------

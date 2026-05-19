@@ -1179,6 +1179,27 @@
               <label>Suggested Questions (one per line)</label>
               <textarea id="cfg-suggestedQuestions" rows="4"></textarea>
             </div>
+            
+            <div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
+              <label style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">🤖 Chatbot Primary Mode</label>
+              <p style="color: #64748b; font-size: 12px; margin-bottom: 12px;">Choose how the chatbot should engage with website visitors initially.</p>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <label style="flex: 1 1 200px; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="client-mode-opt-ai">
+                  <input type="radio" name="cfg-primary-mode" value="aichat" onchange="updateClientChatbotModeSelection('aichat')" style="cursor: pointer;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🧠 AI Chatbot Mode</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Use the AI Knowledge Base to answer visitor questions dynamically.</div>
+                  </div>
+                </label>
+                <label style="flex: 1 1 200px; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="client-mode-opt-flow">
+                  <input type="radio" name="cfg-primary-mode" value="flowbuilder" onchange="updateClientChatbotModeSelection('flowbuilder')" style="cursor: pointer;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🔀 Flow Builder Mode</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Guide visitors step-by-step through a visual forms flow first.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2005,6 +2026,14 @@
       document.getElementById('cfg-placeholder').value = config.placeholder || '';
       document.getElementById('cfg-suggestedQuestions').value = (config.suggestedQuestions || []).join('\n');
 
+      // Chatbot Mode Selection
+      const mode = config.chatbotMode || 'aichat';
+      const radios = document.getElementsByName('cfg-primary-mode');
+      radios.forEach(r => {
+        r.checked = r.value === mode;
+      });
+      updateClientChatbotModeUI(mode);
+
       // Email & intro fields
       document.getElementById('cfg-emailCaptureTitle').value = config.emailCaptureTitle || '';
       document.getElementById('cfg-emailCaptureSubtitle').value = config.emailCaptureSubtitle || '';
@@ -2062,6 +2091,26 @@
       renderFaqs();
     }
 
+    function updateClientChatbotModeSelection(mode) {
+      updateClientChatbotModeUI(mode);
+    }
+    function updateClientChatbotModeUI(mode) {
+      const aiOpt = document.getElementById('client-mode-opt-ai');
+      const flowOpt = document.getElementById('client-mode-opt-flow');
+      if (!aiOpt || !flowOpt) return;
+      if (mode === 'aichat') {
+        aiOpt.style.borderColor = 'var(--primary)';
+        aiOpt.style.background = 'rgba(79, 70, 229, 0.08)';
+        flowOpt.style.borderColor = '#e2e8f0';
+        flowOpt.style.background = 'transparent';
+      } else {
+        flowOpt.style.borderColor = 'var(--primary)';
+        flowOpt.style.background = 'rgba(79, 70, 229, 0.08)';
+        aiOpt.style.borderColor = '#e2e8f0';
+        aiOpt.style.background = 'transparent';
+      }
+    }
+
     function toggleEmailCapture() {
       const toggle = document.getElementById('toggle-emailCapture');
       toggle.classList.toggle('on');
@@ -2076,6 +2125,7 @@
       
       try {
         const updated = {
+          chatbotMode: document.querySelector('input[name="cfg-primary-mode"]:checked')?.value || 'aichat',
           botName: document.getElementById('cfg-botName').value,
           companyName: document.getElementById('cfg-companyName').value,
           welcomeMessage: document.getElementById('cfg-welcomeMessage').value,

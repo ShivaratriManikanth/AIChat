@@ -566,6 +566,27 @@
                       <option value="false">Disabled</option>
                     </select>
                   </div>
+                  
+                  <div class="form-group" style="grid-column: 1 / -1; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
+                    <label style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">🤖 Chatbot Primary Mode</label>
+                    <p style="color: #64748b; font-size: 12px; margin-bottom: 12px;">Choose how the chatbot should engage with website visitors initially.</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                      <label style="flex: 1; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="super-mode-opt-ai">
+                        <input type="radio" name="dbot-primary-mode" value="aichat" onchange="updateSuperChatbotModeSelection('aichat')" style="cursor: pointer;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🧠 AI Chatbot Mode</div>
+                          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Use the AI Knowledge Base to answer visitor questions dynamically.</div>
+                        </div>
+                      </label>
+                      <label style="flex: 1; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="super-mode-opt-flow">
+                        <input type="radio" name="dbot-primary-mode" value="flowbuilder" onchange="updateSuperChatbotModeSelection('flowbuilder')" style="cursor: pointer;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🔀 Flow Builder Mode</div>
+                          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Guide visitors step-by-step through a visual forms flow first.</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
                 <div class="form-actions">
                   <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
@@ -1343,6 +1364,14 @@
         document.getElementById('dbot-systemPrompt').value = config.systemPrompt || '';
         document.getElementById('dbot-enableAi').value = config.enableAiChatbot !== false ? 'true' : 'false';
         document.getElementById('dbot-enableFaq').value = config.enableFaq !== false ? 'true' : 'false';
+
+        // Chatbot Mode Selection
+        const mode = config.chatbotMode || 'aichat';
+        const radios = document.getElementsByName('dbot-primary-mode');
+        radios.forEach(r => {
+          r.checked = r.value === mode;
+        });
+        updateSuperChatbotModeUI(mode);
         
         // Custom keys
         document.getElementById('dbot-fallbackMessage').value = config.fallbackMessage || '';
@@ -1369,7 +1398,28 @@
       }
     }
 
+    function updateSuperChatbotModeSelection(mode) {
+      updateSuperChatbotModeUI(mode);
+    }
+    function updateSuperChatbotModeUI(mode) {
+      const aiOpt = document.getElementById('super-mode-opt-ai');
+      const flowOpt = document.getElementById('super-mode-opt-flow');
+      if (!aiOpt || !flowOpt) return;
+      if (mode === 'aichat') {
+        aiOpt.style.borderColor = '#4f46e5';
+        aiOpt.style.background = 'rgba(79, 70, 229, 0.08)';
+        flowOpt.style.borderColor = '#e2e8f0';
+        flowOpt.style.background = 'transparent';
+      } else {
+        flowOpt.style.borderColor = '#4f46e5';
+        flowOpt.style.background = 'rgba(79, 70, 229, 0.08)';
+        aiOpt.style.borderColor = '#e2e8f0';
+        aiOpt.style.background = 'transparent';
+      }
+    }
+
     async function saveDemoBotConfig() {
+      const chatbotMode = document.querySelector('input[name="dbot-primary-mode"]:checked')?.value || 'aichat';
       const botName = document.getElementById('dbot-botName').value.trim();
       const companyName = document.getElementById('dbot-companyName').value.trim();
       const welcomeMessage = document.getElementById('dbot-welcomeMessage').value.trim();
@@ -1396,6 +1446,7 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            chatbotMode,
             botName,
             companyName,
             welcomeMessage,

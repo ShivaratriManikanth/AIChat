@@ -1246,6 +1246,15 @@
   let currentFlowNodeIndex = -1;
 
   async function loadActiveFlow() {
+    if (window.CONFIG && window.CONFIG.chatbotMode === 'aichat') {
+      activeFlow = [];
+      return;
+    }
+    // Also support global/local CONFIG variable in module scope
+    if (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.chatbotMode === 'aichat') {
+      activeFlow = [];
+      return;
+    }
     try {
       const res = await fetch(`${SERVER_URL}/api/active-flow`, { headers: { 'x-bot-key': API_KEY } });
       if (res.ok) {

@@ -1310,28 +1310,30 @@ app.get('/api/history/:sessionId', (req, res) => {
 app.get('/api/sessions', requireAuth, (req, res) => {
   if (db) {
     const botId = req.query.botId;
-    let sessions;
+    const search = req.query.search ? req.query.search.trim() : '';
+    let query = `
+      SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+             (SELECT COUNT(*) FROM chat_history WHERE session_id = s.session_id) as message_count
+      FROM sessions s
+      WHERE s.client_id = ?
+    `;
+    const params = [req.clientId];
+
     if (botId) {
-      sessions = db.prepare(`
-        SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
-               COUNT(c.id) as message_count
-        FROM sessions s
-        LEFT JOIN chat_history c ON s.session_id = c.session_id
-        WHERE s.client_id = ? AND s.bot_id = ?
-        GROUP BY s.session_id
-        ORDER BY s.updated_at DESC
-      `).all(req.clientId, botId);
-    } else {
-      sessions = db.prepare(`
-        SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
-               COUNT(c.id) as message_count
-        FROM sessions s
-        LEFT JOIN chat_history c ON s.session_id = c.session_id
-        WHERE s.client_id = ?
-        GROUP BY s.session_id
-        ORDER BY s.updated_at DESC
-      `).all(req.clientId);
+      query += ` AND s.bot_id = ?`;
+      params.push(botId);
     }
+
+    if (search) {
+      query += ` AND (s.email LIKE ? OR s.session_id LIKE ? OR s.session_id IN (
+        SELECT DISTINCT session_id FROM chat_history WHERE client_id = ? AND content LIKE ?
+      ))`;
+      const searchLike = `%${search}%`;
+      params.push(searchLike, searchLike, req.clientId, searchLike);
+    }
+
+    query += ` ORDER BY s.updated_at DESC`;
+    const sessions = db.prepare(query).all(...params);
     return res.json(sessions);
   }
   res.json([]);

@@ -725,8 +725,11 @@
       <!-- ======== CHATS PAGE ======== -->
       <div class="panel" id="page-chats">
         <div class="card">
-          <div class="card-header">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <h2>Chat Sessions</h2>
+            <div style="position:relative; width: 100%; max-width: 320px;">
+              <input type="text" id="chat-search-input" placeholder="🔍 Search emails or messages..." oninput="handleChatSearch()" style="width:100%; padding:8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size:13.5px; background:rgba(255,255,255,0.05); color:inherit; outline:none; transition:all 0.2s;">
+            </div>
           </div>
           <div class="card-body" style="padding:0;">
             <table class="data-table">
@@ -1952,16 +1955,31 @@
       viewSession(sessionId, email);
     }
 
+    let searchDebounceTimeout = null;
+    function handleChatSearch() {
+      clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        const q = document.getElementById('chat-search-input').value.trim();
+        loadSessions(q);
+      }, 300);
+    }
+
     // ---- Load Sessions/Chats --------------------------------
-    async function loadSessions() {
+    async function loadSessions(search = '') {
       try {
-        const url = selectedBotId
+        let url = selectedBotId
           ? `${API}/api/sessions?botId=${encodeURIComponent(selectedBotId)}`
           : `${API}/api/sessions`;
+        if (search) {
+          const separator = url.includes('?') ? '&' : '?';
+          url += `${separator}search=${encodeURIComponent(search)}`;
+        }
         const res = await fetchAuth(url);
         allSessions = await res.json();
         renderSessions(allSessions);
-        document.getElementById('nav-chat-count').textContent = allSessions.length;
+        if (!search) {
+          document.getElementById('nav-chat-count').textContent = allSessions.length;
+        }
       } catch (e) { console.error(e); }
     }
 

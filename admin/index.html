@@ -2867,7 +2867,6 @@
       const overlay = document.getElementById('flow-preview-overlay');
       const iframe = document.getElementById('flow-preview-iframe');
       
-      // We need a bot ID to test. We'll use the first bot found for this client.
       const botsRes = await fetchAuth(`${API}/api/bots`);
       const bots = await botsRes.json();
       
@@ -2876,10 +2875,15 @@
         return;
       }
       
-      const testBot = bots[0];
+      let testBot = null;
+      if (selectedBotId) {
+        testBot = bots.find(b => b.bot_id === selectedBotId);
+      }
+      if (!testBot) {
+        testBot = bots[0];
+      }
       
       // Load a special preview URL that has the chatbot script
-      // We'll pass a 'preview=true' flag to the widget if needed
       iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}`;
       overlay.style.display = 'flex';
     }

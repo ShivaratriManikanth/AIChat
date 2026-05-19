@@ -1963,6 +1963,106 @@ app.put('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
   }
 });
 
+// ---- Super Admin Demo Bot Logo upload ----
+app.post('/api/super/demo-bot/logo', requireSuperAuth, (req, res) => {
+  const { logo } = req.body;
+  try {
+    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    config.logo = logo;
+    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Super Admin Demo Bot Flow Endpoints ----
+app.get('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
+  if (!db) return res.json([]);
+  try {
+    const flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all('system_demo_client', 'bot_demo_landing');
+    res.json(flows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
+  const { id, name, flow_data, is_active } = req.body;
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  try {
+    if (id) {
+      db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ? AND bot_id = ?')
+        .run(name, JSON.stringify(flow_data || []), is_active ? 1 : 0, id, 'system_demo_client', 'bot_demo_landing');
+      if (is_active) {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, 'system_demo_client', 'bot_demo_landing');
+      }
+      return res.json({ success: true, id });
+    } else {
+      const result = db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
+        .run('system_demo_client', 'bot_demo_landing', name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
+      if (is_active) {
+        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, 'system_demo_client', 'bot_demo_landing');
+      }
+      return res.json({ success: true, id: result.lastInsertRowid });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/super/demo-bot/flows/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  try {
+    db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ? AND bot_id = ?').run(req.params.id, 'system_demo_client', 'bot_demo_landing');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Super Admin Demo Bot Session Endpoints ----
+app.get('/api/super/demo-bot/sessions', requireSuperAuth, (req, res) => {
+  if (!db) return res.json([]);
+  try {
+    const sessions = db.prepare(`
+      SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
+             COUNT(c.id) as message_count
+      FROM sessions s
+      LEFT JOIN chat_history c ON s.session_id = c.session_id
+      WHERE s.client_id = ? AND s.bot_id = ?
+      GROUP BY s.session_id
+      ORDER BY s.updated_at DESC
+    `).all('system_demo_client', 'bot_demo_landing');
+    res.json(sessions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Super Admin Demo Bot Captured Users ----
+app.get('/api/super/demo-bot/users', requireSuperAuth, (req, res) => {
+  if (!db) return res.json([]);
+  try {
+    const users = db.prepare(`
+      SELECT u.email, u.session_id, u.created_at,
+             COUNT(c.id) as message_count,
+             MAX(c.timestamp) as last_message,
+             b.domain as bot_domain
+      FROM users u
+      LEFT JOIN chat_history c ON u.session_id = c.session_id
+      LEFT JOIN sessions s ON u.session_id = s.session_id
+      LEFT JOIN bots b ON s.bot_id = b.bot_id
+      WHERE u.client_id = ? AND s.bot_id = ?
+      GROUP BY u.email, u.session_id
+      ORDER BY u.created_at DESC
+    `).all('system_demo_client', 'bot_demo_landing');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---- Plans CRUD ----
 app.get('/api/super/plans', requireSuperAuth, (req, res) => {
   if (!db) return res.json([]);

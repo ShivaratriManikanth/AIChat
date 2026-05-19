@@ -255,6 +255,114 @@
       align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e5e7eb;
     }
     .mono-pw { font-family: monospace; font-size: 11px; color: #666; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
+
+    /* TABS SYSTEM */
+    .tabs-bar {
+      display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: none; border: none; padding: 10px 20px; font-size: 14.5px; font-weight: 600;
+      color: #666; cursor: pointer; border-radius: 8px; transition: all 0.2s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tab-btn:hover { background: #eef2ff; color: #4F46E5; }
+    .tab-btn.active { background: #EEF2FF; color: #4F46E5; box-shadow: inset 0 -2px 0 #4F46E5; }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* BOT DASHBOARD GRID */
+    .bot-dashboard {
+      display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start;
+    }
+    .bot-sidebar {
+      background: white; border-radius: 16px; padding: 16px; border: 1px solid #f0f0f0; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .bot-menu-item {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 10px;
+      font-size: 13.5px; font-weight: 600; color: #555; cursor: pointer; transition: all 0.2s;
+      margin-bottom: 6px;
+    }
+    .bot-menu-item:hover { background: #f9fafb; color: #1a1a2e; }
+    .bot-menu-item.active { background: #EEF2FF; color: #4F46E5; }
+
+    .sub-tab-content { display: none; }
+    .sub-tab-content.active { display: block; }
+
+    /* FLOW BUILDER WORKSPACE */
+    .flow-builder-container {
+      display: flex; gap: 20px; height: 500px;
+      background: white; border-radius: 16px; border: 1px solid #e5e7eb;
+      overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .flow-sidebar {
+      width: 240px; background: #fafbff; border-right: 1px solid #cbd5e1;
+      padding: 16px; overflow-y: auto; flex-shrink: 0;
+    }
+    .flow-components-grid {
+      display: grid; grid-template-columns: 1fr; gap: 8px;
+    }
+    .flow-component-btn {
+      background: white; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: 10px; text-align: left; cursor: pointer; transition: all 0.2s;
+      font-size: 12px; font-weight: 600; color: #444; display: flex; align-items: center; gap: 8px;
+    }
+    .flow-component-btn .icon { font-size: 16px; }
+    .flow-component-btn:hover { border-color: #4F46E5; color: #4F46E5; box-shadow: 0 2px 6px rgba(79,70,229,0.1); }
+    
+    .flow-workspace { flex: 1; display: flex; flex-direction: column; background: #f8fafc; }
+    .flow-workspace-header {
+      padding: 12px 20px; background: white; border-bottom: 1px solid #cbd5e1;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .flow-nodes-list {
+      flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+    }
+    .flow-node-item {
+      background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px;
+      position: relative;
+    }
+    .flow-node-header { display: flex; justify-content: space-between; align-items: center; }
+    .flow-node-title { font-size: 12px; font-weight: 700; color: #334155; }
+    .flow-node-actions { display: flex; gap: 4px; }
+    .flow-node-btn { background: #f1f5f9; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: #64748b; font-size: 11px; }
+    .flow-node-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .flow-node-btn.delete:hover { background: #fee2e2; color: #ef4444; }
+    .flow-node-body { font-size: 12px; }
+    .flow-node-input { width: 100%; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; outline: none; transition: 0.2s; font-family: inherit; margin-top: 4px; background: #fafafa; }
+    .flow-node-input:focus { border-color: #4F46E5; background: white; }
+
+    /* TOGGLE SWITCH */
+    .toggle-switch {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: #ddd; position: relative;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-switch.on { background: #4F46E5; }
+    .toggle-switch::after {
+      content: ''; position: absolute;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: white; top: 2px; left: 2px;
+      transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch.on::after { left: 22px; }
+
+    /* CHAT STREAMING BUBBLES */
+    .chat-bubble {
+      padding: 10px 14px; border-radius: 12px; font-size: 13px; max-width: 75%; line-height: 1.4;
+    }
+    .chat-bubble.bot {
+      background: #eef2ff; color: #1e1b4b; align-self: flex-start; border-bottom-left-radius: 2px;
+    }
+    .chat-bubble.user {
+      background: #4F46E5; color: white; align-self: flex-end; border-bottom-right-radius: 2px;
+    }
+    .session-item {
+      padding: 12px; border-radius: 10px; background: white; border: 1px solid #f0f0f0; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;
+    }
+    .session-item:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .session-item.active { border-color: #4F46E5; background: #eef2ff; }
   </style>
 </head>
 <body>
@@ -301,145 +409,324 @@
       </div>
     </div>
 
-    <!-- Plans Management -->
-    <div class="card">
-      <div class="card-header">
-        <h2>📋 Subscription Plans</h2>
-        <button class="btn btn-primary" onclick="openAddPlanModal()" style="font-size: 13px; padding: 8px 16px;">➕ Add New Plan</button>
-      </div>
-      <div style="padding: 0; overflow-x: auto;">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Plan Name</th>
-              <th>Price</th>
-              <th>Billing Cycle</th>
-              <th style="text-align: right; padding-right: 24px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="plansContainer">
-            <tr><td colspan="4"><div class="empty-state"><span class="icon">⏳</span>Loading plans...</div></td></tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- TABS BAR -->
+    <div class="tabs-bar" style="margin-top: 10px;">
+      <button class="tab-btn active" id="tab-btn-platform" onclick="switchMainTab('platform')">🏢 Platform &amp; SaaS</button>
+      <button class="tab-btn" id="tab-btn-chatbot" onclick="switchMainTab('chatbot')">🤖 Demo Chatbot Dashboard</button>
     </div>
 
-    <!-- Create client -->
-    <div class="card">
-      <div class="card-header"><h2>➕ Onboard New Client</h2></div>
-      <div class="card-body">
-        <div class="create-form">
-          <div class="form-group">
-            <label>Company Name</label>
-            <input type="text" id="companyName" placeholder="e.g. Acme Corp">
+    <!-- TAB: PLATFORM & SAAS -->
+    <div class="tab-content active" id="tab-platform">
+      <!-- Plans Management -->
+      <div class="card">
+        <div class="card-header">
+          <h2>📋 Subscription Plans</h2>
+          <button class="btn btn-primary" onclick="openAddPlanModal()" style="font-size: 13px; padding: 8px 16px;">➕ Add New Plan</button>
+        </div>
+        <div style="padding: 0; overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Plan Name</th>
+                <th>Price</th>
+                <th>Billing Cycle</th>
+                <th style="text-align: right; padding-right: 24px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="plansContainer">
+              <tr><td colspan="4"><div class="empty-state"><span class="icon">⏳</span>Loading plans...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Create client -->
+      <div class="card">
+        <div class="card-header"><h2>➕ Onboard New Client</h2></div>
+        <div class="card-body">
+          <div class="create-form">
+            <div class="form-group">
+              <label>Company Name</label>
+              <input type="text" id="companyName" placeholder="e.g. Acme Corp">
+            </div>
+            <div class="form-group">
+              <label>Client Email</label>
+              <input type="email" id="clientEmail" placeholder="client@company.com">
+            </div>
+            <div class="form-group">
+              <label>Subscription Plan</label>
+              <select id="planId"></select>
+            </div>
+            <div class="form-group">
+              <label>Temporary Password</label>
+              <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
+              <div id="statusMsg"></div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Client Email</label>
-            <input type="email" id="clientEmail" placeholder="client@company.com">
-          </div>
-          <div class="form-group">
-            <label>Subscription Plan</label>
-            <select id="planId"></select>
-          </div>
-          <div class="form-group">
-            <label>Temporary Password</label>
-            <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
-            <div id="statusMsg"></div>
-          </div>
+        </div>
+      </div>
+
+      <!-- Clients table -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🏢 Active Clients</h2>
+          <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
+        </div>
+        <div style="padding:0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Password</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clientTable">
+              <tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- Clients table -->
-    <div class="card">
-      <div class="card-header">
-        <h2>🏢 Active Clients</h2>
-        <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
-      </div>
-      <div style="padding:0;">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Email</th>
-              <th>Plan</th>
-              <th>Status</th>
-              <th>Joined</th>
-              <th>Password</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="clientTable">
-            <tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span>Loading clients...</div></td></tr>
-          </tbody>
-        </table>
+    <!-- TAB: CHATBOT DASHBOARD -->
+    <div class="tab-content" id="tab-chatbot">
+      <div class="bot-dashboard">
+        <!-- Sidebar Navigation -->
+        <div class="bot-sidebar">
+          <div class="bot-menu-item active" id="menu-dbot-settings" onclick="switchSubTab('settings')">⚙️ Bot Settings</div>
+          <div class="bot-menu-item" id="menu-dbot-flow" onclick="switchSubTab('flow')">🔀 Flow Builder</div>
+          <div class="bot-menu-item" id="menu-dbot-chats" onclick="switchSubTab('chats')">💬 Chat History</div>
+          <div class="bot-menu-item" id="menu-dbot-users" onclick="switchSubTab('users')">👥 Captured Leads</div>
+        </div>
+
+        <!-- Workspace area -->
+        <div class="bot-workspace-container" style="flex: 1;">
+          
+          <!-- SUB-TAB: SETTINGS -->
+          <div class="sub-tab-content active" id="sub-dbot-settings">
+            <!-- Demo Chatbot Settings -->
+            <div class="card" style="margin-bottom: 20px;">
+              <div class="card-header"><h2>⚙️ Landing Page Demo Chatbot Settings</h2></div>
+              <div class="card-body">
+                <div id="demoBotStatusMsg" style="font-size: 13px; padding: 10px 14px; border-radius: 8px; display: none; margin-bottom: 16px;"></div>
+                <div class="create-form" style="margin-bottom: 20px;">
+                  <div class="form-group">
+                    <label>Bot Name</label>
+                    <input type="text" id="dbot-botName" placeholder="e.g. GAdigital Assistant">
+                  </div>
+                  <div class="form-group">
+                    <label>Company Name</label>
+                    <input type="text" id="dbot-companyName" placeholder="e.g. GAdigital Solution">
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Welcome Message</label>
+                    <input type="text" id="dbot-welcomeMessage" placeholder="Welcome message...">
+                  </div>
+                  <div class="form-group">
+                    <label>Theme Color</label>
+                    <input type="color" id="dbot-themeColor" style="height: 44px; padding: 4px;">
+                  </div>
+                  <div class="form-group">
+                    <label>AI Model</label>
+                    <select id="dbot-aiModel">
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      <option value="gpt-4">GPT-4</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini</option>
+                      <option value="gpt-4o">GPT-4o</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>System Prompt (AI Personality & Context)</label>
+                    <textarea id="dbot-systemPrompt" rows="4" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;"></textarea>
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Suggested Questions (one per line)</label>
+                    <textarea id="dbot-suggestedQuestions" rows="3" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;" placeholder="What features do you offer?&#10;How much does it cost?"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Enable AI Responses</label>
+                    <select id="dbot-enableAi">
+                      <option value="true">Enabled</option>
+                      <option value="false">Disabled</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Enable FAQ Searching</label>
+                    <select id="dbot-enableFaq">
+                      <option value="true">Enabled</option>
+                      <option value="false">Disabled</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Logo / Bot Avatar -->
+            <div class="card" style="margin-bottom: 20px;">
+              <div class="card-header"><h2>🖼️ Custom Logo / Bot Avatar</h2></div>
+              <div class="card-body">
+                <p style="font-size:13px;color:#666;margin-bottom:12px;">Upload a custom logo to replace the default 🤖 avatar. Recommended: square 128x128 PNG/JPG.</p>
+                <div style="display:flex; align-items:center; gap:20px;">
+                  <div id="dbot-logo-preview" style="width:80px;height:80px;border-radius:50%;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:36px;border:2px solid #e5e7eb;overflow:hidden;">🤖</div>
+                  <div>
+                    <input type="file" id="dbot-logo-input" accept="image/*" style="display:none">
+                    <button class="btn btn-primary" onclick="document.getElementById('dbot-logo-input').click()">📤 Upload Logo</button>
+                    <button class="btn btn-outline" onclick="removeDemoLogo()" style="margin-left:8px;">Remove</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fallback & Offline Mode -->
+            <div class="card">
+              <div class="card-header"><h2>🛡️ Bot Fallback &amp; Offline Mode</h2></div>
+              <div class="card-body">
+                <div class="create-form" style="margin-bottom: 20px;">
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Fallback Message (shown when AI is unsure)</label>
+                    <textarea id="dbot-fallbackMessage" rows="2" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;"></textarea>
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Offline Message (shown when backend is down)</label>
+                    <textarea id="dbot-offlineMessage" rows="2" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Rate Limit (messages per minute per user)</label>
+                    <input type="number" id="dbot-rateLimit" min="5" max="100" placeholder="e.g. 20">
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-TAB: FLOW BUILDER -->
+          <div class="sub-tab-content" id="sub-dbot-flow">
+            <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h2 style="font-size:18px;color:#1a1a2e; font-weight: 700;">🔀 Flow Builder</h2>
+                <p style="color:#666;font-size:13px;margin-top:4px;">Visually create chatbot conversation flows and components.</p>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="saveDemoFlow()" style="font-size:13px; padding: 8px 16px;">💾 Save Flow</button>
+              </div>
+            </div>
+
+            <div class="flow-builder-container">
+              <div class="flow-sidebar">
+                <h3 style="font-size:11px; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:12px;">Components</h3>
+                <div class="flow-components-grid">
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('question', '❓ Question')"><div class="icon">❓</div>Question</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('single_choice', '🔘 Single Choice')"><div class="icon">🔘</div>Single Choice</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('multiple_choice', '☑️ Multiple Choice')"><div class="icon">☑️</div>Multiple Choice</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('email', '📧 Email')"><div class="icon">📧</div>Email</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('mobile', '📱 Mobile Number')"><div class="icon">📱</div>Mobile Number</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('number', '#️⃣ Number')"><div class="icon">#️⃣</div>Number</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('rating', '⭐ Rating')"><div class="icon">⭐</div>Rating</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('date_picker', '📅 Date Picker')"><div class="icon">📅</div>Date Picker</div>
+                </div>
+              </div>
+              <div class="flow-workspace">
+                <div class="flow-workspace-header">
+                  <div style="font-size:13px; font-weight:600; color:#1e293b;">Flow Sequence</div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadDemoFlow()">Revert</button>
+                    <div class="toggle-switch" id="dbot-toggle-flow-active" onclick="toggleDemoFlowActive()"></div>
+                    <span style="font-size:12px; color:#555; font-weight: 500;">Active</span>
+                  </div>
+                </div>
+                <div id="dbot-flow-nodes-list" class="flow-nodes-list">
+                  <div class="empty-state">
+                    <div class="empty-icon">🖱️</div>
+                    <p>Click a component on the left to add it to your flow.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-TAB: CHAT HISTORY -->
+          <div class="sub-tab-content" id="sub-dbot-chats">
+            <div style="margin-bottom:20px;">
+              <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">💬 User Conversations</h2>
+              <p style="color:#666;font-size:13px;margin-top:4px;">View conversations between users and the landing page demo chatbot.</p>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 320px 1fr; gap: 20px; background: white; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; height: 500px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+              <!-- Session List -->
+              <div style="border-right: 1px solid #f0f0f0; display:flex; flex-direction:column; background: #fafafa;">
+                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+                  <strong style="font-size: 13px; color: #555;">Chat Sessions</strong>
+                  <button class="btn btn-outline" onclick="loadDemoSessions()" style="font-size:11px; padding: 6px 12px;">🔄 Refresh</button>
+                </div>
+                <div id="dbot-sessions-list" style="flex:1; overflow-y:auto; padding: 8px;">
+                  <!-- Sessions populated dynamically -->
+                </div>
+              </div>
+              <!-- Session Log Viewer -->
+              <div style="display:flex; flex-direction:column; background: white;">
+                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap: 10px;">
+                  <span style="font-size: 18px;">💬</span>
+                  <div>
+                    <div style="font-weight: 700; font-size: 14px;" id="dbot-chat-title">Select a session</div>
+                    <div style="font-size: 11px; color: #888;" id="dbot-chat-subtitle">Click a conversation on the left to read messages</div>
+                  </div>
+                </div>
+                <div id="dbot-chat-log" style="flex:1; overflow-y:auto; padding: 20px; display:flex; flex-direction:column; gap:12px; background: #f8fafc;">
+                  <div style="margin: auto; text-align: center; color: #999; font-size: 13.5px;">
+                    Select a conversation to view history
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-TAB: CAPTURED LEADS -->
+          <div class="sub-tab-content" id="sub-dbot-users">
+            <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">👥 Captured Leads</h2>
+                <p style="color:#666;font-size:13px;margin-top:4px;">View captured emails and contact info submitted to the demo chatbot.</p>
+              </div>
+              <button class="btn btn-outline" onclick="loadDemoUsers()" style="font-size:12px; padding: 8px 16px;">🔄 Refresh</button>
+            </div>
+            
+            <div class="card" style="margin-bottom: 0;">
+              <div style="padding:0; overflow-x: auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Session ID</th>
+                      <th>Messages Count</th>
+                      <th>Joined Date</th>
+                      <th style="text-align: right; padding-right: 24px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dbot-users-list">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
-
-    <!-- Demo Chatbot Settings -->
-    <div class="card">
-      <div class="card-header"><h2>⚙️ Landing Page Demo Chatbot Settings</h2></div>
-      <div class="card-body">
-        <div id="demoBotStatusMsg" style="font-size: 13px; padding: 10px 14px; border-radius: 8px; display: none; margin-bottom: 16px;"></div>
-        <div class="create-form" style="margin-bottom: 20px;">
-          <div class="form-group">
-            <label>Bot Name</label>
-            <input type="text" id="dbot-botName" placeholder="e.g. GAdigital Assistant">
-          </div>
-          <div class="form-group">
-            <label>Company Name</label>
-            <input type="text" id="dbot-companyName" placeholder="e.g. GAdigital Solution">
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label>Welcome Message</label>
-            <input type="text" id="dbot-welcomeMessage" placeholder="Welcome message...">
-          </div>
-          <div class="form-group">
-            <label>Theme Color</label>
-            <input type="color" id="dbot-themeColor" style="height: 44px; padding: 4px;">
-          </div>
-          <div class="form-group">
-            <label>AI Model</label>
-            <select id="dbot-aiModel">
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-4o-mini">GPT-4o Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
-            </select>
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label>System Prompt (AI Personality & Context)</label>
-            <textarea id="dbot-systemPrompt" rows="4" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;"></textarea>
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label>Suggested Questions (one per line)</label>
-            <textarea id="dbot-suggestedQuestions" rows="3" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;" placeholder="What features do you offer?&#10;How much does it cost?"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Enable AI Responses</label>
-            <select id="dbot-enableAi">
-              <option value="true">Enabled</option>
-              <option value="false">Disabled</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Enable FAQ Searching</label>
-            <select id="dbot-enableFaq">
-              <option value="true">Enabled</option>
-              <option value="false">Disabled</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
 
   <!-- Edit Modal -->
   <div class="modal-overlay" id="editModal">
@@ -862,6 +1149,90 @@
       } catch (e) { alert('Network error.'); }
     }
 
+    // Tab Management
+    function switchMainTab(tabName) {
+      document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      if (tabName === 'platform') {
+        document.getElementById('tab-btn-platform').classList.add('active');
+        document.getElementById('tab-platform').classList.add('active');
+      } else {
+        document.getElementById('tab-btn-chatbot').classList.add('active');
+        document.getElementById('tab-chatbot').classList.add('active');
+        switchSubTab('settings');
+      }
+    }
+
+    function switchSubTab(subName) {
+      document.querySelectorAll('.bot-sidebar .bot-menu-item').forEach(m => m.classList.remove('active'));
+      document.querySelectorAll('.sub-tab-content').forEach(sc => sc.classList.remove('active'));
+      
+      const menu = document.getElementById('menu-dbot-' + subName);
+      const sub = document.getElementById('sub-dbot-' + subName);
+      if (menu) menu.classList.add('active');
+      if (sub) sub.classList.add('active');
+      
+      if (subName === 'settings') {
+        loadDemoBotConfig();
+      } else if (subName === 'flow') {
+        loadDemoFlow();
+      } else if (subName === 'chats') {
+        loadDemoSessions();
+      } else if (subName === 'users') {
+        loadDemoUsers();
+      }
+    }
+
+    // Logo Upload handler
+    document.getElementById('dbot-logo-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Logo file size is too large. Max 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        try {
+          const res = await fetchAuth('/api/super/demo-bot/logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logo: dataUrl })
+          });
+          if (res.ok) {
+            document.getElementById('dbot-logo-preview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+            alert('Logo uploaded successfully!');
+          } else {
+            alert('Failed to upload logo.');
+          }
+        } catch (err) {
+          alert('Network error uploading logo.');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function removeDemoLogo() {
+      if (!confirm('Are you sure you want to remove the bot logo?')) return;
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logo: '' })
+        });
+        if (res.ok) {
+          document.getElementById('dbot-logo-preview').innerHTML = '🤖';
+          alert('Logo removed successfully.');
+        } else {
+          alert('Failed to remove logo.');
+        }
+      } catch (err) {
+        alert('Network error removing logo.');
+      }
+    }
+
     async function loadDemoBotConfig() {
       try {
         const res = await fetchAuth('/api/super/demo-bot/config');
@@ -876,6 +1247,19 @@
         document.getElementById('dbot-systemPrompt').value = config.systemPrompt || '';
         document.getElementById('dbot-enableAi').value = config.enableAiChatbot !== false ? 'true' : 'false';
         document.getElementById('dbot-enableFaq').value = config.enableFaq !== false ? 'true' : 'false';
+        
+        // Custom keys
+        document.getElementById('dbot-fallbackMessage').value = config.fallbackMessage || '';
+        document.getElementById('dbot-offlineMessage').value = config.offlineMessage || '';
+        document.getElementById('dbot-rateLimit').value = config.rateLimitPerMinute || 20;
+
+        // Logo preview
+        const preview = document.getElementById('dbot-logo-preview');
+        if (config.logo) {
+          preview.innerHTML = `<img src="${config.logo}" style="width:100%;height:100%;object-fit:cover;">`;
+        } else {
+          preview.innerHTML = '🤖';
+        }
         
         if (config.suggestedQuestions) {
           document.getElementById('dbot-suggestedQuestions').value = Array.isArray(config.suggestedQuestions) 
@@ -900,6 +1284,10 @@
       const enableAiChatbot = document.getElementById('dbot-enableAi').value === 'true';
       const enableFaq = document.getElementById('dbot-enableFaq').value === 'true';
       
+      const fallbackMessage = document.getElementById('dbot-fallbackMessage').value.trim();
+      const offlineMessage = document.getElementById('dbot-offlineMessage').value.trim();
+      const rateLimitPerMinute = parseInt(document.getElementById('dbot-rateLimit').value) || 20;
+
       const suggestedQuestions = suggestedQuestionsText 
         ? suggestedQuestionsText.split('\n').map(q => q.trim()).filter(Boolean) 
         : [];
@@ -920,7 +1308,10 @@
             systemPrompt,
             suggestedQuestions,
             enableAiChatbot,
-            enableFaq
+            enableFaq,
+            fallbackMessage,
+            offlineMessage,
+            rateLimitPerMinute
           })
         });
         
@@ -941,6 +1332,259 @@
         msg.className = 'error';
         msg.style.display = 'block';
       }
+    }
+
+    // ---- Demo Bot Flow Builder Logic ----
+    let demoFlowNodes = [];
+    let demoCurrentFlowId = null;
+    let isDemoFlowActive = false;
+
+    async function loadDemoFlow() {
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/flows');
+        const flows = await res.json();
+        if (flows && flows.length > 0) {
+          const flow = flows[0];
+          demoCurrentFlowId = flow.id;
+          demoFlowNodes = JSON.parse(flow.flow_data || '[]');
+          isDemoFlowActive = flow.is_active === 1;
+        } else {
+          demoCurrentFlowId = null;
+          demoFlowNodes = [];
+          isDemoFlowActive = false;
+        }
+        document.getElementById('dbot-toggle-flow-active').className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
+        renderDemoFlowNodes();
+      } catch (err) {
+        console.error('Failed to load demo flow', err);
+      }
+    }
+
+    function toggleDemoFlowActive() {
+      isDemoFlowActive = !isDemoFlowActive;
+      document.getElementById('dbot-toggle-flow-active').className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
+      saveDemoFlow();
+    }
+
+    function addDemoFlowNode(type, label) {
+      const id = 'node_' + Math.random().toString(36).substr(2, 9);
+      demoFlowNodes.push({
+        id,
+        type,
+        label,
+        config: { question: 'Please provide your ' + label.replace(/[^a-zA-Z ]/g, '').trim() + '?', options: [] }
+      });
+      renderDemoFlowNodes();
+    }
+
+    function deleteDemoFlowNode(index) {
+      if (confirm('Delete this component?')) {
+        demoFlowNodes.splice(index, 1);
+        renderDemoFlowNodes();
+      }
+    }
+
+    function duplicateDemoFlowNode(index) {
+      const node = demoFlowNodes[index];
+      const newNode = JSON.parse(JSON.stringify(node));
+      newNode.id = 'node_' + Math.random().toString(36).substr(2, 9);
+      demoFlowNodes.splice(index + 1, 0, newNode);
+      renderDemoFlowNodes();
+    }
+
+    function moveDemoNodeUp(index) {
+      if (index === 0) return;
+      const temp = demoFlowNodes[index];
+      demoFlowNodes[index] = demoFlowNodes[index - 1];
+      demoFlowNodes[index - 1] = temp;
+      renderDemoFlowNodes();
+    }
+
+    function moveDemoNodeDown(index) {
+      if (index === demoFlowNodes.length - 1) return;
+      const temp = demoFlowNodes[index];
+      demoFlowNodes[index] = demoFlowNodes[index + 1];
+      demoFlowNodes[index + 1] = temp;
+      renderDemoFlowNodes();
+    }
+
+    function updateDemoNodeConfig(index, key, value) {
+      if (!demoFlowNodes[index].config) demoFlowNodes[index].config = {};
+      demoFlowNodes[index].config[key] = value;
+    }
+
+    function renderDemoFlowNodes() {
+      const container = document.getElementById('dbot-flow-nodes-list');
+      if (demoFlowNodes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🖱️</div>
+            <p>Click a component on the left to add it to your flow.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      let html = '';
+      demoFlowNodes.forEach((node, i) => {
+        let configHtml = '';
+        if (node.type === 'single_choice' || node.type === 'multiple_choice') {
+          configHtml = `<input type="text" class="flow-node-input" placeholder="Options (comma separated)" value="${(node.config.options||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'options', this.value.split(',').map(s=>s.trim()))">`;
+        }
+        
+        html += `
+          <div class="flow-node-item">
+            <div class="flow-node-header">
+              <div class="flow-node-title" style="font-weight: 700;">${node.label}</div>
+              <div class="flow-node-actions">
+                <button class="flow-node-btn" onclick="moveDemoNodeUp(${i})">↑</button>
+                <button class="flow-node-btn" onclick="moveDemoNodeDown(${i})">↓</button>
+                <button class="flow-node-btn" onclick="duplicateDemoFlowNode(${i})">📄</button>
+                <button class="flow-node-btn delete" onclick="deleteDemoFlowNode(${i})">🗑️</button>
+              </div>
+            </div>
+            <div class="flow-node-body">
+              <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Bot Asks:</label>
+              <input type="text" class="flow-node-input" placeholder="Enter bot prompt..." value="${node.config.question || ''}" onchange="updateDemoNodeConfig(${i}, 'question', this.value)">
+              ${configHtml}
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    async function saveDemoFlow() {
+      try {
+        const payload = {
+          id: demoCurrentFlowId,
+          name: 'Demo Chatbot Main Flow',
+          flow_data: demoFlowNodes,
+          is_active: isDemoFlowActive
+        };
+        const res = await fetchAuth('/api/super/demo-bot/flows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          demoCurrentFlowId = data.id;
+          alert('Flow saved successfully!');
+        } else {
+          alert('Failed to save flow.');
+        }
+      } catch (err) {
+        console.error('Failed to save flow', err);
+        alert('Error saving flow.');
+      }
+    }
+
+    // ---- Demo Bot Chat History Logic ----
+    async function loadDemoSessions() {
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/sessions');
+        const sessions = await res.json();
+        
+        const list = document.getElementById('dbot-sessions-list');
+        if (sessions.length === 0) {
+          list.innerHTML = `<div style="padding:20px; text-align:center; color:#888; font-size:13px;">No chat sessions found.</div>`;
+          return;
+        }
+        
+        list.innerHTML = sessions.map(s => {
+          const email = s.email || 'Anonymous User';
+          const msgCount = s.message_count;
+          const dateStr = new Date(s.updated_at).toLocaleString();
+          return `
+            <div class="session-item" id="dbot-session-${s.session_id}" onclick="viewDemoSession('${s.session_id}', '${email}')">
+              <div style="font-weight: 700; font-size: 13.5px; color: #1a1a2e; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${email}
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#666;">
+                <span>💬 ${msgCount} msgs</span>
+                <span>${dateStr.split(',')[0]}</span>
+              </div>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        console.error('Error loading demo sessions:', err);
+      }
+    }
+
+    async function viewDemoSession(sessionId, email) {
+      document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+      const activeItem = document.getElementById('dbot-session-' + sessionId);
+      if (activeItem) activeItem.classList.add('active');
+      
+      document.getElementById('dbot-chat-title').textContent = email;
+      document.getElementById('dbot-chat-subtitle').textContent = 'Session ID: ' + sessionId;
+      
+      const log = document.getElementById('dbot-chat-log');
+      log.innerHTML = `<div style="margin:auto; text-align:center; color:#888; font-size:13px;">Loading conversation...</div>`;
+      
+      try {
+        const res = await fetchAuth('/api/session/' + sessionId);
+        const history = await res.json();
+        
+        if (history.length === 0) {
+          log.innerHTML = `<div style="margin:auto; text-align:center; color:#888; font-size:13px;">No messages in this session.</div>`;
+          return;
+        }
+        
+        log.innerHTML = history.map(msg => {
+          const isBot = msg.role === 'bot' || msg.role === 'assistant';
+          const bubbleClass = isBot ? 'bot' : 'user';
+          let bodyText = msg.content || '';
+          if (msg.file_data) {
+            bodyText += `<div style="margin-top:8px; font-weight:600;">📁 Sent file: <a href="${msg.file_data}" download="${msg.file_name || 'file'}" style="color: inherit; text-decoration:underline;">${msg.file_name || 'Download File'}</a></div>`;
+          }
+          return `<div class="chat-bubble ${bubbleClass}">${bodyText}</div>`;
+        }).join('');
+        
+        log.scrollTop = log.scrollHeight;
+      } catch (err) {
+        log.innerHTML = `<div style="margin:auto; text-align:center; color:#ef4444; font-size:13px;">Failed to load messages.</div>`;
+      }
+    }
+
+    // ---- Demo Bot Captured Leads Logic ----
+    async function loadDemoUsers() {
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/users');
+        const users = await res.json();
+        
+        const tbody = document.getElementById('dbot-users-list');
+        if (users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><span class="icon">👥</span>No captured leads yet.</div></td></tr>`;
+          return;
+        }
+        
+        tbody.innerHTML = users.map(u => {
+          const dateStr = new Date(u.created_at).toLocaleString();
+          const emailEsc = (u.email || '').replace(/'/g, "\\'");
+          return `
+            <tr>
+              <td><strong style="color: #1a1a2e; font-size:14px;">${u.email}</strong></td>
+              <td><span style="font-family: monospace; font-size:12px; color:#555;">${u.session_id}</span></td>
+              <td><span class="badge badge-inactive" style="font-size:12px; padding: 4px 8px;">💬 ${u.message_count} msgs</span></td>
+              <td><span style="font-size:12px; color:#666;">${dateStr}</span></td>
+              <td style="text-align: right; padding-right: 24px;">
+                <button class="btn-sm btn-sm-view" onclick="jumpToDemoChat('${u.session_id}', '${emailEsc}')">💬 Read Chat</button>
+              </td>
+            </tr>`;
+        }).join('');
+      } catch (err) {
+        console.error('Error loading captured leads:', err);
+      }
+    }
+
+    function jumpToDemoChat(sessionId, email) {
+      switchMainTab('chatbot');
+      switchSubTab('chats');
+      loadDemoSessions().then(() => {
+        viewDemoSession(sessionId, email);
+      });
     }
 
     // Init

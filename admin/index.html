@@ -1200,13 +1200,6 @@
                 </label>
               </div>
             </div>
-            
-            <!-- Webhook / Zapier Integration -->
-            <div class="form-group" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-              <label style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 4px;">📤 CRM Webhook / Zapier URL</label>
-              <p style="color: #64748b; font-size: 12px; margin-bottom: 8px;">Enter a webhook URL (e.g. from Zapier, Make, or your CRM). Lead data is instantly POSTed here when captured.</p>
-              <input type="url" id="cfg-webhookUrl" placeholder="https://hooks.zapier.com/hooks/catch/..." style="width: 100%; padding: 10px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px;">
-            </div>
           </div>
         </div>
 
@@ -2032,7 +2025,6 @@
       document.getElementById('cfg-systemPrompt').value = config.systemPrompt || '';
       document.getElementById('cfg-placeholder').value = config.placeholder || '';
       document.getElementById('cfg-suggestedQuestions').value = (config.suggestedQuestions || []).join('\n');
-      document.getElementById('cfg-webhookUrl').value = config.webhookUrl || '';
 
       // Chatbot Mode Selection
       const mode = config.chatbotMode || 'aichat';
@@ -2142,7 +2134,6 @@
           systemPrompt: document.getElementById('cfg-systemPrompt').value,
           placeholder: document.getElementById('cfg-placeholder').value,
           suggestedQuestions: document.getElementById('cfg-suggestedQuestions').value.split('\n').map(s => s.trim()).filter(Boolean),
-          webhookUrl: document.getElementById('cfg-webhookUrl').value.trim(),
           emailCapture: document.getElementById('toggle-emailCapture').classList.contains('on'),
           emailCaptureTitle: document.getElementById('cfg-emailCaptureTitle').value,
           emailCaptureSubtitle: document.getElementById('cfg-emailCaptureSubtitle').value,

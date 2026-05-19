@@ -1128,37 +1128,6 @@ app.post('/api/lead', checkApiKey, (req, res) => {
     { name: safeName, email: safeEmail, phone: safePhone, pageUrl: safeUrl },
     { ...(_leadCfg.emailNotifications || {}), companyName: _leadCfg.companyName || _leadCfg.botName }
   );
-
-  // Trigger Webhook/Zapier integrations (async, non-blocking)
-  if (_leadCfg && _leadCfg.webhookUrl) {
-    (async () => {
-      try {
-        await fetch(_leadCfg.webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: 'lead.captured',
-            lead: {
-              name: safeName,
-              email: safeEmail,
-              phone: safePhone,
-              pageUrl: safeUrl,
-              sessionId: sessionId,
-              timestamp: new Date().toISOString()
-            },
-            bot: {
-              id: req.bot?.bot_id || 'default',
-              name: _leadCfg.botName || 'AI Assistant',
-              companyName: _leadCfg.companyName || ''
-            }
-          })
-        });
-      } catch (err) {
-        console.error('[Webhook] Execution failed:', err.message);
-      }
-    })();
-  }
-
   res.json({ success: true });
 });
 

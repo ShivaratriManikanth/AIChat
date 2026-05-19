@@ -108,14 +108,39 @@
   // ---- FEATURE: Markdown Support ----------------------------
   function renderMarkdown(text) {
     let html = escapeHtml(text);
+    
+    // Auto-linkify raw URLs starting with http:// or https:// (excluding those already inside markdown links)
+    // To do this safely: first parse markdown links [text](url) into a placeholder
+    const mdLinks = [];
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, p1, p2) => {
+      mdLinks.push({ text: p1, url: p2 });
+      return `__MD_LINK_PLACEHOLDER_${mdLinks.length - 1}__`;
+    });
+    
+    // Now replace raw URLs
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    html = html.replace(urlRegex, (url) => {
+      let cleanUrl = url;
+      let trailing = '';
+      const lastChar = url.slice(-1);
+      if (['.', ',', '!', '?'].includes(lastChar)) {
+        cleanUrl = url.slice(0, -1);
+        trailing = lastChar;
+      }
+      return `<a href="${cleanUrl}" target="_blank" style="color:inherit;text-decoration:underline;">${cleanUrl}</a>${trailing}`;
+    });
+    
+    // Put markdown links back
+    mdLinks.forEach((link, idx) => {
+      html = html.replace(`__MD_LINK_PLACEHOLDER_${idx}__`, `<a href="${link.url}" target="_blank" style="color:inherit;text-decoration:underline;">${link.text}</a>`);
+    });
+
     // Bold: **text**
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     // Italic: *text*
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
     // Inline code: `code`
     html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(128,128,128,0.15);padding:1px 5px;border-radius:4px;font-size:12px;">$1</code>');
-    // Links: [text](url)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:inherit;text-decoration:underline;">$1</a>');
     // Line breaks
     html = html.replace(/\n/g, '<br>');
     // Bullet lists: lines starting with - or *

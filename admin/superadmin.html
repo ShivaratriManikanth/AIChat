@@ -320,6 +320,66 @@
       </div>
     </div>
 
+    <!-- Demo Chatbot Settings -->
+    <div class="card">
+      <div class="card-header"><h2>⚙️ Landing Page Demo Chatbot Settings</h2></div>
+      <div class="card-body">
+        <div id="demoBotStatusMsg" style="font-size: 13px; padding: 10px 14px; border-radius: 8px; display: none; margin-bottom: 16px;"></div>
+        <div class="create-form" style="margin-bottom: 20px;">
+          <div class="form-group">
+            <label>Bot Name</label>
+            <input type="text" id="dbot-botName" placeholder="e.g. GAdigital Assistant">
+          </div>
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="dbot-companyName" placeholder="e.g. GAdigital Solution">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Welcome Message</label>
+            <input type="text" id="dbot-welcomeMessage" placeholder="Welcome message...">
+          </div>
+          <div class="form-group">
+            <label>Theme Color</label>
+            <input type="color" id="dbot-themeColor" style="height: 44px; padding: 4px;">
+          </div>
+          <div class="form-group">
+            <label>AI Model</label>
+            <select id="dbot-aiModel">
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+              <option value="gpt-4">GPT-4</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>System Prompt (AI Personality & Context)</label>
+            <textarea id="dbot-systemPrompt" rows="4" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;"></textarea>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Suggested Questions (one per line)</label>
+            <textarea id="dbot-suggestedQuestions" rows="3" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;" placeholder="What features do you offer?&#10;How much does it cost?"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Enable AI Responses</label>
+            <select id="dbot-enableAi">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Enable FAQ Searching</label>
+            <select id="dbot-enableFaq">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Create client -->
     <div class="card">
       <div class="card-header"><h2>➕ Onboard New Client</h2></div>
@@ -673,8 +733,92 @@
       } catch (e) { alert('Network error.'); }
     }
 
+    async function loadDemoBotConfig() {
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/config');
+        if (!res.ok) throw new Error('Failed to load demo bot config');
+        const config = await res.json();
+        
+        document.getElementById('dbot-botName').value = config.botName || '';
+        document.getElementById('dbot-companyName').value = config.companyName || '';
+        document.getElementById('dbot-welcomeMessage').value = config.welcomeMessage || '';
+        document.getElementById('dbot-themeColor').value = config.themeColor || '#4F46E5';
+        document.getElementById('dbot-aiModel').value = config.aiModel || 'gpt-3.5-turbo';
+        document.getElementById('dbot-systemPrompt').value = config.systemPrompt || '';
+        document.getElementById('dbot-enableAi').value = config.enableAiChatbot !== false ? 'true' : 'false';
+        document.getElementById('dbot-enableFaq').value = config.enableFaq !== false ? 'true' : 'false';
+        
+        if (config.suggestedQuestions) {
+          document.getElementById('dbot-suggestedQuestions').value = Array.isArray(config.suggestedQuestions) 
+            ? config.suggestedQuestions.join('\n') 
+            : config.suggestedQuestions;
+        } else {
+          document.getElementById('dbot-suggestedQuestions').value = '';
+        }
+      } catch (err) {
+        console.error('Error loading demo bot config:', err);
+      }
+    }
+
+    async function saveDemoBotConfig() {
+      const botName = document.getElementById('dbot-botName').value.trim();
+      const companyName = document.getElementById('dbot-companyName').value.trim();
+      const welcomeMessage = document.getElementById('dbot-welcomeMessage').value.trim();
+      const themeColor = document.getElementById('dbot-themeColor').value;
+      const aiModel = document.getElementById('dbot-aiModel').value;
+      const systemPrompt = document.getElementById('dbot-systemPrompt').value.trim();
+      const suggestedQuestionsText = document.getElementById('dbot-suggestedQuestions').value.trim();
+      const enableAiChatbot = document.getElementById('dbot-enableAi').value === 'true';
+      const enableFaq = document.getElementById('dbot-enableFaq').value === 'true';
+      
+      const suggestedQuestions = suggestedQuestionsText 
+        ? suggestedQuestionsText.split('\n').map(q => q.trim()).filter(Boolean) 
+        : [];
+        
+      const msg = document.getElementById('demoBotStatusMsg');
+      msg.className = ''; msg.style.display = 'none';
+      
+      try {
+        const res = await fetchAuth('/api/super/demo-bot/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            botName,
+            companyName,
+            welcomeMessage,
+            themeColor,
+            aiModel,
+            systemPrompt,
+            suggestedQuestions,
+            enableAiChatbot,
+            enableFaq
+          })
+        });
+        
+        if (res.ok) {
+          msg.textContent = '✅ Landing Page Demo Chatbot settings updated successfully!';
+          msg.className = 'success';
+          msg.style.display = 'block';
+          // Auto hide after 4 seconds
+          setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          msg.textContent = '❌ ' + (err.error || 'Failed to update settings.');
+          msg.className = 'error';
+          msg.style.display = 'block';
+        }
+      } catch (err) {
+        msg.textContent = '❌ Network error. Please try again.';
+        msg.className = 'error';
+        msg.style.display = 'block';
+      }
+    }
+
     // Init
-    loadPlans().then(() => loadClients());
+    loadPlans().then(() => {
+      loadClients();
+      loadDemoBotConfig();
+    });
   </script>
 </body>
 </html>

@@ -15,7 +15,7 @@
 
   const WIDGET_VERSION = '3.6.1';
   const scriptTag  = document.currentScript;
-  const SERVER_URL = scriptTag?.getAttribute('data-server') || 'http://localhost:4000';
+  const SERVER_URL = scriptTag?.getAttribute('data-server') || window.location.origin;
   const BOT_ID     = scriptTag?.getAttribute('data-bot-id') || 'default';
   const API_KEY    = scriptTag?.getAttribute('data-api-key') || '';
   const CLIENT_ID  = scriptTag?.getAttribute('data-client-id') || 'default_client';

@@ -229,6 +229,27 @@ try {
     db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
   }
 
+  // Seed landing page demo bot & client if not exists
+  const hasDemoClient = db.prepare("SELECT COUNT(*) as count FROM clients WHERE id = 'system_demo_client'").get();
+  if (hasDemoClient.count === 0) {
+    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('system_demo_client', 'demo@gadigital.com', 'demo123', 'GAdigital Demo')").run();
+  }
+  const hasDemoBot = db.prepare("SELECT COUNT(*) as count FROM bots WHERE bot_id = 'bot_demo_landing'").get();
+  if (hasDemoBot.count === 0) {
+    const defaultDemoConfig = JSON.stringify({
+      botName: "GAdigital Assistant",
+      companyName: "GAdigital Solution",
+      welcomeMessage: "Hello! Welcome to GAdigital Solution. How can I assist you today?",
+      themeColor: "#4F46E5",
+      aiModel: "gpt-3.5-turbo",
+      systemPrompt: "You are a helpful customer support assistant for GAdigital Solution, an innovative IT services and SaaS provider.",
+      suggestedQuestions: ["What services do you offer?", "How can I contact sales?", "Tell me about subscription plans."],
+      enableAiChatbot: true,
+      enableFaq: true
+    });
+    db.prepare("INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES ('bot_demo_landing', 'GAdigital Assistant', 'key_gadigital_demo_bot', ?, 'system_demo_client')").run(defaultDemoConfig);
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS flows (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1914,6 +1935,33 @@ function requireSuperAuth(req, res, next) {
 // ==========================================
 // SAAS SUPER ADMIN ENDPOINTS
 // ==========================================
+
+// ---- Landing Page Demo Bot Config ----
+app.get('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+  res.json(config);
+});
+
+app.put('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { botName, ...configData } = req.body;
+  try {
+    const current = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const updated = { ...current, ...configData, botName };
+    saveClientBotConfig('system_demo_client', updated, 'bot_demo_landing');
+    
+    // Sync bot name column in bots table
+    if (botName) {
+      db.prepare('UPDATE bots SET name = ? WHERE client_id = ? AND bot_id = ?').run(botName, 'system_demo_client', 'bot_demo_landing');
+    }
+    
+    res.json({ success: true, config: updated });
+  } catch (err) {
+    console.error('Save demo config error:', err);
+    res.status(500).json({ error: 'Failed to save config' });
+  }
+});
 
 // ---- Plans CRUD ----
 app.get('/api/super/plans', requireSuperAuth, (req, res) => {

@@ -1129,6 +1129,36 @@ app.post('/api/lead', checkApiKey, (req, res) => {
     { ...(_leadCfg.emailNotifications || {}), companyName: _leadCfg.companyName || _leadCfg.botName }
   );
 
+  // Trigger Webhook/Zapier integrations (async, non-blocking)
+  if (_leadCfg && _leadCfg.webhookUrl) {
+    (async () => {
+      try {
+        await fetch(_leadCfg.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'lead.captured',
+            lead: {
+              name: safeName,
+              email: safeEmail,
+              phone: safePhone,
+              pageUrl: safeUrl,
+              sessionId: sessionId,
+              timestamp: new Date().toISOString()
+            },
+            bot: {
+              id: req.bot?.bot_id || 'default',
+              name: _leadCfg.botName || 'AI Assistant',
+              companyName: _leadCfg.companyName || ''
+            }
+          })
+        });
+      } catch (err) {
+        console.error('[Webhook] Execution failed:', err.message);
+      }
+    })();
+  }
+
   res.json({ success: true });
 });
 
@@ -1911,9 +1941,16 @@ app.post('/api/login', async (req, res) => {
 });
 
 function requireAuth(req, res, next) {
+  let token = null;
   const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(401).json({ error: 'Missing authorization header' });
-  const token = authHeader.split(' ')[1];
+  if (authHeader) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+  
+  if (!token) return res.status(401).json({ error: 'Missing authorization header or token parameter' });
+  
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) return res.status(401).json({ error: 'Invalid or expired token' });
     req.clientId = decoded.clientId;

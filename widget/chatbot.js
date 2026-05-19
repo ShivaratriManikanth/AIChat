@@ -1047,6 +1047,33 @@
     return div;
   }
 
+  function createLinkButton(linkButton) {
+    const div = document.createElement('div');
+    div.className = 'quick-replies';
+    
+    const btn = document.createElement('a');
+    btn.className = 'quick-reply-btn';
+    btn.style.textDecoration = 'none';
+    btn.style.display = 'inline-block';
+    btn.href = linkButton.url;
+    btn.target = '_blank';
+    btn.textContent = linkButton.label || 'Open Link';
+    
+    btn.addEventListener('click', () => {
+      playSound('click');
+      if (activeFlow && activeFlow.length > 0 && currentFlowNodeIndex >= 0 && currentFlowNodeIndex < activeFlow.length) {
+        const node = activeFlow[currentFlowNodeIndex];
+        if (node.type === 'link' || node.type === 'website') {
+          sendMessage(`[Clicked Link: ${linkButton.label || 'Link'}]`);
+          div.remove();
+        }
+      }
+    });
+    
+    div.appendChild(btn);
+    return div;
+  }
+
   // ---- Message Rendering ------------------------------------
   function addMessage(text, sender, options = {}) {
     const messages = document.getElementById('chatbot-messages');
@@ -1095,6 +1122,9 @@
         if (options.quickReplies) {
           wrapper.appendChild(createQuickReplies(options.quickReplies));
         }
+        if (options.linkButton) {
+          wrapper.appendChild(createLinkButton(options.linkButton));
+        }
       });
     } else {
       if (text) {
@@ -1110,6 +1140,9 @@
       bubble.appendChild(timeSpan);
       messages.appendChild(wrapper);
       messages.scrollTop = messages.scrollHeight;
+      if (sender === 'bot' && options.linkButton) {
+        wrapper.appendChild(createLinkButton(options.linkButton));
+      }
       if (sender === 'user') playSound('send');
     }
 
@@ -1216,8 +1249,15 @@
       qr = node.config.options || [];
     }
     
+    let linkBtn = null;
+    if (node.type === 'link' || node.type === 'website') {
+      const url = node.config.url || '#';
+      const label = node.config.buttonLabel || 'Open Link';
+      linkBtn = { url, label };
+    }
+    
     setTimeout(() => {
-      addMessage(node.config.question || node.label, 'bot', { quickReplies: qr });
+      addMessage(node.config.question || node.label, 'bot', { quickReplies: qr, linkButton: linkBtn });
       // Depending on type, we could render specific inputs in the chat.
       // For now, quickReplies handle choices. Other types expect text/file.
     }, 500);

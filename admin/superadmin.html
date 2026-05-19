@@ -730,6 +730,7 @@
                   <div class="flow-component-btn" onclick="addDemoFlowNode('number', '#️⃣ Number')"><div class="icon">#️⃣</div>Number</div>
                   <div class="flow-component-btn" onclick="addDemoFlowNode('rating', '⭐ Rating')"><div class="icon">⭐</div>Rating</div>
                   <div class="flow-component-btn" onclick="addDemoFlowNode('date_picker', '📅 Date Picker')"><div class="icon">📅</div>Date Picker</div>
+                  <div class="flow-component-btn" onclick="addDemoFlowNode('website', '🔗 Website Link')"><div class="icon">🔗</div>Website Link</div>
                 </div>
               </div>
               <div class="flow-workspace">
@@ -1525,6 +1526,19 @@
         let configHtml = '';
         if (node.type === 'single_choice' || node.type === 'multiple_choice') {
           configHtml = `<input type="text" class="flow-node-input" placeholder="Options (comma separated)" value="${(node.config.options||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'options', this.value.split(',').map(s=>s.trim()))">`;
+        } else if (node.type === 'website' || node.type === 'link') {
+          configHtml = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Button Label</label>
+                <input type="text" class="flow-node-input" placeholder="e.g. Visit Page" value="${node.config.buttonLabel || ''}" onchange="updateDemoNodeConfig(${i}, 'buttonLabel', this.value)" style="margin-top:2px;">
+              </div>
+              <div>
+                <label style="font-size:10px; font-weight:600; color:#888;">Redirect URL</label>
+                <input type="url" class="flow-node-input" placeholder="e.g. https://yoursite.com" value="${node.config.url || ''}" onchange="updateDemoNodeConfig(${i}, 'url', this.value)" style="margin-top:2px;">
+              </div>
+            </div>
+          `;
         }
         
         html += `

@@ -1976,6 +1976,68 @@ app.post('/api/super/demo-bot/logo', requireSuperAuth, (req, res) => {
   }
 });
 
+// ---- Super Admin Demo Bot Knowledge Base training ----
+app.post('/api/super/demo-bot/knowledge/pdf', requireSuperAuth, async (req, res) => {
+  const { fileName, fileData } = req.body;
+  if (!fileData) return res.status(400).json({ error: 'fileData required (base64)' });
+
+  try {
+    const pdfParse = require('pdf-parse');
+    const base64 = fileData.replace(/^data:application\/pdf;base64,/, '');
+    const buffer = Buffer.from(base64, 'base64');
+    const data   = await pdfParse(buffer);
+    const text   = (data.text || '').trim();
+
+    if (!text) return res.status(400).json({ error: 'No text extracted from PDF' });
+
+    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
+    const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
+      question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
+      answer: chunk.trim().slice(0, 500)
+    }));
+
+    config.faqs = [...(config.faqs || []), ...newFaqs];
+    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+
+    res.json({ success: true, added: newFaqs.length, totalChars: text.length });
+  } catch (err) {
+    console.error('PDF parse error:', err.message);
+    res.status(500).json({ error: 'Failed to parse PDF: ' + err.message });
+  }
+});
+
+app.post('/api/super/demo-bot/knowledge/url', requireSuperAuth, async (req, res) => {
+  const { url } = req.body;
+  if (!url || !/^https?:\/\//.test(url)) {
+    return res.status(400).json({ error: 'Valid URL required (http:// or https://)' });
+  }
+
+  try {
+    const text = await scrapeUrl(url);
+    if (!text || text.length < 50) {
+      return res.status(400).json({ error: 'No usable text found at URL' });
+    }
+
+    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
+    const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
+
+    const urlLabel = new URL(url).hostname;
+    const newFaqs = usefulChunks.map((chunk, i) => ({
+      question: `[From ${urlLabel}] Section ${i + 1}`,
+      answer: chunk.trim().slice(0, 500)
+    }));
+
+    config.faqs = [...(config.faqs || []), ...newFaqs];
+    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+
+    res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
+  } catch (err) {
+    res.status(500).json({ error: 'Scrape failed: ' + err.message });
+  }
+});
+
 // ---- Super Admin Demo Bot Flow Endpoints ----
 app.get('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
   if (!db) return res.json([]);

@@ -578,10 +578,24 @@
         <h2 id="modalTitle">Complete Purchase</h2>
         <p class="sub" id="modalSubtitle">Setting up your AI Chatbot account.</p>
 
-        <div class="payment-badge">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          Payment Mode: <b>Cash on Delivery (COD)</b>
+        <!-- Elegant Payment Mode Selector -->
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Choose Payment Method</label>
+          <div style="display: flex; gap: 12px;">
+            <div id="pay-online-option" onclick="selectPaymentMethod('Razorpay')" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; background: rgba(79, 70, 229, 0.1); border: 2px solid var(--primary); border-radius: 12px; cursor: pointer; transition: 0.3s; text-align: center;">
+              <span style="font-size: 24px; margin-bottom: 4px;">💳</span>
+              <span style="font-weight: 700; font-size: 13px; color: white;">Online Payment</span>
+              <span style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Card/UPI/NetBanking</span>
+            </div>
+            <div id="pay-cod-option" onclick="selectPaymentMethod('COD')" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; background: rgba(255, 255, 255, 0.02); border: 2px solid var(--glass-border); border-radius: 12px; cursor: pointer; transition: 0.3s; text-align: center;">
+              <span style="font-size: 24px; margin-bottom: 4px;">💵</span>
+              <span style="font-weight: 700; font-size: 13px; color: var(--text-muted);">Cash on Delivery</span>
+              <span style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Manual Verification</span>
+            </div>
+          </div>
         </div>
+
+        <input type="hidden" id="selectedPaymentMethod" value="Razorpay">
 
         <form id="purchaseForm">
           <input type="hidden" id="selectedPlanId">
@@ -597,10 +611,10 @@
             <label>Choose a Password</label>
             <input type="password" id="clientPassword" placeholder="Minimum 6 characters" required minlength="6">
           </div>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center;">
-            By clicking "Purchase", you agree to pay for the selected plan via COD. Your credentials and setup guide will be sent to your email immediately.
+          <p id="payment-disclaimer" style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center; min-height: 36px; line-height: 1.4;">
+            By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.
           </p>
-          <button type="submit" class="btn-submit" id="btnSubmit">Purchase Now →</button>
+          <button type="submit" class="btn-submit" id="btnSubmit">Proceed to Payment 💳</button>
         </form>
       </div>
 
@@ -612,7 +626,7 @@
         </p>
         <div class="success-box">
           <p style="font-size: 14px; margin-bottom: 8px; color: white;">📬 <b>Check your inbox!</b> We've sent an email to <b id="successEmail" style="color: var(--primary);"></b> with:</p>
-          <ul>
+          <ul id="successDetails">
             <li>Your unique Bot ID and API Key</li>
             <li>Ready-to-use Embed Code</li>
             <li>Login credentials for your Dashboard</li>
@@ -640,14 +654,49 @@
     });
 
     // Modal Logic
+    function selectPaymentMethod(method) {
+      const onlineOpt = document.getElementById('pay-online-option');
+      const codOpt = document.getElementById('pay-cod-option');
+      const methodInput = document.getElementById('selectedPaymentMethod');
+      const disclaimer = document.getElementById('payment-disclaimer');
+      const btnSubmit = document.getElementById('btnSubmit');
+
+      methodInput.value = method;
+
+      if (method === 'Razorpay') {
+        onlineOpt.style.borderColor = 'var(--primary)';
+        onlineOpt.style.background = 'rgba(79, 70, 229, 0.15)';
+        onlineOpt.querySelector('span:nth-child(2)').style.color = 'white';
+        
+        codOpt.style.borderColor = 'var(--glass-border)';
+        codOpt.style.background = 'rgba(255, 255, 255, 0.02)';
+        codOpt.querySelector('span:nth-child(2)').style.color = 'var(--text-muted)';
+        
+        disclaimer.innerHTML = 'By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.';
+        btnSubmit.textContent = 'Proceed to Payment 💳';
+      } else {
+        codOpt.style.borderColor = 'var(--primary)';
+        codOpt.style.background = 'rgba(79, 70, 229, 0.15)';
+        codOpt.querySelector('span:nth-child(2)').style.color = 'white';
+        
+        onlineOpt.style.borderColor = 'var(--glass-border)';
+        onlineOpt.style.background = 'rgba(255, 255, 255, 0.02)';
+        onlineOpt.querySelector('span:nth-child(2)').style.color = 'var(--text-muted)';
+        
+        disclaimer.innerHTML = 'By clicking "Purchase Now", you agree to pay for the selected plan via COD. Your credentials and setup guide will be sent to your email immediately.';
+        btnSubmit.textContent = 'Purchase Now →';
+      }
+    }
+
     function openModal(planName, price, planId) {
       document.getElementById('form-container').style.display = 'block';
       document.getElementById('successScreen').style.display = 'none';
       document.getElementById('modalTitle').textContent = planName;
-      document.getElementById('modalSubtitle').textContent = `Total due: ₹${price}/mo via COD`;
+      document.getElementById('modalSubtitle').textContent = `Total due: ₹${price}/mo`;
       document.getElementById('selectedPlanId').value = planId;
       document.getElementById('purchaseModal').style.display = 'flex';
       document.body.style.overflow = 'hidden';
+      selectPaymentMethod('Razorpay'); // Premium default
     }
 
     function closeModal() {
@@ -663,35 +712,139 @@
       const email = document.getElementById('clientEmail').value;
       const password = document.getElementById('clientPassword').value;
       const plan_id = document.getElementById('selectedPlanId').value;
+      const payment_method = document.getElementById('selectedPaymentMethod').value;
       
       const btn = document.getElementById('btnSubmit');
       const loader = document.getElementById('loading-overlay');
+      const loadingText = loader.querySelector('p');
       
       btn.disabled = true;
       loader.style.display = 'flex';
       
-      try {
-        const res = await fetch('/api/purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ company_name, email, password, plan_id })
-        });
-        
-        const data = await res.json();
-        
-        if (res.ok) {
-          document.getElementById('form-container').style.display = 'none';
-          document.getElementById('successScreen').style.display = 'block';
-          document.getElementById('successPlan').textContent = document.getElementById('modalTitle').textContent;
-          document.getElementById('successEmail').textContent = email;
-        } else {
-          alert('Error: ' + (data.error || 'Failed to process purchase.'));
+      if (payment_method === 'COD') {
+        loadingText.textContent = 'Processing Order...';
+        try {
+          const res = await fetch('/api/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_name, email, password, plan_id })
+          });
+          
+          const data = await res.json();
+          
+          if (res.ok) {
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('successPlan').textContent = document.getElementById('modalTitle').textContent;
+            document.getElementById('successEmail').textContent = email;
+            document.getElementById('successDetails').innerHTML = `
+              <li>Your unique Bot ID and API Key</li>
+              <li>Ready-to-use Embed Code</li>
+              <li>Login credentials for your Dashboard</li>
+              <li style="color: #fb7185;"><b>Payment:</b> Awaiting COD Collection</li>
+            `;
+          } else {
+            alert('Error: ' + (data.error || 'Failed to process purchase.'));
+          }
+        } catch (err) {
+          alert('Network error. Please try again.');
+        } finally {
+          loader.style.display = 'none';
+          btn.disabled = false;
         }
-      } catch (err) {
-        alert('Network error. Please try again.');
-      } finally {
-        loader.style.display = 'none';
-        btn.disabled = false;
+      } else {
+        // Razorpay payment flow!
+        loadingText.textContent = 'Initializing Payment...';
+        try {
+          // 1. Create order on the backend
+          const orderRes = await fetch('/api/payment/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_name, email, password, plan_id })
+          });
+          
+          const orderData = await orderRes.json();
+          if (!orderRes.ok) {
+            alert('Error: ' + (orderData.error || 'Failed to initialize payment.'));
+            loader.style.display = 'none';
+            btn.disabled = false;
+            return;
+          }
+          
+          loader.style.display = 'none';
+          btn.disabled = false;
+          
+          // 2. Open Razorpay checkout modal
+          const options = {
+            key: orderData.key_id,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: 'GAdigital Solution',
+            description: `Subscription for ${document.getElementById('modalTitle').textContent}`,
+            order_id: orderData.order_id,
+            prefill: {
+              name: company_name,
+              email: email
+            },
+            theme: {
+              color: '#4F46E5'
+            },
+            handler: async function (response) {
+              // 3. Verify payment signature and complete registration
+              loader.style.display = 'flex';
+              loadingText.textContent = 'Verifying Payment...';
+              
+              try {
+                const verifyRes = await fetch('/api/payment/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    company_name,
+                    email,
+                    password,
+                    plan_id
+                  })
+                });
+                
+                const verifyData = await verifyRes.json();
+                if (verifyRes.ok) {
+                  document.getElementById('form-container').style.display = 'none';
+                  document.getElementById('successScreen').style.display = 'block';
+                  document.getElementById('successPlan').textContent = document.getElementById('modalTitle').textContent;
+                  document.getElementById('successEmail').textContent = email;
+                  document.getElementById('successDetails').innerHTML = `
+                    <li>Your unique Bot ID and API Key</li>
+                    <li>Ready-to-use Embed Code</li>
+                    <li>Login credentials for your Dashboard</li>
+                    <li style="color: #34d399;"><b>Payment:</b> Verified Paid Online</li>
+                  `;
+                } else {
+                  alert('Verification failed: ' + (verifyData.error || 'Please contact support.'));
+                }
+              } catch (err) {
+                alert('Verification server error. Please contact support.');
+              } finally {
+                loader.style.display = 'none';
+              }
+            },
+            modal: {
+              ondismiss: function() {
+                console.log('Payment modal closed');
+              }
+            }
+          };
+          
+          const rzp = new Razorpay(options);
+          rzp.open();
+          
+        } catch (err) {
+          alert('Failed to connect to checkout. Please try again.');
+          loader.style.display = 'none';
+          btn.disabled = false;
+        }
       }
     });
 
@@ -710,6 +863,8 @@
       if (targetTab) targetTab.classList.add('active');
     }
   </script>
+  <!-- Razorpay Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <!-- 🤖 AI CHATBOT WIDGET INTEGRATION -->
   <script src="/widget/chatbot.js" 
           data-bot-id="bot_demo_landing" 

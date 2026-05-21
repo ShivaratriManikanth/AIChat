@@ -12,6 +12,13 @@ const OpenAI     = require('openai');
 const nodemailer = require('nodemailer');
 const bcrypt     = require('bcryptjs');
 const dns        = require('dns');
+const Razorpay   = require('razorpay');
+
+// Initialize Razorpay SDK
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret'
+});
 
 // Fix for Node 18+ preferring IPv6 in environments without IPv6 routing (e.g. Railway) causing ENETUNREACH
 if (dns.setDefaultResultOrder) {
@@ -1678,6 +1685,122 @@ app.post('/api/purchase', async (req, res) => {
   }
 });
 
+// ==========================================
+// RAZORPAY PAYMENT INTEGRATION ENDPOINTS
+// ==========================================
+
+// GET RAZORPAY CONFIG (Return public key)
+app.get('/api/payment/config', (req, res) => {
+  res.json({
+    key_id: process.env.RAZORPAY_KEY_ID || ''
+  });
+});
+
+// CREATE RAZORPAY ORDER
+app.post('/api/payment/create-order', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { plan_id, company_name, email, password } = req.body;
+
+  if (!company_name || !email || !password || !plan_id) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // Check if user already exists
+    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    if (existing) return res.status(400).json({ error: 'Email already registered' });
+
+    // Verify Razorpay setup
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({ error: 'Razorpay payment gateway is not configured on the server.' });
+    }
+
+    // Get price of the plan
+    let plan = db.prepare('SELECT price FROM plans WHERE id = ?').get(plan_id);
+    let price = 1000;
+    if (plan) {
+      price = plan.price;
+    } else {
+      price = plan_id == 1 ? 1000 : plan_id == 2 ? 2000 : 3000;
+    }
+
+    const amount = price * 100; // in paise
+
+    const order = await razorpay.orders.create({
+      amount: amount,
+      currency: 'INR',
+      receipt: 'rcpt_' + Date.now() + Math.random().toString(36).substring(2, 6),
+      notes: {
+        company_name,
+        email,
+        plan_id: String(plan_id)
+      }
+    });
+
+    res.json({
+      success: true,
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key_id: process.env.RAZORPAY_KEY_ID
+    });
+  } catch (err) {
+    console.error('❌ Razorpay Order Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// VERIFY RAZORPAY PAYMENT & CREATE CLIENT
+app.post('/api/payment/verify', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const { 
+    razorpay_payment_id, 
+    razorpay_order_id, 
+    razorpay_signature, 
+    company_name, 
+    email, 
+    password, 
+    plan_id 
+  } = req.body;
+
+  if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !company_name || !email || !password || !plan_id) {
+    return res.status(400).json({ error: 'Missing required validation or creation fields' });
+  }
+
+  try {
+    // Check if user already exists
+    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    if (existing) return res.status(400).json({ error: 'Email already registered' });
+
+    // Verify payment signature
+    const crypto = require('crypto');
+    const generated_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Payment verification failed. Invalid signature.' });
+    }
+
+    const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
+    
+    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+      clientId, email, password, company_name, plan_id, 'PAID'
+    );
+
+    // Send Welcome Email (Login credentials + Razorpay confirmation)
+    sendWelcomeEmail({ company_name, email, password, plan_id, payment_method: 'Razorpay' })
+      .then(() => console.log(`📧 Welcome email sent to paid client: ${email}`))
+      .catch(err => console.error(`❌ Paid welcome email failed for ${email}:`, err.message));
+
+    res.json({ success: true, clientId });
+  } catch (err) {
+    console.error('❌ Verification/Account Creation Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // TEST ENDPOINT: Actually try to send a test email and report errors
 app.get('/api/test-smtp', async (req, res) => {
   const smtpEmail = process.env.SMTP_EMAIL || 'NOT SET';
@@ -1732,7 +1855,7 @@ app.get('/api/test-smtp', async (req, res) => {
 });
 
 // Helper for sending welcome email
-async function sendWelcomeEmail({ company_name, email, password, plan_id }) {
+async function sendWelcomeEmail({ company_name, email, password, plan_id, payment_method = 'COD' }) {
   console.log('📧 Attempting to send email to:', email);
   
   const plan = PLAN_LIMITS[plan_id] || PLAN_LIMITS[1];
@@ -1766,8 +1889,11 @@ async function sendWelcomeEmail({ company_name, email, password, plan_id }) {
         </ol>
 
         <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
-          <p><b>Payment Mode:</b> Cash on Delivery (COD)</p>
-          <p>Our team will reach out to you shortly for the payment collection.</p>
+          <p><b>Payment Mode:</b> ${payment_method === 'Razorpay' ? 'Razorpay (Paid Online)' : 'Cash on Delivery (COD)'}</p>
+          ${payment_method === 'Razorpay'
+            ? `<p>Thank you! Your online payment for the ${planName} Plan has been received and verified. Your subscription is now fully active.</p>`
+            : '<p>Our team will reach out to you shortly for the payment collection.</p>'
+          }
           <p style="margin-top: 20px;">Best Regards,<br><b>GAdigital Solution Team</b></p>
         </div>
       </div>

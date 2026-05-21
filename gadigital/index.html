@@ -666,6 +666,7 @@
                 <li id="purchase-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
               </ul>
             </div>
+            <div id="purchasePwStatusMsg" style="font-size: 13.5px; margin-top: 10px; display: none; text-align: left; font-weight: 500;"></div>
           </div>
           <p id="payment-disclaimer" style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center; min-height: 36px; line-height: 1.4;">
             By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.
@@ -760,7 +761,21 @@
     }
 
     document.getElementById('clientPassword').addEventListener('input', (e) => {
-      checkPasswordStrength(e.target.value, purchaseReqElements);
+      const val = e.target.value;
+      const statusMsg = document.getElementById('purchasePwStatusMsg');
+      if (val) {
+        const isStrong = checkPasswordStrength(val, purchaseReqElements);
+        statusMsg.style.display = 'block';
+        if (isStrong) {
+          statusMsg.textContent = '✓ Password meets all strength requirements.';
+          statusMsg.style.color = '#10B981';
+        } else {
+          statusMsg.textContent = '✗ Password must meet all requirements.';
+          statusMsg.style.color = '#EF4444';
+        }
+      } else {
+        statusMsg.style.display = 'none';
+      }
     });
 
     // Purchase API Integration
@@ -773,7 +788,10 @@
       const plan_id = document.getElementById('selectedPlanId').value;
 
       if (!checkPasswordStrength(password, purchaseReqElements)) {
-        alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+        const statusMsg = document.getElementById('purchasePwStatusMsg');
+        statusMsg.textContent = '⚠️ Password must meet all the requirements shown below.';
+        statusMsg.style.color = '#EF4444';
+        statusMsg.style.display = 'block';
         return;
       }
       

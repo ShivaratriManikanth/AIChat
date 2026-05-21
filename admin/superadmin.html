@@ -531,6 +531,7 @@
                   <li id="create-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
                 </ul>
               </div>
+              <div id="createPwStatusMsg" style="font-size: 13px; margin-top: 8px; display: none; text-align: left; font-weight: 500;"></div>
             </div>
             <div class="form-actions">
               <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
@@ -950,6 +951,7 @@
             <li id="edit-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
           </ul>
         </div>
+        <div id="editPwStatusMsg" style="font-size: 13px; margin-top: 8px; display: none; text-align: left; font-weight: 500;"></div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
         <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
@@ -1300,22 +1302,42 @@
     document.getElementById('clientPassword').addEventListener('input', (e) => {
       const val = e.target.value.trim();
       const reqBox = document.getElementById('createPwRequirements');
+      const statusMsg = document.getElementById('createPwStatusMsg');
       if (val) {
         reqBox.style.display = 'block';
-        checkPasswordStrength(val, createReqElements);
+        statusMsg.style.display = 'block';
+        const isStrong = checkPasswordStrength(val, createReqElements);
+        if (isStrong) {
+          statusMsg.textContent = '✓ Password meets all strength requirements.';
+          statusMsg.style.color = '#16A34A';
+        } else {
+          statusMsg.textContent = '✗ Password must meet all requirements.';
+          statusMsg.style.color = '#DC2626';
+        }
       } else {
         reqBox.style.display = 'none';
+        statusMsg.style.display = 'none';
       }
     });
 
     document.getElementById('editPassword').addEventListener('input', (e) => {
       const val = e.target.value.trim();
       const reqBox = document.getElementById('editPwRequirements');
+      const statusMsg = document.getElementById('editPwStatusMsg');
       if (val) {
         reqBox.style.display = 'block';
-        checkPasswordStrength(val, editReqElements);
+        statusMsg.style.display = 'block';
+        const isStrong = checkPasswordStrength(val, editReqElements);
+        if (isStrong) {
+          statusMsg.textContent = '✓ Password meets all strength requirements.';
+          statusMsg.style.color = '#16A34A';
+        } else {
+          statusMsg.textContent = '✗ Password must meet all requirements.';
+          statusMsg.style.color = '#DC2626';
+        }
       } else {
         reqBox.style.display = 'none';
+        statusMsg.style.display = 'none';
       }
     });
 
@@ -1333,7 +1355,11 @@
       }
 
       if (password && !checkPasswordStrength(password, createReqElements)) {
-        msg.textContent = '⚠️ Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+        const createStatus = document.getElementById('createPwStatusMsg');
+        createStatus.textContent = '✗ Password must meet all requirements.';
+        createStatus.style.color = '#DC2626';
+        createStatus.style.display = 'block';
+        msg.textContent = '⚠️ Password must meet all requirements.';
         msg.className = 'error'; return;
       }
 
@@ -1354,6 +1380,7 @@
           document.getElementById('clientEmail').value = '';
           document.getElementById('clientPassword').value = '';
           document.getElementById('createPwRequirements').style.display = 'none';
+          document.getElementById('createPwStatusMsg').style.display = 'none';
           loadClients();
         } else {
           const err = await res.json().catch(() => ({}));
@@ -1385,6 +1412,7 @@
     function closeEditModal() {
       document.getElementById('editModal').classList.remove('show');
       document.getElementById('editPwRequirements').style.display = 'none';
+      document.getElementById('editPwStatusMsg').style.display = 'none';
       currentEditId = null;
     }
 
@@ -1394,10 +1422,21 @@
       const newCompany  = document.getElementById('editCompany').value.trim();
       const newPlanId   = document.getElementById('editPlanId').value;
       const newPassword = document.getElementById('editPassword').value.trim();
-      if (!newEmail) { alert('Email is required.'); return; }
+      const statusMsg   = document.getElementById('editPwStatusMsg');
+      
+      statusMsg.style.display = 'none';
+
+      if (!newEmail) {
+        statusMsg.textContent = '⚠️ Email is required.';
+        statusMsg.style.color = '#DC2626';
+        statusMsg.style.display = 'block';
+        return;
+      }
 
       if (newPassword && !checkPasswordStrength(newPassword, editReqElements)) {
-        alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+        statusMsg.textContent = '✗ Password must meet all requirements.';
+        statusMsg.style.color = '#DC2626';
+        statusMsg.style.display = 'block';
         return;
       }
 
@@ -1413,7 +1452,9 @@
         });
         if (!res.ok) {
           const err = await res.json();
-          alert('Failed: ' + (err.error || res.statusText));
+          statusMsg.textContent = '❌ Failed: ' + (err.error || res.statusText);
+          statusMsg.style.color = '#DC2626';
+          statusMsg.style.display = 'block';
         } else {
           closeEditModal();
           loadClients();

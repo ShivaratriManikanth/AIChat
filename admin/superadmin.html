@@ -1355,6 +1355,7 @@
       }
 
       if (password && !checkPasswordStrength(password, createReqElements)) {
+        document.getElementById('createPwRequirements').style.display = 'block';
         const createStatus = document.getElementById('createPwStatusMsg');
         createStatus.textContent = '✗ Password must meet all requirements.';
         createStatus.style.color = '#DC2626';
@@ -1434,6 +1435,7 @@
       }
 
       if (newPassword && !checkPasswordStrength(newPassword, editReqElements)) {
+        document.getElementById('editPwRequirements').style.display = 'block';
         statusMsg.textContent = '✗ Password must meet all requirements.';
         statusMsg.style.color = '#DC2626';
         statusMsg.style.display = 'block';
@@ -1460,7 +1462,9 @@
           loadClients();
         }
       } catch (err) {
-        alert('Network error.');
+        statusMsg.textContent = '❌ Network error. Please try again.';
+        statusMsg.style.color = '#DC2626';
+        statusMsg.style.display = 'block';
       } finally {
         btn.textContent = 'Save Changes';
         btn.disabled = false;

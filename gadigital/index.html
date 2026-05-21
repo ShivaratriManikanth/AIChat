@@ -671,6 +671,7 @@
           <p id="payment-disclaimer" style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center; min-height: 36px; line-height: 1.4;">
             By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.
           </p>
+          <div id="purchaseErrorMsg" style="font-size: 13.5px; margin-bottom: 15px; display: none; text-align: center; color: #EF4444; font-weight: 500;"></div>
           <button type="submit" class="btn-submit" id="btnSubmit">Proceed to Payment 💳</button>
         </form>
       </div>
@@ -787,6 +788,10 @@
       const password = document.getElementById('clientPassword').value;
       const plan_id = document.getElementById('selectedPlanId').value;
 
+      const purchaseError = document.getElementById('purchaseErrorMsg');
+      purchaseError.style.display = 'none';
+      purchaseError.textContent = '';
+
       if (!checkPasswordStrength(password, purchaseReqElements)) {
         const statusMsg = document.getElementById('purchasePwStatusMsg');
         statusMsg.textContent = '⚠️ Password must meet all the requirements shown below.';
@@ -814,7 +819,8 @@
         
         const orderData = await orderRes.json();
         if (!orderRes.ok) {
-          alert('Error: ' + (orderData.error || 'Failed to initialize payment.'));
+          purchaseError.textContent = '❌ Error: ' + (orderData.error || 'Failed to initialize payment.');
+          purchaseError.style.display = 'block';
           loader.style.display = 'none';
           btn.disabled = false;
           return;
@@ -871,10 +877,12 @@
                   <li style="color: #34d399;"><b>Payment:</b> Verified Paid Online</li>
                 `;
               } else {
-                alert('Verification failed: ' + (verifyData.error || 'Please contact support.'));
+                purchaseError.textContent = '❌ Verification failed: ' + (verifyData.error || 'Please contact support.');
+                purchaseError.style.display = 'block';
               }
             } catch (err) {
-              alert('Verification server error. Please contact support.');
+              purchaseError.textContent = '❌ Verification server error. Please contact support.';
+              purchaseError.style.display = 'block';
             } finally {
               loader.style.display = 'none';
             }
@@ -890,7 +898,8 @@
         rzp.open();
         
       } catch (err) {
-        alert('Failed to connect to checkout. Please try again.');
+        purchaseError.textContent = '❌ Failed to connect to checkout. Please try again.';
+        purchaseError.style.display = 'block';
         loader.style.display = 'none';
         btn.disabled = false;
       }

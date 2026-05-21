@@ -1980,9 +1980,8 @@ app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
   
   try {
     if (password && password.trim()) {
-      // Hash the new password before storing
-      const hashed = await bcrypt.hash(password.trim(), 10);
-      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, hashed, company_name || null, plan_id || null, clientId);
+      // Store new password in plain-text to allow Super Admin visibility
+      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, password.trim(), company_name || null, plan_id || null, clientId);
     } else {
       db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, company_name || null, plan_id || null, clientId);
     }
@@ -2299,11 +2298,10 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   const { company_name, email, plan_id, password, duration } = req.body;
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
   const rawPassword = password || Math.random().toString(36).substring(2, 10);
-  const hashedPassword = await bcrypt.hash(rawPassword, 10);
   
   try {
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
+      clientId, email, rawPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
     // Automatically generate a unique bot for this new client

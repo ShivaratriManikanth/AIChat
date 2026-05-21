@@ -1653,6 +1653,37 @@ app.put('/api/complaint/:id/status', requireAuth, (req, res) => {
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_saas_key';
 
+function isStrongPassword(password) {
+  if (typeof password !== 'string') return false;
+  if (password.length < 8) return false;
+  if (!/[A-Z]/.test(password)) return false;
+  if (!/[a-z]/.test(password)) return false;
+  if (!/[0-9]/.test(password)) return false;
+  if (!/[^a-zA-Z0-9]/.test(password)) return false;
+  return true;
+}
+
+function generateStrongPassword() {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  const all = uppercase + lowercase + numbers + special;
+  
+  let password = '';
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+  
+  const length = 12;
+  for (let i = 4; i < length; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+  
+  return password.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
 // PUBLIC PURCHASE ENDPOINT (GAdigital Solution)
 app.post('/api/purchase', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
@@ -1660,6 +1691,10 @@ app.post('/api/purchase', async (req, res) => {
   
   if (!company_name || !email || !password) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
   }
 
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
@@ -1703,6 +1738,10 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   if (!company_name || !email || !password || !plan_id) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
   }
 
   try {
@@ -1765,6 +1804,10 @@ app.post('/api/payment/verify', async (req, res) => {
 
   if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !company_name || !email || !password || !plan_id) {
     return res.status(400).json({ error: 'Missing required validation or creation fields' });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
   }
 
   try {
@@ -1978,6 +2021,12 @@ app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
   const { email, password, company_name, plan_id } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   
+  if (password && password.trim()) {
+    if (!isStrongPassword(password.trim())) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
+    }
+  }
+
   try {
     if (password && password.trim()) {
       // Store new password in plain-text to allow Super Admin visibility
@@ -2296,8 +2345,13 @@ app.get('/api/super/clients', requireSuperAuth, (req, res) => {
 app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { company_name, email, plan_id, password, duration } = req.body;
+  
+  if (password && !isStrongPassword(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
+  }
+
   const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
-  const rawPassword = password || Math.random().toString(36).substring(2, 10);
+  const rawPassword = password || generateStrongPassword();
   
   try {
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(

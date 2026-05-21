@@ -363,6 +363,67 @@
     }
     .session-item:hover { border-color: #cbd5e1; background: #f8fafc; }
     .session-item.active { border-color: #4F46E5; background: #eef2ff; }
+
+    /* Password requirements styling */
+    .password-requirements {
+      margin-top: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .password-requirements p {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1e293b;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-align: left;
+    }
+    .password-requirements ul {
+      list-style: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .password-requirements li {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      color: #94a3b8;
+      transition: color 0.2s ease;
+      font-size: 12px;
+      text-align: left;
+    }
+    .password-requirements li.valid {
+      color: #10B981 !important;
+    }
+    .password-requirements li.invalid {
+      color: #EF4444 !important;
+    }
+    .password-requirements li .indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .password-requirements li.valid .indicator {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10B981;
+    }
+    .password-requirements li.invalid .indicator {
+      background: rgba(239, 68, 68, 0.1);
+      color: #EF4444;
+    }
   </style>
 </head>
 <body>
@@ -460,6 +521,16 @@
             <div class="form-group">
               <label>Temporary Password</label>
               <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
+              <div class="password-requirements" id="createPwRequirements" style="display: none; margin-top: 10px;">
+                <p>Password Must Contain:</p>
+                <ul>
+                  <li id="create-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
+                  <li id="create-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+                  <li id="create-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+                  <li id="create-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
+                  <li id="create-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
+                </ul>
+              </div>
             </div>
             <div class="form-actions">
               <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
@@ -869,6 +940,16 @@
           <input type="password" id="editPassword" placeholder="Enter new password">
           <button type="button" class="eye-btn" onclick="toggleEditPw()" title="Show/hide password">👁️</button>
         </div>
+        <div class="password-requirements" id="editPwRequirements" style="display: none; margin-top: 10px;">
+          <p>Password Must Contain:</p>
+          <ul>
+            <li id="edit-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
+            <li id="edit-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+            <li id="edit-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+            <li id="edit-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
+            <li id="edit-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
+          </ul>
+        </div>
       </div>
       <div class="form-actions" style="justify-content:flex-end;">
         <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
@@ -1174,6 +1255,70 @@
       }
     }
 
+    // Password Strength Real-time Validation for Super Admin
+    const createReqElements = {
+      len: document.getElementById('create-req-len'),
+      upper: document.getElementById('create-req-upper'),
+      lower: document.getElementById('create-req-lower'),
+      number: document.getElementById('create-req-number'),
+      special: document.getElementById('create-req-special')
+    };
+
+    const editReqElements = {
+      len: document.getElementById('edit-req-len'),
+      upper: document.getElementById('edit-req-upper'),
+      lower: document.getElementById('edit-req-lower'),
+      number: document.getElementById('edit-req-number'),
+      special: document.getElementById('edit-req-special')
+    };
+
+    function checkPasswordStrength(password, reqElements) {
+      const criteria = {
+        len: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[^a-zA-Z0-9]/.test(password)
+      };
+
+      for (const [key, met] of Object.entries(criteria)) {
+        const el = reqElements[key];
+        if (el) {
+          if (met) {
+            el.className = 'valid';
+            el.querySelector('.indicator').textContent = '✓';
+          } else {
+            el.className = 'invalid';
+            el.querySelector('.indicator').textContent = '✗';
+          }
+        }
+      }
+
+      return Object.values(criteria).every(Boolean);
+    }
+
+    document.getElementById('clientPassword').addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      const reqBox = document.getElementById('createPwRequirements');
+      if (val) {
+        reqBox.style.display = 'block';
+        checkPasswordStrength(val, createReqElements);
+      } else {
+        reqBox.style.display = 'none';
+      }
+    });
+
+    document.getElementById('editPassword').addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      const reqBox = document.getElementById('editPwRequirements');
+      if (val) {
+        reqBox.style.display = 'block';
+        checkPasswordStrength(val, editReqElements);
+      } else {
+        reqBox.style.display = 'none';
+      }
+    });
+
     async function createClient() {
       const company = document.getElementById('companyName').value.trim();
       const email = document.getElementById('clientEmail').value.trim();
@@ -1184,6 +1329,11 @@
 
       if (!company || !email) {
         msg.textContent = '⚠️ Company name and email are required.';
+        msg.className = 'error'; return;
+      }
+
+      if (password && !checkPasswordStrength(password, createReqElements)) {
+        msg.textContent = '⚠️ Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
         msg.className = 'error'; return;
       }
 
@@ -1203,6 +1353,7 @@
           document.getElementById('companyName').value = '';
           document.getElementById('clientEmail').value = '';
           document.getElementById('clientPassword').value = '';
+          document.getElementById('createPwRequirements').style.display = 'none';
           loadClients();
         } else {
           const err = await res.json().catch(() => ({}));
@@ -1233,6 +1384,7 @@
 
     function closeEditModal() {
       document.getElementById('editModal').classList.remove('show');
+      document.getElementById('editPwRequirements').style.display = 'none';
       currentEditId = null;
     }
 
@@ -1243,6 +1395,12 @@
       const newPlanId   = document.getElementById('editPlanId').value;
       const newPassword = document.getElementById('editPassword').value.trim();
       if (!newEmail) { alert('Email is required.'); return; }
+
+      if (newPassword && !checkPasswordStrength(newPassword, editReqElements)) {
+        alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+        return;
+      }
+
       const btn = document.getElementById('saveEditBtn');
       btn.textContent = 'Saving...'; btn.disabled = true;
       try {
@@ -1253,10 +1411,19 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
-        if (!res.ok) { const err = await res.json(); alert('Failed: ' + (err.error || res.statusText)); }
-        else { closeEditModal(); loadClients(); }
-      } catch (err) { alert('Network error.'); }
-      finally { btn.textContent = 'Save Changes'; btn.disabled = false; }
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Failed: ' + (err.error || res.statusText));
+        } else {
+          closeEditModal();
+          loadClients();
+        }
+      } catch (err) {
+        alert('Network error.');
+      } finally {
+        btn.textContent = 'Save Changes';
+        btn.disabled = false;
+      }
     });
 
     async function deleteClient(id) {

@@ -220,6 +220,67 @@
       box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
       transform: translateY(-2px);
     }
+
+    /* Password requirements styling */
+    .password-requirements {
+      margin-top: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .password-requirements p {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-align: left;
+    }
+    .password-requirements ul {
+      list-style: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .password-requirements li {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.5);
+      transition: color 0.2s ease;
+      font-size: 12.5px;
+      text-align: left;
+    }
+    .password-requirements li.valid {
+      color: #10B981 !important;
+    }
+    .password-requirements li.invalid {
+      color: #EF4444 !important;
+    }
+    .password-requirements li .indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .password-requirements li.valid .indicator {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+    }
+    .password-requirements li.invalid .indicator {
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+    }
   </style>
 </head>
 <body>
@@ -594,7 +655,17 @@
           </div>
           <div class="form-group">
             <label>Choose a Password</label>
-            <input type="password" id="clientPassword" placeholder="Minimum 6 characters" required minlength="6">
+            <input type="password" id="clientPassword" placeholder="Minimum 8 characters" required>
+            <div class="password-requirements" id="purchasePwRequirements">
+              <p>Password Must Contain:</p>
+              <ul>
+                <li id="purchase-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
+                <li id="purchase-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+                <li id="purchase-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+                <li id="purchase-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
+                <li id="purchase-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
+              </ul>
+            </div>
           </div>
           <p id="payment-disclaimer" style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center; min-height: 36px; line-height: 1.4;">
             By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.
@@ -654,6 +725,44 @@
       document.body.style.overflow = 'auto';
     }
 
+    // Password Strength Real-time Validation Helper
+    const purchaseReqElements = {
+      len: document.getElementById('purchase-req-len'),
+      upper: document.getElementById('purchase-req-upper'),
+      lower: document.getElementById('purchase-req-lower'),
+      number: document.getElementById('purchase-req-number'),
+      special: document.getElementById('purchase-req-special')
+    };
+
+    function checkPasswordStrength(password, reqElements) {
+      const criteria = {
+        len: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[^a-zA-Z0-9]/.test(password)
+      };
+
+      for (const [key, met] of Object.entries(criteria)) {
+        const el = reqElements[key];
+        if (el) {
+          if (met) {
+            el.className = 'valid';
+            el.querySelector('.indicator').textContent = '✓';
+          } else {
+            el.className = 'invalid';
+            el.querySelector('.indicator').textContent = '✗';
+          }
+        }
+      }
+
+      return Object.values(criteria).every(Boolean);
+    }
+
+    document.getElementById('clientPassword').addEventListener('input', (e) => {
+      checkPasswordStrength(e.target.value, purchaseReqElements);
+    });
+
     // Purchase API Integration
     document.getElementById('purchaseForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -662,6 +771,11 @@
       const email = document.getElementById('clientEmail').value;
       const password = document.getElementById('clientPassword').value;
       const plan_id = document.getElementById('selectedPlanId').value;
+
+      if (!checkPasswordStrength(password, purchaseReqElements)) {
+        alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+        return;
+      }
       
       const btn = document.getElementById('btnSubmit');
       const loader = document.getElementById('loading-overlay');

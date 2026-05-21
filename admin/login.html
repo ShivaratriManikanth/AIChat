@@ -176,6 +176,58 @@
       font-weight: 500;
     }
     .divider a:hover { text-decoration: underline; }
+
+    /* Password Requirements CSS */
+    .password-requirements {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .password-requirements p {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+    }
+    .password-requirements ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .password-requirements li {
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      color: rgba(255,255,255,0.4);
+      transition: color 0.2s;
+    }
+    .password-requirements li.valid {
+      color: #34D399;
+    }
+    .password-requirements li.invalid {
+      color: rgba(255,255,255,0.4);
+    }
+    .password-requirements li .indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      font-size: 9px;
+      font-weight: bold;
+      border-radius: 50%;
+    }
+    .password-requirements li.valid .indicator {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34D399;
+    }
+    .password-requirements li.invalid .indicator {
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255,255,255,0.3);
+    }
   </style>
 </head>
 <body>
@@ -207,6 +259,16 @@
           <div class="input-wrap">
             <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
             <button type="button" class="eye-btn" id="eyeBtn" onclick="togglePassword()" aria-label="Toggle password visibility">👁️</button>
+          </div>
+          <div class="password-requirements" id="loginPwRequirements" style="display: none; margin-top: 10px;">
+            <p>Password Must Contain:</p>
+            <ul>
+              <li id="login-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
+              <li id="login-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+              <li id="login-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+              <li id="login-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
+              <li id="login-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
+            </ul>
           </div>
         </div>
 
@@ -275,6 +337,61 @@
         document.getElementById('errorMsg').style.display = 'none';
       });
     });
+
+    // Real-time password validation logic
+    const loginReqElements = {
+      len: document.getElementById('login-req-len'),
+      upper: document.getElementById('login-req-upper'),
+      lower: document.getElementById('login-req-lower'),
+      number: document.getElementById('login-req-number'),
+      special: document.getElementById('login-req-special')
+    };
+
+    function checkPasswordStrength(password, reqElements) {
+      const criteria = {
+        len: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[^a-zA-Z0-9]/.test(password)
+      };
+
+      for (const [key, met] of Object.entries(criteria)) {
+        const el = reqElements[key];
+        if (el) {
+          if (met) {
+            el.className = 'valid';
+            el.querySelector('.indicator').textContent = '✓';
+          } else {
+            el.className = 'invalid';
+            el.querySelector('.indicator').textContent = '✗';
+          }
+        }
+      }
+
+      return Object.values(criteria).every(Boolean);
+    }
+
+    function updateRequirementsVisibility() {
+      const emailVal = document.getElementById('email').value.trim();
+      const pwVal = document.getElementById('password').value;
+      const reqBox = document.getElementById('loginPwRequirements');
+
+      if (emailVal.toLowerCase() === 'admin@aichat.com') {
+        reqBox.style.display = 'none';
+        return;
+      }
+
+      if (pwVal.length > 0) {
+        reqBox.style.display = 'block';
+        checkPasswordStrength(pwVal, loginReqElements);
+      } else {
+        reqBox.style.display = 'none';
+      }
+    }
+
+    document.getElementById('email').addEventListener('input', updateRequirementsVisibility);
+    document.getElementById('password').addEventListener('input', updateRequirementsVisibility);
   </script>
 </body>
 </html>

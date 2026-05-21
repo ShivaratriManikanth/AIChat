@@ -568,13 +568,15 @@
   <!-- Purchase Modal -->
   <div class="modal-overlay-purchase" id="purchaseModal">
     <div class="modal-card">
+      <!-- Universal Modal Close Button (available on both form & success screens) -->
+      <button onclick="closeModal()" style="position: absolute; top: 24px; right: 24px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 28px; line-height: 1; z-index: 100;">&times;</button>
+
       <div id="loading-overlay">
         <div class="spinner"></div>
         <p style="color:white; font-weight: 500;">Processing Order...</p>
       </div>
 
       <div id="form-container">
-        <button onclick="closeModal()" style="position: absolute; top: 24px; right: 24px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 28px; line-height: 1;">&times;</button>
         <h2 id="modalTitle">Complete Purchase</h2>
         <p class="sub" id="modalSubtitle">Setting up your AI Chatbot account.</p>
 

@@ -233,14 +233,16 @@ try {
   }
   const hasClient = db.prepare("SELECT COUNT(*) as count FROM clients").get();
   if (hasClient.count === 0) {
-    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('default_client', 'client@example.com', 'client123', 'Default Company')").run();
+    const hashedDefaultPw = bcrypt.hashSync('client123', 10);
+    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('default_client', 'client@example.com', ?, 'Default Company')").run(hashedDefaultPw);
     db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
   }
 
   // Seed landing page demo bot & client if not exists
   const hasDemoClient = db.prepare("SELECT COUNT(*) as count FROM clients WHERE id = 'system_demo_client'").get();
   if (hasDemoClient.count === 0) {
-    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('system_demo_client', 'demo@gadigital.com', 'demo123', 'GAdigital Demo')").run();
+    const hashedDemoPw = bcrypt.hashSync('demo123', 10);
+    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('system_demo_client', 'demo@gadigital.com', ?, 'GAdigital Demo')").run(hashedDemoPw);
   }
   const hasDemoBot = db.prepare("SELECT COUNT(*) as count FROM bots WHERE bot_id = 'bot_demo_landing'").get();
   if (hasDemoBot.count === 0) {
@@ -1186,7 +1188,7 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
 // POST /api/logo - Upload logo (base64 image)
 app.post('/api/logo', requireAuth, (req, res) => {
   const { logo, botId } = req.body;
-  if (!logo) return res.status(400).json({ error: 'logo required' });
+  if (logo === undefined) return res.status(400).json({ error: 'logo required' });
   const config = loadClientBotConfig(req.clientId, botId);
   config.logo = logo;
   saveClientBotConfig(req.clientId, config, botId);
@@ -1716,8 +1718,10 @@ app.post('/api/purchase', async (req, res) => {
     const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, password, company_name, plan_id || 1, 'COD_PENDING'
+      clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
     // Send Welcome Email (Login credentials only)
@@ -1840,8 +1844,10 @@ app.post('/api/payment/verify', async (req, res) => {
 
     const clientId = 'cli_' + Date.now() + Math.random().toString(36).substring(2, 8);
     
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, password, company_name, plan_id, 'PAID'
+      clientId, email, hashedPassword, company_name, plan_id, 'PAID'
     );
 
     // Send Welcome Email (Login credentials + Razorpay confirmation)
@@ -2041,8 +2047,9 @@ app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
 
   try {
     if (password && password.trim()) {
-      // Store new password in plain-text to allow Super Admin visibility
-      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, password.trim(), company_name || null, plan_id || null, clientId);
+      // Store new password securely using bcrypt hashing
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, hashedPassword, company_name || null, plan_id || null, clientId);
     } else {
       db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, company_name || null, plan_id || null, clientId);
     }
@@ -2406,8 +2413,9 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   const rawPassword = password || generateStrongPassword();
   
   try {
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
     db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      clientId, email, rawPassword, company_name, plan_id || 1, 'COD_PENDING'
+      clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
     // Automatically generate a unique bot for this new client

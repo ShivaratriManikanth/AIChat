@@ -1209,10 +1209,10 @@
         const clients = await res.json();
 
         document.getElementById('statTotal').textContent = clients.length;
-        const active = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING').length;
+        const active = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING' || c.payment_status === 'PAID').length;
         document.getElementById('statActive').textContent = active;
         const planMap = {}; PLANS.forEach(p => planMap[p.id] = p);
-        const rev = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING')
+        const rev = clients.filter(c => c.payment_status === 'active' || c.payment_status === 'COD_PENDING' || c.payment_status === 'PAID')
           .reduce((sum, c) => sum + ((planMap[c.plan_id] || {}).price || 0), 0);
         document.getElementById('statRevenue').textContent = '₹' + rev.toLocaleString();
 
@@ -1223,14 +1223,15 @@
 
         const planMap2 = {}; PLANS.forEach(p => planMap2[p.id] = p);
         document.getElementById('clientTable').innerHTML = clients.map(c => {
-          const plan = planMap2[c.plan_id] || {};
+          const plan = planMap2[c.plan_id] || planMap2[1] || { name: 'Basic', duration: '1 Month' };
           const planName = plan.name || 'Basic';
           const planBadge = planBadgeClass(c.plan_id);
-          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
+          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING' || c.payment_status === 'PAID') ? 'badge-active' : 'badge-inactive';
           const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
           
           let remainingText = '';
-          if (c.created_at && plan.duration && (c.payment_status === 'active' || c.payment_status === 'COD_PENDING')) {
+          const isActiveStatus = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING' || c.payment_status === 'PAID');
+          if (c.created_at && plan.duration && isActiveStatus) {
             const createdDate = new Date(c.created_at);
             const expiryDate = new Date(createdDate);
             if (plan.duration.includes('Month')) {
@@ -1538,10 +1539,10 @@
 
         const planMap2 = {}; PLANS.forEach(p => planMap2[p.id] = p);
         document.getElementById('trashClientTable').innerHTML = clients.map(c => {
-          const plan = planMap2[c.plan_id] || {};
+          const plan = planMap2[c.plan_id] || planMap2[1] || { name: 'Basic', duration: '1 Month' };
           const planName = plan.name || 'Basic';
           const planBadge = planBadgeClass(c.plan_id);
-          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
+          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING' || c.payment_status === 'PAID') ? 'badge-active' : 'badge-inactive';
           const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
           
           return `<tr>

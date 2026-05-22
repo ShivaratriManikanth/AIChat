@@ -1018,6 +1018,12 @@
   </div>
 
   <script>
+    const token = localStorage.getItem('saas_token');
+    const role  = localStorage.getItem('saas_role');
+    if (!token || role !== 'super') {
+      window.location.href = 'login.html';
+    }
+
     // Dynamic plans loaded from server
     let PLANS = [];
     const PLAN_BADGES = { 1: 'badge-basic', 2: 'badge-standard', 3: 'badge-premium' };
@@ -1025,23 +1031,30 @@
       return PLAN_BADGES[planId] || 'badge-basic';
     }
 
-    function logout() {
+    function clearSaasSession() {
       localStorage.removeItem('saas_token');
+      localStorage.removeItem('saas_role');
       localStorage.removeItem('saas_client_id');
+      localStorage.removeItem('dashboard_domain_filter');
+      localStorage.removeItem('current_working_bot_id');
+    }
+
+    function logout() {
+      clearSaasSession();
       window.location.href = 'login.html';
     }
 
     async function fetchAuth(url, options = {}) {
-      const token = localStorage.getItem('saas_token');
-      if (!token) {
+      const activeToken = localStorage.getItem('saas_token');
+      if (!activeToken) {
         window.location.href = 'login.html';
         return;
       }
       if (!options.headers) options.headers = {};
-      options.headers['Authorization'] = `Bearer ${token}`;
+      options.headers['Authorization'] = `Bearer ${activeToken}`;
       const res = await fetch(url, options);
       if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('saas_token');
+        clearSaasSession();
         window.location.href = 'login.html';
       }
       return res;

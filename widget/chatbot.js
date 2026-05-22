@@ -41,6 +41,7 @@
   const LS_LANG    = `chatbot_lang_${BOT_ID}`;
   const LS_LEAD    = `chatbot_lead_captured_${BOT_ID}`;
   const LS_INTER   = `chatbot_interactions_${BOT_ID}`;
+  const LS_SESSION_TS = `chatbot_session_ts_${BOT_ID}`;
 
   let isDarkMode = localStorage.getItem(LS_DARK) === 'true';
   let currentLang = localStorage.getItem(LS_LANG) || 'en';
@@ -69,11 +70,32 @@
   function t(key) { return (LANGS[currentLang] || LANGS.en)[key] || LANGS.en[key]; }
 
   // ---- Session Management -----------------------------------
+  function checkSessionExpiry() {
+    try {
+      const tsStr = localStorage.getItem(LS_SESSION_TS);
+      if (tsStr) {
+        const ts = parseInt(tsStr, 10);
+        const now = Date.now();
+        const ageMs = now - ts;
+        const ageHours = ageMs / (1000 * 60 * 60);
+        if (ageHours >= 24) {
+          localStorage.removeItem(LS_SESSION);
+          localStorage.removeItem(LS_HISTORY);
+          localStorage.removeItem(LS_INTER);
+          localStorage.removeItem(LS_LEAD);
+          localStorage.removeItem(LS_EMAIL);
+        }
+      }
+    } catch (e) {}
+  }
+
   function getSessionId() {
+    checkSessionExpiry();
     let id = localStorage.getItem(LS_SESSION);
     if (!id) {
       id = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       localStorage.setItem(LS_SESSION, id);
+      localStorage.setItem(LS_SESSION_TS, Date.now().toString());
     }
     return id;
   }
@@ -1513,6 +1535,7 @@
       history.push({ role, content, time: Date.now() });
       if (history.length > 100) history = history.slice(-100);
       localStorage.setItem(LS_HISTORY, JSON.stringify(history));
+      localStorage.setItem(LS_SESSION_TS, Date.now().toString()); // Reset activity timer
     } catch (e) {}
   }
 

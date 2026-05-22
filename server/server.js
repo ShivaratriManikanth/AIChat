@@ -952,25 +952,36 @@ Your output MUST be a valid JSON object with EXACTLY the following structure:
 }
 Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
 
-  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + advancedInstructions;
+  const fallbackStr = config.fallbackMessage || "I don't have that information in my knowledge base. How else can I assist you?";
+  const kbDirective = `\n\nACCURACY AND GROUNDING DIRECTIVES:
+1. You MUST prioritize the provided KNOWLEDGE BASE content above all else to answer the user's question.
+2. If the answer to the user's question is NOT found in the provided KNOWLEDGE BASE, or cannot be reasonably inferred from it, you MUST reply with exactly: "${fallbackStr}".
+3. NEVER make up or hallucinate facts, numbers, dates, pricing, features, or links not explicitly stated in the KNOWLEDGE BASE.
+4. Keep your response factual, precise, and directly based on the provided KNOWLEDGE BASE.`;
+
+  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + kbDirective + advancedInstructions;
 
   // Build knowledge context from trained FAQs (top 10 most relevant chunks)
   let knowledgeContext = '';
   if (config.faqs && config.faqs.length > 0) {
     const faqs = config.faqs;
-    // Score each FAQ by relevance to the current message
-    const msgWords = new Set(message.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length > 2));
+    // Score each FAQ by relevance to the current message using cosineSimilarity
     const scored = faqs.map(f => {
-      const combined = ((f.question || '') + ' ' + (f.answer || '')).toLowerCase();
-      let score = 0;
-      for (const word of msgWords) { if (combined.includes(word)) score++; }
+      const qSim = cosineSimilarity(message, f.question || '');
+      const aSim = cosineSimilarity(message, f.answer || '');
+      // Score is maximum of question similarity and weighted answer similarity
+      const score = Math.max(qSim, aSim * 0.5);
       return { f, score };
     }).sort((a, b) => b.score - a.score);
     const topChunks = scored.slice(0, 10).filter(s => s.score > 0).map(s => s.f);
     // If no scored match, still include top 5 chunks as general context
     const chunks = topChunks.length > 0 ? topChunks : faqs.slice(0, 5);
-    knowledgeContext = '\n\nKNOWLEDGE BASE (use this to answer questions):\n' +
-      chunks.map(f => `---\n${f.answer}`).join('\n');
+    knowledgeContext = '\n\nKNOWLEDGE BASE (PRIORITIZE THIS to answer questions accurately):\n' +
+      chunks.map(f => {
+        const isPdf = f.question && f.question.startsWith('[From ');
+        const label = isPdf ? 'Source/Context' : 'Question/Topic';
+        return `---\n${label}: ${f.question}\nAnswer/Content: ${f.answer}`;
+      }).join('\n');
   }
 
   const enableAi = config.enableAiChatbot !== false; // true by default

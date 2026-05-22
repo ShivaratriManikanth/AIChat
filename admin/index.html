@@ -2769,6 +2769,7 @@
           document.getElementById('new-bot-name').value = '';
           document.getElementById('new-bot-domain').value = '';
           showToast('Bot created!');
+          await populateDomainDropdown();
           loadBots();
           
           // Show embed script
@@ -2794,6 +2795,13 @@
       if (!confirm('Delete this bot?')) return;
       await fetchAuth(`${API}/api/bots/${botId}`, { method: 'DELETE' });
       showToast('Bot deleted');
+      if (selectedBotId === botId) {
+        selectedBotId = '';
+        localStorage.removeItem('dashboard_domain_filter');
+        const sel = document.getElementById('global-domain-selector');
+        if (sel) sel.value = '';
+      }
+      await populateDomainDropdown();
       loadBots();
     }
 

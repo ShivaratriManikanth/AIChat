@@ -1570,6 +1570,8 @@
     const role  = localStorage.getItem('saas_role');
     if (!token) {
       window.location.href = '/admin/login.html';
+    } else if (role === 'super') {
+      window.location.href = '/admin/superadmin.html';
     }
 
     function clearSaasSession() {

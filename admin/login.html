@@ -278,6 +278,19 @@
   </div>
 
   <script>
+    // Auto-redirect if already logged in to prevent having to re-authenticate
+    (function() {
+      const existingToken = localStorage.getItem('saas_token');
+      const existingRole = localStorage.getItem('saas_role');
+      if (existingToken) {
+        if (existingRole === 'super') {
+          window.location.href = '/admin/superadmin.html';
+        } else {
+          window.location.href = '/admin/';
+        }
+      }
+    })();
+
     function togglePassword() {
       const input = document.getElementById('password');
       const btn = document.getElementById('eyeBtn');
@@ -310,9 +323,20 @@
         const data = await res.json();
 
         if (res.ok && data.token) {
+          // Clear stale filters and cached views from previous/other login sessions
+          localStorage.removeItem('saas_token');
+          localStorage.removeItem('saas_role');
+          localStorage.removeItem('saas_client_id');
+          localStorage.removeItem('dashboard_domain_filter');
+          localStorage.removeItem('current_working_bot_id');
+          localStorage.removeItem('token');
+
+          // Store new session tokens
           localStorage.setItem('saas_token', data.token);
           localStorage.setItem('saas_role', data.role);
           localStorage.setItem('saas_client_id', data.clientId || '');
+          localStorage.setItem('token', data.token); // Keep token in sync for CSV downloads
+          
           btn.textContent = '✅ Success!';
           setTimeout(() => { 
             if (data.role === 'super') {

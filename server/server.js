@@ -213,6 +213,7 @@ try {
   try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
   try { db.exec(`ALTER TABLE bots ADD COLUMN domain TEXT`); } catch(e){}
+  try { db.exec(`ALTER TABLE clients ADD COLUMN is_deleted INTEGER DEFAULT 0`); } catch(e){}
 
   // Data Migration: Fix chat history messages that have 'default_client' but belong to a specific client's session
   try {
@@ -2055,14 +2056,10 @@ app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   try {
-    db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
-    db.prepare('DELETE FROM bots WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM users WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM leads WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
+    db.prepare('UPDATE clients SET is_deleted = 1 WHERE id = ?').run(clientId);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Deletion failed' });
+    res.status(500).json({ error: 'Soft-deletion failed' });
   }
 });
 
@@ -2076,7 +2073,7 @@ app.post('/api/login', async (req, res) => {
     return res.json({ success: true, token, role: 'super' });
   }
 
-  const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email);
+  const client = db.prepare('SELECT * FROM clients WHERE email = ? AND is_deleted = 0').get(email);
   if (client) {
     // Support both plain text (legacy) and hashed passwords
     let passwordMatch = false;
@@ -2349,8 +2346,52 @@ app.delete('/api/super/plans/:id', requireSuperAuth, (req, res) => {
 // ---- Clients ----
 app.get('/api/super/clients', requireSuperAuth, (req, res) => {
   if (!db) return res.json([]);
-  const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients').all();
+  const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 0').all();
   res.json(clients);
+});
+
+// GET /api/super/trash/clients — Get all soft-deleted clients
+app.get('/api/super/trash/clients', requireSuperAuth, (req, res) => {
+  if (!db) return res.json({ clients: [] });
+  try {
+    const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 1').all();
+    res.json({ clients });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch trash' });
+  }
+});
+
+// POST /api/super/trash/restore/:id — Restore a soft-deleted client
+app.post('/api/super/trash/restore/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const clientId = req.params.id;
+  try {
+    db.prepare('UPDATE clients SET is_deleted = 0 WHERE id = ?').run(clientId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Restore failed' });
+  }
+});
+
+// DELETE /api/super/trash/permanent/:id — Permanently delete a client and all their data
+app.delete('/api/super/trash/permanent/:id', requireSuperAuth, (req, res) => {
+  if (!db) return res.status(500).json({ error: 'DB not available' });
+  const clientId = req.params.id;
+  try {
+    db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
+    db.prepare('DELETE FROM bots WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM users WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM leads WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM flows WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM flow_responses WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM bot_configs WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM knowledge_links WHERE client_id = ?').run(clientId);
+    db.prepare('DELETE FROM sessions WHERE client_id = ?').run(clientId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Permanent deletion failed' });
+  }
 });
 
 app.post('/api/super/clients', requireSuperAuth, async (req, res) => {

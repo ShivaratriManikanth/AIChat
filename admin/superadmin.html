@@ -566,6 +566,33 @@
           </table>
         </div>
       </div>
+
+      <!-- Recycle Bin Card -->
+      <div class="card" style="margin-top: 30px; border-color: #fee2e2;">
+        <div class="card-header" style="background: #fef2f2; border-bottom: 1px solid #fee2e2; display: flex; align-items: center; justify-content: space-between; padding: 15px 20px;">
+          <h2 style="color: #991b1b; display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; margin: 0;">
+            <span style="font-size: 20px;">🗑️</span> Deleted Clients (Recycle Bin)
+          </h2>
+          <button class="btn btn-outline" onclick="loadTrashClients()" style="font-size:12px; padding:6px 12px; border-color: #fca5a5; color: #b91c1c; background: #fff; cursor: pointer; transition: all 0.2s;">🔄 Refresh Trash</button>
+        </div>
+        <div style="padding:0; overflow-x: auto;">
+          <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid #fee2e2; text-align: left; background: #fff5f5;">
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Company</th>
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Email</th>
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Plan</th>
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Status</th>
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Joined</th>
+                <th style="padding: 12px; font-size: 13px; font-weight: 600; color: #7f1d1d;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="trashClientTable">
+              <tr><td colspan="6"><div class="empty-state" style="text-align: center; padding: 30px; color: #888;"><span class="icon" style="font-size: 24px; display: block; margin-bottom: 8px;">🗑️</span>Trash is empty</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: CHATBOT DASHBOARD -->
@@ -1485,12 +1512,80 @@
     });
 
     async function deleteClient(id) {
-      if (!confirm('Are you sure you want to delete this client? This cannot be undone.')) return;
+      if (!confirm('Are you sure you want to delete this client? They will be moved to the Recycle Bin.')) return;
       try {
         const res = await fetchAuth('/api/super/clients/' + id, { method: 'DELETE' });
-        if (res.ok) loadClients();
-        else alert('Failed to delete client.');
+        if (res.ok) {
+          loadClients();
+          loadTrashClients();
+        } else {
+          alert('Failed to delete client.');
+        }
       } catch (e) { alert('Network error.'); }
+    }
+
+    async function loadTrashClients() {
+      try {
+        const res = await fetchAuth('/api/super/trash/clients');
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const clients = data.clients || [];
+
+        if (clients.length === 0) {
+          document.getElementById('trashClientTable').innerHTML = `<tr><td colspan="6"><div class="empty-state" style="text-align: center; padding: 30px; color: #888;"><span class="icon" style="font-size: 24px; display: block; margin-bottom: 8px;">🗑️</span>Trash is empty</div></td></tr>`;
+          return;
+        }
+
+        const planMap2 = {}; PLANS.forEach(p => planMap2[p.id] = p);
+        document.getElementById('trashClientTable').innerHTML = clients.map(c => {
+          const plan = planMap2[c.plan_id] || {};
+          const planName = plan.name || 'Basic';
+          const planBadge = planBadgeClass(c.plan_id);
+          const statusBadge = (c.payment_status === 'active' || c.payment_status === 'COD_PENDING') ? 'badge-active' : 'badge-inactive';
+          const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '–';
+          
+          return `<tr>
+            <td><span class="client-company" style="font-weight:600; color:#1e293b;">${c.company_name || '–'}</span></td>
+            <td><span class="client-email" style="color:#64748b;">${c.email}</span></td>
+            <td><span class="badge ${planBadge}">${planName}</span></td>
+            <td><span class="badge ${statusBadge}">${c.payment_status || 'inactive'}</span></td>
+            <td style="color:#888;font-size:13px;">${date}</td>
+            <td style="display:flex;gap:6px;">
+              <button class="btn-sm" style="background:#10B981;color:white;cursor:pointer;border:none;border-radius:4px;padding:4px 8px;" onclick="restoreClient('${c.id}')">Restore</button>
+              <button class="btn-sm btn-sm-danger" style="background:#EF4444;color:white;cursor:pointer;border:none;border-radius:4px;padding:4px 8px;" onclick="permanentlyDeleteClient('${c.id}')">Permanently Delete</button>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        document.getElementById('trashClientTable').innerHTML = `<tr><td colspan="6"><div class="empty-state" style="text-align: center; padding: 30px; color: #DC2626;"><span class="icon" style="font-size: 24px; display: block; margin-bottom: 8px;">⚠️</span>Failed to load trash bin.</div></td></tr>`;
+      }
+    }
+
+    async function restoreClient(id) {
+      if (!confirm('Are you sure you want to restore this client?')) return;
+      try {
+        const res = await fetchAuth('/api/super/trash/restore/' + id, { method: 'POST' });
+        if (res.ok) {
+          alert('Client restored successfully.');
+          loadClients();
+          loadTrashClients();
+        } else {
+          alert('Failed to restore client.');
+        }
+      } catch (err) { alert('Network error.'); }
+    }
+
+    async function permanentlyDeleteClient(id) {
+      if (!confirm('WARNING: Are you sure you want to PERMANENTLY delete this client? All of their bots, flows, chats, and leads will be permanently erased. This action CANNOT be undone!')) return;
+      try {
+        const res = await fetchAuth('/api/super/trash/permanent/' + id, { method: 'DELETE' });
+        if (res.ok) {
+          alert('Client permanently deleted.');
+          loadTrashClients();
+        } else {
+          alert('Failed to permanently delete client.');
+        }
+      } catch (err) { alert('Network error.'); }
     }
 
     // Tab Management
@@ -2191,6 +2286,7 @@
     // Init
     loadPlans().then(() => {
       loadClients();
+      loadTrashClients();
       loadDemoBotConfig();
     });
   </script>

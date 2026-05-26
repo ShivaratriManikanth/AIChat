@@ -1004,6 +1004,11 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
 
   const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + kbDirective + advancedInstructions;
 
+  let systemPromptToUse = config.systemPrompt || '';
+  if (req.bot?.bot_id === 'bot_demo_landing') {
+    systemPromptToUse = "You are 'GA Bot', a premium embeddable AI chatbot widget. You must ONLY answer questions about yourself ('GA Bot') such as your features, pricing plans, and integration steps. Do NOT answer questions about or promote 'GAdigital Solutions' as a company. Keep your identity focused solely on being the 'GA Bot' product. Keep your tone helpful, concise, and professional.";
+  }
+
   // Build knowledge context from trained FAQs (top 10 most relevant chunks)
   let knowledgeContext = '';
   if (config.faqs && config.faqs.length > 0) {
@@ -1036,7 +1041,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     try {
       const history = getHistory(sessionId, req.clientId, 10);
       const messages = [
-        { role: 'system', content: (config.systemPrompt || '') + knowledgeContext + contextHint },
+        { role: 'system', content: (systemPromptToUse) + knowledgeContext + contextHint },
         ...history.map(h => ({ role: h.role, content: h.content })),
       ];
 
@@ -1085,7 +1090,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     try {
       const https = require('https');
       const payload = JSON.stringify({
-        systemInstruction: { parts: [{ text: (config.systemPrompt || '') + knowledgeContext + contextHint }] },
+        systemInstruction: { parts: [{ text: (systemPromptToUse) + knowledgeContext + contextHint }] },
         contents: [{ role: 'user', parts: [{ text: message }] }]
       });
 

@@ -43,6 +43,11 @@
   const LS_INTER   = `chatbot_interactions_${BOT_ID}`;
   const LS_SESSION_TS = `chatbot_session_ts_${BOT_ID}`;
 
+  // Clear previous chat history and session on startup to ensure a completely fresh chat session upon page refresh
+  localStorage.removeItem(LS_HISTORY);
+  localStorage.removeItem(LS_SESSION);
+  localStorage.removeItem(LS_SESSION_TS);
+
   let isDarkMode = localStorage.getItem(LS_DARK) === 'true';
   let currentLang = localStorage.getItem(LS_LANG) || 'en';
   const SESSION_ID = getSessionId();
@@ -197,9 +202,28 @@
     } catch (e) {}
   }
 
+  // Helper to determine text contrast based on background color brightness (YIQ)
+  function getContrastColor(hexColor) {
+    if (!hexColor || typeof hexColor !== 'string') return '#ffffff';
+    let hex = hexColor.trim().replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length !== 6) return '#ffffff';
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 180 ? '#1e293b' : '#ffffff';
+  }
+
   // ---- Inject Styles ----------------------------------------
   function injectStyles() {
-    const theme = CONFIG.themeColor;
+    const theme = CONFIG.themeColor || '#4F46E5';
+    const contrastColor = getContrastColor(theme);
+    const btnBg = contrastColor === '#ffffff' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)';
+    const btnHoverBg = contrastColor === '#ffffff' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.12)';
+    
     const old = document.getElementById('chatbot-widget-styles');
     if (old) old.remove();
 
@@ -272,7 +296,7 @@
 
       /* ---- Header ---- */
       #chatbot-header {
-        background: ${theme}; color: white;
+        background: ${theme}; color: ${contrastColor};
         padding: 14px 18px;
         display: flex; align-items: center; justify-content: space-between;
         flex-shrink: 0; user-select: none;
@@ -289,16 +313,22 @@
         width: 10px; height: 10px; border-radius: 50%;
         background: #4ade80; border: 2px solid ${theme};
       }
-      #chatbot-header-text h4 { font-size: 15px; font-weight: 600; color: white; }
-      #chatbot-header-text span { font-size: 11px; opacity: 0.85; color: white; }
+      #chatbot-header-text h4 { font-size: 15px; font-weight: 600; color: ${contrastColor}; }
+      #chatbot-header-text span { font-size: 11px; opacity: 0.85; color: ${contrastColor}; }
       .header-actions { display: flex; align-items: center; gap: 4px; }
       .header-btn {
-        background: rgba(255,255,255,0.15); border: none; color: white;
+        background: ${btnBg}; border: none; color: ${contrastColor};
         width: 32px; height: 32px; border-radius: 50%;
         cursor: pointer; display: flex; align-items: center; justify-content: center;
-        font-size: 15px; transition: background 0.2s;
+        font-size: 15px; transition: all 0.25s ease;
       }
-      .header-btn:hover { background: rgba(255,255,255,0.3); }
+      .header-btn:hover { background: ${btnHoverBg}; }
+      #chatbot-close {
+        transition: transform 0.25s ease, background 0.25s ease;
+      }
+      #chatbot-close:hover {
+        transform: rotate(90deg);
+      }
 
       /* ---- Search Bar ---- */
       #chatbot-search-bar {
@@ -1213,7 +1243,12 @@
               </button>
               <button class="header-btn" id="btn-export" title="${t('export')}">📥</button>
             </div>
-            <button class="header-btn" id="chatbot-close">&times;</button>
+            <button class="header-btn" id="chatbot-close" title="Close chat">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
           <!-- Handoff dropdown menu -->

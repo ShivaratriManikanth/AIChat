@@ -2417,9 +2417,24 @@
         }
         
         const newFaqs = usefulChunks.map((chunk, i) => {
-          const minimized = minimizeText(chunk);
+          let question = `[Manual Entry] Section ${demoFaqs.length + i + 1}`;
+          let answer = chunk.trim();
+          
+          // Check for Question/Answer or Q/A pattern
+          const qaMatch = chunk.match(/Question:\s*([\s\S]*?)\s*\n+\s*Answer:\s*([\s\S]*)/i);
+          const shortQaMatch = !qaMatch ? chunk.match(/Q:\s*([\s\S]*?)\s*\n+\s*A:\s*([\s\S]*)/i) : null;
+          
+          if (qaMatch) {
+            question = qaMatch[1].trim();
+            answer = qaMatch[2].trim();
+          } else if (shortQaMatch) {
+            question = shortQaMatch[1].trim();
+            answer = shortQaMatch[2].trim();
+          }
+          
+          const minimized = minimizeText(answer);
           return {
-            question: `[Manual Entry] Section ${demoFaqs.length + i + 1}`,
+            question: question,
             answer: minimized
           };
         });

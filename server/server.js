@@ -563,6 +563,25 @@ function semanticFaqMatch(query, faqs, threshold = 0.25) {
   return bestScore >= threshold ? { faq: best, score: bestScore } : null;
 }
 
+function cleanFaqReply(text) {
+  if (typeof text !== 'string') return text;
+  let clean = text;
+  
+  // Strip patterns of Question: ... Answer: ...
+  const qaMatch = clean.match(/Question:\s*([\s\S]*?)\s*\n+\s*Answer:\s*([\s\S]*)/i);
+  const shortQaMatch = !qaMatch ? clean.match(/Q:\s*([\s\S]*?)\s*\n+\s*A:\s*([\s\S]*)/i) : null;
+  
+  if (qaMatch) {
+    clean = qaMatch[2].trim();
+  } else if (shortQaMatch) {
+    clean = shortQaMatch[2].trim();
+  }
+  
+  // Strip solo "Answer: " or "A: " prefixes
+  clean = clean.replace(/^(Answer:|A:)\s*/i, '');
+  return clean;
+}
+
 // ---- Website URL scraper -----------------------------------
 async function scrapeUrl(url) {
   return new Promise((resolve, reject) => {
@@ -976,8 +995,9 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
 
     if (faqMatch && (!faqMatch.question || !faqMatch.question.startsWith('[From '))) {
       const responseMs = Date.now() - startTime;
-      saveMessage(req.clientId, sessionId, 'assistant', faqMatch.answer, null, { source: 'faq', responseMs }, email);
-      return res.json({ reply: faqMatch.answer, source: 'faq' });
+      const cleanReply = cleanFaqReply(faqMatch.answer);
+      saveMessage(req.clientId, sessionId, 'assistant', cleanReply, null, { source: 'faq', responseMs }, email);
+      return res.json({ reply: cleanReply, source: 'faq' });
     }
   }
 

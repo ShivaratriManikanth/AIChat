@@ -2640,6 +2640,25 @@
     });
 
     // ---- Text Training --------------------------------------
+    function minimizeText(text) {
+      // Split into sentences using standard punctuation boundaries
+      const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) || [text];
+      
+      const cleanSentences = sentences.map(s => {
+        let clean = s.trim();
+        // Strip common verbose filler phrases
+        clean = clean.replace(/^(it is important to note that|we are proud to let you know that|we would like to inform you that|as a matter of fact|please note that|you will be happy to know that|we are dedicated to providing you with|we are a leading technology company dedicated to providing)\s+/i, '');
+        // Capitalize first letter
+        if (clean.length > 0) {
+          clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+        }
+        return clean;
+      }).filter(s => s.length > 5);
+      
+      // Keep only the first 2 most impactful sentences to guarantee extreme conciseness
+      return cleanSentences.slice(0, 2).join(' ');
+    }
+
     async function addTextToKnowledge() {
       const text = document.getElementById('knowledge-text').value.trim();
       if (!text) { alert('Enter some text to train the bot.'); return; }
@@ -2651,6 +2670,7 @@
       try {
         if (editingKbIndex !== null) {
           const newTitle = document.getElementById('kb-title').value.trim() || `[Text Training] Part ${editingKbIndex + 1}`;
+          const minimized = minimizeText(text);
           
           // First fetch full current config
           const url = selectedBotId ? `${API}/api/config/full?botId=${encodeURIComponent(selectedBotId)}` : `${API}/api/config/full`;
@@ -2659,7 +2679,7 @@
           currentConfig.faqs = currentConfig.faqs || [];
           
           if (editingKbIndex < currentConfig.faqs.length) {
-            currentConfig.faqs[editingKbIndex] = { question: newTitle, answer: text };
+            currentConfig.faqs[editingKbIndex] = { question: newTitle, answer: minimized };
           }
           
           const resPut = await fetchAuth(`${API}/api/config`, {
@@ -2713,10 +2733,13 @@
         const currentConfig = await resConf.json();
         const currentFaqs = currentConfig.faqs || [];
 
-        const newFaqs = usefulChunks.map((chunk, i) => ({
-          question: `[Text Training] Part ${currentFaqs.length + i + 1}`,
-          answer: chunk.trim()
-        }));
+        const newFaqs = usefulChunks.map((chunk, i) => {
+          const minimized = minimizeText(chunk);
+          return {
+            question: `[Text Training] Part ${currentFaqs.length + i + 1}`,
+            answer: minimized
+          };
+        });
 
         const updatedFaqs = [...currentFaqs, ...newFaqs];
 

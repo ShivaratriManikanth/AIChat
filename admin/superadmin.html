@@ -541,9 +541,6 @@
       <div class="nav-item" data-page="dbot-chats" onclick="switchDemoSubTab('chats')">
         <span class="icon">💬</span> Chat History
       </div>
-      <div class="nav-item" data-page="dbot-users" onclick="switchDemoSubTab('users')">
-        <span class="icon">👥</span> Captured Leads
-      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -1022,35 +1019,6 @@
             </div>
     </div> <!-- End page-dbot-chats panel -->
 
-    <!-- ============ PANEL: CAPTURED LEADS ============ -->
-    <div class="panel" id="page-dbot-users">
-            <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">👥 Captured Leads</h2>
-                <p style="color:#666;font-size:13px;margin-top:4px;">View captured emails and contact info submitted to the demo chatbot.</p>
-              </div>
-              <button class="btn btn-outline" onclick="loadDemoUsers()" style="font-size:12px; padding: 8px 16px;">🔄 Refresh</button>
-            </div>
-            
-            <div class="card" style="margin-bottom: 0;">
-              <div style="padding:0; overflow-x: auto;">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Email</th>
-                      <th>Session ID</th>
-                      <th>Messages Count</th>
-                      <th>Joined Date</th>
-                      <th style="text-align: right; padding-right: 24px;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dbot-users-list">
-                    <!-- Dynamically populated -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-    </div> <!-- End page-dbot-users panel -->
   </div> <!-- End container -->
 </div> <!-- End main-content -->
 
@@ -1723,8 +1691,7 @@
         'dbot-settings': 'Bot Settings',
         'dbot-aichat': 'AI Chatbot',
         'dbot-flow': 'Flow Builder',
-        'dbot-chats': 'Chat History',
-        'dbot-users': 'Captured Leads'
+        'dbot-chats': 'Chat History'
       };
       document.getElementById('page-title').textContent = titleMap[pageName] || 'Dashboard';
     }
@@ -1739,8 +1706,6 @@
         loadDemoFlow();
       } else if (subName === 'chats') {
         loadDemoSessions();
-      } else if (subName === 'users') {
-        loadDemoUsers();
       }
     }
 
@@ -2197,36 +2162,6 @@
       }
     }
 
-    // ---- Demo Bot Captured Leads Logic ----
-    async function loadDemoUsers() {
-      try {
-        const res = await fetchAuth('/api/super/demo-bot/users');
-        const users = await res.json();
-        
-        const tbody = document.getElementById('dbot-users-list');
-        if (users.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><span class="icon">👥</span>No captured leads yet.</div></td></tr>`;
-          return;
-        }
-        
-        tbody.innerHTML = users.map(u => {
-          const dateStr = new Date(u.created_at).toLocaleString();
-          const emailEsc = (u.email || '').replace(/'/g, "\\'");
-          return `
-            <tr>
-              <td><strong style="color: #1a1a2e; font-size:14px;">${u.email}</strong></td>
-              <td><span style="font-family: monospace; font-size:12px; color:#555;">${u.session_id}</span></td>
-              <td><span class="badge badge-inactive" style="font-size:12px; padding: 4px 8px;">💬 ${u.message_count} msgs</span></td>
-              <td><span style="font-size:12px; color:#666;">${dateStr}</span></td>
-              <td style="text-align: right; padding-right: 24px;">
-                <button class="btn-sm btn-sm-view" onclick="jumpToDemoChat('${u.session_id}', '${emailEsc}')">💬 Read Chat</button>
-              </td>
-            </tr>`;
-        }).join('');
-      } catch (err) {
-        console.error('Error loading captured leads:', err);
-      }
-    }
 
     function escapeHtml(str) {
       return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

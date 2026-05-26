@@ -2228,7 +2228,10 @@
       }
     }
 
-    // ---- Demo Bot AI Chatbot Knowledge Base Logic ----
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
     let demoFaqs = [];
 
     async function loadDemoKnowledge() {

@@ -296,22 +296,22 @@ const PLAN_LIMITS = {
     name: 'Basic',
     monthlyMessages: 1000,
     maxBots: 1,
-    models: ['gpt-3.5-turbo', 'gpt-4o-mini'],
-    branding: 'Powered by GAdigital',
-    features: ['email_capture', 'faq']
+    models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4', 'gpt-4o'],
+    branding: 'Full Customization',
+    features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics', 'priority_support', 'api_access']
   },
   2: { // Standard
     name: 'Standard',
     monthlyMessages: 5000,
     maxBots: 3,
-    models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4'],
-    branding: 'Custom Branding',
-    features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics']
+    models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4', 'gpt-4o'],
+    branding: 'Full Customization',
+    features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics', 'priority_support', 'api_access']
   },
   3: { // Premium
     name: 'Premium',
     monthlyMessages: 50000,
-    maxBots: 6,
+    maxBots: 5,
     models: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4', 'gpt-4o'],
     branding: 'Full Customization',
     features: ['email_capture', 'faq', 'lead_forms', 'advanced_analytics', 'priority_support', 'api_access']

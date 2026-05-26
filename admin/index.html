@@ -2240,7 +2240,7 @@
         <div style="border-bottom:1px solid #f1f5f9;">
           <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(f.question)}</div>
+              <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml((f.question || '').replace('[Text Training] ', '').replace('[Text Training]', ''))}</div>
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
               <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>

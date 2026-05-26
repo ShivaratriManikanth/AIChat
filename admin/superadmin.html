@@ -10,40 +10,119 @@
 
     body {
       font-family: 'Inter', -apple-system, sans-serif;
-      background: #f0f2f5;
-      color: #333;
+      background: #f8fafc;
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ============ SIDEBAR ============ */
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #0f0c29 0%, #302b63 60%, #24243e 100%);
+      color: #ccc;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform 0.3s;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+    }
+    .sidebar-brand {
+      padding: 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sidebar-brand .logo {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: white;
+      box-shadow: 0 4px 12px rgba(79,70,229,0.4);
+    }
+    .sidebar-brand h2 { font-size: 15px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+    .sidebar-brand span { font-size: 11px; opacity: 0.4; }
+
+    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-section {
+      padding: 10px 20px 6px;
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 1.2px; color: rgba(255,255,255,0.25);
+      margin-top: 8px; font-weight: 600;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 20px; cursor: pointer;
+      font-size: 13.5px; font-weight: 400;
+      color: rgba(255,255,255,0.5); transition: all 0.2s;
+      border-left: 3px solid transparent;
+      margin: 1px 0;
+    }
+    .nav-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.85);
+    }
+    .nav-item.active {
+      background: rgba(79,70,229,0.18);
+      color: #A5B4FC;
+      border-left-color: #818CF8;
+      font-weight: 600;
+    }
+    .nav-item .icon { font-size: 17px; width: 22px; text-align: center; }
+    .nav-item .badge {
+      margin-left: auto;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      color: white;
+      font-size: 10px; padding: 2px 8px;
+      border-radius: 10px; font-weight: 700;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ============ MAIN CONTENT ============ */
+    .main-content {
+      flex: 1;
+      margin-left: 260px;
       min-height: 100vh;
     }
 
     /* Top bar */
     .topbar {
-      background: linear-gradient(135deg, #1a1a2e, #302b63);
-      padding: 0 32px;
-      height: 64px;
+      background: white;
+      padding: 16px 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      border-bottom: 1px solid #ebebf0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      height: 64px;
     }
-    .topbar-brand {
-      display: flex; align-items: center; gap: 12px;
-    }
-    .topbar-logo {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: linear-gradient(135deg, #4F46E5, #7C3AED);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .topbar-brand h1 { font-size: 17px; font-weight: 700; color: #fff; }
-    .topbar-brand span { font-size: 11px; color: rgba(255,255,255,0.4); }
-    .super-badge {
+    .topbar h1 { font-size: 19px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.4px; }
+    .topbar .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .topbar .super-badge {
       background: linear-gradient(135deg, #F59E0B, #EF4444);
       color: white; font-size: 11px; font-weight: 700;
-      padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px;
+      padding: 5px 12px; border-radius: 20px; letter-spacing: 0.5px;
     }
 
-    /* Layout */
-    .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    /* Container */
+    .container { padding: 24px 32px; max-width: 1100px; margin: 0 auto; }
+
+    /* Panels hide/show */
+    .panel { display: none; }
+    .panel.active { display: block; }
 
     /* Stats row */
     .stats-row {
@@ -51,12 +130,14 @@
       gap: 20px; margin-bottom: 28px;
     }
     .stat-card {
-      background: white; border-radius: 14px;
+      background: white; border-radius: 16px;
       padding: 22px 24px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid #f0f0f0;
       display: flex; align-items: center; gap: 16px;
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
     }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
     .stat-icon {
       width: 50px; height: 50px; border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
@@ -428,56 +509,64 @@
 </head>
 <body>
 
-  <nav class="topbar">
-    <div class="topbar-brand">
-      <div class="topbar-logo">🤖</div>
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">🤖</div>
       <div>
-        <h1>AI Chatbot SaaS</h1>
+        <h2>AI Chatbot SaaS</h2>
         <span>Super Admin Console</span>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span class="super-badge">⚡ SUPER ADMIN</span>
-      <a href="/admin/" style="font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;">← Back to Dashboard</a>
-      <a href="#" onclick="logout()" style="font-size:13px;color:#fb7185;text-decoration:none;font-weight:600;margin-left:15px;border-left:1px solid rgba(255,255,255,0.1);padding-left:15px;">🚪 Logout</a>
-    </div>
-  </nav>
 
-  <div class="page">
-
-    <!-- Stats -->
-    <div class="stats-row" id="statsRow">
-      <div class="stat-card">
-        <div class="stat-icon blue">🏢</div>
-        <div>
-          <div class="stat-label">Total Clients</div>
-          <div class="stat-value" id="statTotal">–</div>
-        </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">SaaS Platform</div>
+      <div class="nav-item active" data-page="platform" onclick="switchTab('platform')">
+        <span class="icon">📊</span> Platform Stats
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green">✅</div>
-        <div>
-          <div class="stat-label">Active Clients</div>
-          <div class="stat-value" id="statActive">–</div>
-        </div>
+      <div class="nav-item" data-page="packages" onclick="switchTab('packages')">
+        <span class="icon">💎</span> Plan Packages
       </div>
-      <div class="stat-card">
-        <div class="stat-icon orange">💰</div>
-        <div>
-          <div class="stat-label">Monthly Revenue</div>
-          <div class="stat-value" id="statRevenue">–</div>
-        </div>
+
+      <div class="nav-section">Demo Chatbot Setup</div>
+      <div class="nav-item" data-page="dbot-settings" onclick="switchDemoSubTab('settings')">
+        <span class="icon">⚙️</span> Bot Settings
+      </div>
+      <div class="nav-item" data-page="dbot-aichat" onclick="switchDemoSubTab('aichat')">
+        <span class="icon">🧠</span> AI Chatbot
+      </div>
+      <div class="nav-item" data-page="dbot-flow" onclick="switchDemoSubTab('flow')">
+        <span class="icon">🔀</span> Flow Builder
+      </div>
+      <div class="nav-item" data-page="dbot-chats" onclick="switchDemoSubTab('chats')">
+        <span class="icon">💬</span> Chat History
+      </div>
+      <div class="nav-item" data-page="dbot-users" onclick="switchDemoSubTab('users')">
+        <span class="icon">👥</span> Captured Leads
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      Powered by AI Chatbot Widget
+    </div>
+  </aside>
+
+  <!-- ============ MAIN CONTENT ============ -->
+  <div class="main-content">
+    <!-- Topbar -->
+    <div class="topbar">
+      <h1 id="page-title">Platform Stats</h1>
+      <div class="topbar-right">
+        <span class="super-badge">⚡ SUPER ADMIN</span>
+        <a href="/admin/" style="font-size:13px;color:#6366F1;text-decoration:none;font-weight:600;">← Client Dashboard</a>
+        <button class="refresh-btn" onclick="logout()" style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight:600; cursor:pointer; border: none;">🚪 Logout</button>
       </div>
     </div>
 
-    <!-- TABS BAR -->
-    <div class="tabs-bar" style="margin-top: 10px;">
-      <button class="tab-btn active" id="tab-btn-platform" onclick="switchMainTab('platform')">🏢 Platform &amp; SaaS</button>
-      <button class="tab-btn" id="tab-btn-chatbot" onclick="switchMainTab('chatbot')">🤖 Demo Chatbot Dashboard</button>
-    </div>
+    <div class="container">
 
-    <!-- TAB: PLATFORM & SAAS -->
-    <div class="tab-content active" id="tab-platform">
+      <!-- ============ PANEL: PLAN PACKAGES ============ -->
+      <div class="panel" id="page-packages">
       <!-- Plans Management -->
       <div class="card">
         <div class="card-header">
@@ -498,6 +587,34 @@
               <tr><td colspan="4"><div class="empty-state"><span class="icon">⏳</span>Loading plans...</div></td></tr>
             </tbody>
           </table>
+      </div>
+    </div> <!-- End page-packages panel -->
+
+    <!-- ============ PANEL: PLATFORM STATS & CLIENTS ============ -->
+    <div class="panel active" id="page-platform">
+
+      <!-- Stats -->
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card">
+          <div class="stat-icon blue">🏢</div>
+          <div>
+            <div class="stat-label">Total Clients</div>
+            <div class="stat-value" id="statTotal">–</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">✅</div>
+          <div>
+            <div class="stat-label">Active Clients</div>
+            <div class="stat-value" id="statActive">–</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">💰</div>
+          <div>
+            <div class="stat-label">Monthly Revenue</div>
+            <div class="stat-value" id="statRevenue">–</div>
+          </div>
         </div>
       </div>
 
@@ -593,25 +710,10 @@
           </table>
         </div>
       </div>
-    </div>
+    </div> <!-- End page-platform panel -->
 
-    <!-- TAB: CHATBOT DASHBOARD -->
-    <div class="tab-content" id="tab-chatbot">
-      <div class="bot-dashboard">
-        <!-- Sidebar Navigation -->
-        <div class="bot-sidebar">
-          <div class="bot-menu-item active" id="menu-dbot-settings" onclick="switchSubTab('settings')">⚙️ Bot Settings</div>
-          <div class="bot-menu-item" id="menu-dbot-aichat" onclick="switchSubTab('aichat')">🧠 AI Chatbot</div>
-          <div class="bot-menu-item" id="menu-dbot-flow" onclick="switchSubTab('flow')">🔀 Flow Builder</div>
-          <div class="bot-menu-item" id="menu-dbot-chats" onclick="switchSubTab('chats')">💬 Chat History</div>
-          <div class="bot-menu-item" id="menu-dbot-users" onclick="switchSubTab('users')">👥 Captured Leads</div>
-        </div>
-
-        <!-- Workspace area -->
-        <div class="bot-workspace-container" style="flex: 1;">
-          
-          <!-- SUB-TAB: SETTINGS -->
-          <div class="sub-tab-content active" id="sub-dbot-settings">
+    <!-- ============ PANEL: BOT SETTINGS ============ -->
+    <div class="panel" id="page-dbot-settings">
             <!-- Demo Chatbot Settings -->
             <div class="card" style="margin-bottom: 20px;">
               <div class="card-header"><h2>⚙️ Landing Page Demo Chatbot Settings</h2></div>
@@ -729,10 +831,10 @@
                 </div>
               </div>
             </div>
-          </div>
+    </div> <!-- End page-dbot-settings panel -->
 
-          <!-- SUB-TAB: AI CHATBOT KNOWLEDGE BASE -->
-          <div class="sub-tab-content" id="sub-dbot-aichat">
+    <!-- ============ PANEL: AI CHATBOT KNOWLEDGE BASE ============ -->
+    <div class="panel" id="page-dbot-aichat">
             <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
               <div>
                 <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
@@ -827,10 +929,10 @@
                 </div>
               </div>
             </div>
-          </div>
+    </div> <!-- End page-dbot-aichat panel -->
 
-          <!-- SUB-TAB: FLOW BUILDER -->
-          <div class="sub-tab-content" id="sub-dbot-flow">
+    <!-- ============ PANEL: FLOW BUILDER ============ -->
+    <div class="panel" id="page-dbot-flow">
             <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <h2 style="font-size:18px;color:#1a1a2e; font-weight: 700;">🔀 Flow Builder</h2>
@@ -874,10 +976,10 @@
                 </div>
               </div>
             </div>
-          </div>
+    </div> <!-- End page-dbot-flow panel -->
 
-          <!-- SUB-TAB: CHAT HISTORY -->
-          <div class="sub-tab-content" id="sub-dbot-chats">
+    <!-- ============ PANEL: CHAT HISTORY ============ -->
+    <div class="panel" id="page-dbot-chats">
             <div style="margin-bottom:20px;">
               <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">💬 User Conversations</h2>
               <p style="color:#666;font-size:13px;margin-top:4px;">View conversations between users and the landing page demo chatbot.</p>
@@ -910,10 +1012,10 @@
                 </div>
               </div>
             </div>
-          </div>
+    </div> <!-- End page-dbot-chats panel -->
 
-          <!-- SUB-TAB: CAPTURED LEADS -->
-          <div class="sub-tab-content" id="sub-dbot-users">
+    <!-- ============ PANEL: CAPTURED LEADS ============ -->
+    <div class="panel" id="page-dbot-users">
             <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">👥 Captured Leads</h2>
@@ -940,11 +1042,9 @@
                 </table>
               </div>
             </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
+    </div> <!-- End page-dbot-users panel -->
+  </div> <!-- End container -->
+</div> <!-- End main-content -->
 
   <!-- Edit Modal -->
   <div class="modal-overlay" id="editModal">
@@ -1590,29 +1690,39 @@
     }
 
     // Tab Management
-    function switchMainTab(tabName) {
-      document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      
-      if (tabName === 'platform') {
-        document.getElementById('tab-btn-platform').classList.add('active');
-        document.getElementById('tab-platform').classList.add('active');
-      } else {
-        document.getElementById('tab-btn-chatbot').classList.add('active');
-        document.getElementById('tab-chatbot').classList.add('active');
-        switchSubTab('settings');
+    function switchTab(pageName) {
+      document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+
+      const activeItem = document.querySelector(`.sidebar-nav .nav-item[data-page="${pageName}"]`);
+      if (activeItem) {
+        activeItem.classList.add('active');
       }
+
+      document.querySelectorAll('.panel').forEach(p => {
+        p.classList.remove('active');
+      });
+
+      const targetPanel = document.getElementById(`page-${pageName}`);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+
+      const titleMap = {
+        'platform': 'Platform Stats & Clients',
+        'packages': 'Plan Packages',
+        'dbot-settings': 'Bot Settings',
+        'dbot-aichat': 'AI Chatbot',
+        'dbot-flow': 'Flow Builder',
+        'dbot-chats': 'Chat History',
+        'dbot-users': 'Captured Leads'
+      };
+      document.getElementById('page-title').textContent = titleMap[pageName] || 'Dashboard';
     }
 
-    function switchSubTab(subName) {
-      document.querySelectorAll('.bot-sidebar .bot-menu-item').forEach(m => m.classList.remove('active'));
-      document.querySelectorAll('.sub-tab-content').forEach(sc => sc.classList.remove('active'));
-      
-      const menu = document.getElementById('menu-dbot-' + subName);
-      const sub = document.getElementById('sub-dbot-' + subName);
-      if (menu) menu.classList.add('active');
-      if (sub) sub.classList.add('active');
-      
+    function switchDemoSubTab(subName) {
+      switchTab('dbot-' + subName);
       if (subName === 'settings') {
         loadDemoBotConfig();
       } else if (subName === 'aichat') {
@@ -1624,6 +1734,15 @@
       } else if (subName === 'users') {
         loadDemoUsers();
       }
+    }
+
+    // Proxy wrappers for backward compatibility
+    function switchMainTab(tabName) {
+      if (tabName === 'platform') switchTab('platform');
+      else switchDemoSubTab('settings');
+    }
+    function switchSubTab(subName) {
+      switchDemoSubTab(subName);
     }
 
     // Logo Upload handler

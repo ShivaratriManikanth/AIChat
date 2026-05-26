@@ -924,14 +924,54 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
       if (result) faqMatch = result.faq;
     }
 
-    // Fallback: keyword match
+    // Fallback: keyword match against both question and answer text
     if (!faqMatch && config.faqs && Array.isArray(config.faqs)) {
-      faqMatch = config.faqs.find(f => {
-        if (!f || typeof f.question !== 'string') return false;
-        const q = f.question.toLowerCase().replace(/[?]/g, '');
-        const m = message.toLowerCase().replace(/[?]/g, '');
-        return m.includes(q) || q.includes(m);
-      });
+      const queryTokens = tokenize(message);
+      
+      if (queryTokens.length > 0) {
+        let bestOverlapFaq = null;
+        let maxOverlapCount = 0;
+        
+        for (const f of config.faqs) {
+          if (!f || typeof f.answer !== 'string') continue;
+          
+          // Tokenize combined question and answer text for this chunk
+          const textToSearch = ((f.question || '') + ' ' + f.answer).toLowerCase();
+          const wordsInChunk = tokenize(textToSearch);
+          
+          let overlapCount = 0;
+          queryTokens.forEach(token => {
+            // Check if any word in the chunk contains this query token as a substring (minimum 3 chars)
+            for (const word of wordsInChunk) {
+              if (word.includes(token) || token.includes(word)) {
+                overlapCount++;
+                break;
+              }
+            }
+          });
+          
+          if (overlapCount > maxOverlapCount) {
+            maxOverlapCount = overlapCount;
+            bestOverlapFaq = f;
+          }
+        }
+        
+        // If we found a chunk matching at least one significant search term, select it!
+        if (maxOverlapCount > 0) {
+          faqMatch = bestOverlapFaq;
+        }
+      }
+      
+      // Standard exact substring match fallback if overlap didn't match
+      if (!faqMatch) {
+        faqMatch = config.faqs.find(f => {
+          if (!f || typeof f.question !== 'string') return false;
+          const q = f.question.toLowerCase().replace(/[?]/g, '');
+          const ans = (f.answer || '').toLowerCase().replace(/[?]/g, '');
+          const m = message.toLowerCase().replace(/[?]/g, '');
+          return m.includes(q) || q.includes(m) || m.includes(ans) || ans.includes(m);
+        });
+      }
     }
 
     if (faqMatch && (!faqMatch.question || !faqMatch.question.startsWith('[From '))) {

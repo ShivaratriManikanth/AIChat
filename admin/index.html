@@ -2681,8 +2681,26 @@
           return;
         }
 
-        const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
-        const usefulChunks = chunks.filter(c => c.trim().length > 20);
+        const paragraphs = text.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(p => p.length > 0);
+        const usefulChunks = [];
+        let currentChunk = "";
+        
+        for (let i = 0; i < paragraphs.length; i++) {
+          const p = paragraphs[i];
+          if (currentChunk === "") {
+            currentChunk = p;
+          } else {
+            if (currentChunk.length < 120 || p.length < 120 || p.startsWith('-') || p.startsWith('•') || p.startsWith('*') || /^\d+\./.test(p)) {
+              currentChunk += "\n\n" + p;
+            } else {
+              usefulChunks.push(currentChunk);
+              currentChunk = p;
+            }
+          }
+        }
+        if (currentChunk !== "") {
+          usefulChunks.push(currentChunk);
+        }
         
         if (usefulChunks.length === 0) {
           status.textContent = '❌ Text is too short to extract knowledge.';
@@ -2690,15 +2708,17 @@
           return;
         }
 
-        const newFaqs = usefulChunks.map((chunk, i) => ({
-          question: `[Text Training] Part ${i + 1}`,
-          answer: chunk.trim()
-        }));
-
         const url = selectedBotId ? `${API}/api/config/full?botId=${encodeURIComponent(selectedBotId)}` : `${API}/api/config/full`;
         const resConf = await fetchAuth(url);
         const currentConfig = await resConf.json();
-        const updatedFaqs = [...(currentConfig.faqs || []), ...newFaqs];
+        const currentFaqs = currentConfig.faqs || [];
+
+        const newFaqs = usefulChunks.map((chunk, i) => ({
+          question: `[Text Training] Part ${currentFaqs.length + i + 1}`,
+          answer: chunk.trim()
+        }));
+
+        const updatedFaqs = [...currentFaqs, ...newFaqs];
 
         const resPut = await fetchAuth(`${API}/api/config`, {
           method: 'PUT',

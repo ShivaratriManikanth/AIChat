@@ -66,7 +66,8 @@
       /i'm\s+([a-zA-Z\s]{2,30})/i,
       /i am\s+([a-zA-Z\s]{2,30})/i,
       /im\s+([a-zA-Z\s]{2,30})/i,
-      /this is\s+([a-zA-Z\s]{2,30})/i,
+      /th[is]*\s+is\s+([a-zA-Z\s]{2,30})/i, // Typo tolerant for "this is", "thi is", "th is"
+      /thiz\s+is\s+([a-zA-Z\s]{2,30})/i,   // Typo tolerant for "thiz is"
       /call me\s+([a-zA-Z\s]{2,30})/i,
       /myself\s+([a-zA-Z\s]{2,30})/i
     ];
@@ -1886,7 +1887,7 @@
     if (!text.trim() && !pendingFile) return;
 
     // Extract user's name if they reply with it
-    if (!userName && text) {
+    if (text) {
       let extracted = extractUserName(text);
       if (!extracted) {
         // Fallback: check if the previous message in history asked for their name

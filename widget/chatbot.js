@@ -2463,6 +2463,14 @@
     }
 
     errorEl.textContent = '';
+
+    // Clear old name cache if email changes or is empty
+    const oldEmail = localStorage.getItem(LS_EMAIL) || '';
+    if (oldEmail.toLowerCase() !== email.toLowerCase()) {
+      userName = '';
+      localStorage.removeItem(LS_NAME);
+    }
+
     userEmail = email;
     emailVerified = true;
     localStorage.setItem(LS_EMAIL, email);

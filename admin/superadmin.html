@@ -1120,7 +1120,7 @@
                   <p style="color:#64748b; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Train the demo chatbot by scraping a public web page's text contents.</p>
                   <div style="display:flex; gap:8px;">
                     <input type="url" id="dbot-kb-url" placeholder="https://example.com/about" style="flex:1; padding:9px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none;">
-                    <button class="btn btn-primary" onclick="trainDemoUrl()" style="padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600;">Train</button>
+                    <button class="btn btn-primary" id="dbot-btn-train-url" onclick="trainDemoUrl()" style="padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600;">Train</button>
                   </div>
                   <div id="dbot-url-status" style="margin-top:10px; font-size:12px; font-weight:500;"></div>
                 </div>
@@ -1140,7 +1140,7 @@
                 <div class="card-body" style="padding: 20px;">
                   <p style="color:#64748b; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Upload a PDF file (max 10MB) to teach the bot details and facts.</p>
                   <input type="file" id="dbot-pdf-file-input" accept="application/pdf" style="display:none">
-                  <div onclick="document.getElementById('dbot-pdf-file-input').click()" style="border:2px dashed #e2e8f0; border-radius:10px; padding:20px; text-align:center; cursor:pointer;" onmouseenter="this.style.borderColor='#4f46e5'" onmouseleave="this.style.borderColor='#e2e8f0'">
+                  <div id="dbot-pdf-dropzone" onclick="document.getElementById('dbot-pdf-file-input').click()" style="border:2px dashed #e2e8f0; border-radius:10px; padding:20px; text-align:center; cursor:pointer;" onmouseenter="this.style.borderColor='#4f46e5'" onmouseleave="this.style.borderColor='#e2e8f0'">
                     <div style="font-size:24px; margin-bottom:6px;">📁</div>
                     <div style="font-size:13px; font-weight:600; color:#475569;">Click to choose PDF</div>
                   </div>
@@ -2804,11 +2804,19 @@
     }
 
     async function trainDemoText() {
+      const btn = document.getElementById('dbot-btn-train');
+      const originalText = btn ? btn.innerHTML : '➕ Train with Text';
+      
       const text = document.getElementById('dbot-kb-text').value.trim();
       const status = document.getElementById('dbot-text-status');
       status.textContent = ''; status.style.color = 'inherit';
       
       if (!text) return alert('Please enter some text to train.');
+      
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid #fff; border-radius:50%; border-top-color:transparent; animation:dbotSpin 0.6s linear infinite; margin-right:6px; vertical-align:middle;"></span> Training...`;
+      }
       
       try {
         if (editingFaqIndex !== null) {
@@ -2883,10 +2891,18 @@
       } catch (err) {
         status.textContent = '❌ Training failed.';
         status.style.color = '#ef4444';
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
       }
     }
 
     async function trainDemoUrl() {
+      const btn = document.getElementById('dbot-btn-train-url');
+      const originalText = btn ? btn.innerHTML : 'Train';
+      
       const urlInput = document.getElementById('dbot-kb-url');
       const url = urlInput.value.trim();
       const status = document.getElementById('dbot-url-status');
@@ -2894,6 +2910,11 @@
       status.style.color = '#4f46e5';
       
       if (!url) return alert('Please enter a valid URL.');
+      
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid #fff; border-radius:50%; border-top-color:transparent; animation:dbotSpin 0.6s linear infinite; margin-right:6px; vertical-align:middle;"></span> Scraping...`;
+      }
       
       try {
         const res = await fetchAuth('/api/super/demo-bot/knowledge/url', {
@@ -2914,6 +2935,11 @@
       } catch (err) {
         status.textContent = '❌ Network error.';
         status.style.color = '#ef4444';
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
       }
     }
 
@@ -2926,6 +2952,16 @@
       if (file.size > 10 * 1024 * 1024) {
         alert('PDF size is too large. Max 10MB.');
         return;
+      }
+      
+      const dropzone = document.getElementById('dbot-pdf-dropzone');
+      const originalDropzoneHtml = dropzone ? dropzone.innerHTML : '';
+      if (dropzone) {
+        dropzone.style.pointerEvents = 'none';
+        dropzone.innerHTML = `
+          <div class="spinner" style="display:inline-block; width:28px; height:28px; border:3px solid #0ea5e9; border-radius:50%; border-top-color:transparent; animation:dbotSpin 0.6s linear infinite; margin-bottom:8px;"></div>
+          <div style="font-size:13px; font-weight:600; color:#0ea5e9;">Processing PDF...</div>
+        `;
       }
       
       status.textContent = '⏳ Processing PDF...';
@@ -2955,6 +2991,11 @@
         } catch (err) {
           status.textContent = '❌ Network error.';
           status.style.color = '#ef4444';
+        } finally {
+          if (dropzone) {
+            dropzone.style.pointerEvents = 'auto';
+            dropzone.innerHTML = originalDropzoneHtml;
+          }
         }
       };
       reader.readAsDataURL(file);

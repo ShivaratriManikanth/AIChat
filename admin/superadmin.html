@@ -2160,7 +2160,7 @@
       container.innerHTML = html;
     }
 
-    async function saveDemoFlow() {
+    async function saveDemoFlow(showNotification = true) {
       // Flow nodes validations
       for (let i = 0; i < demoFlowNodes.length; i++) {
         const node = demoFlowNodes[i];
@@ -2169,7 +2169,7 @@
         // 1. Bot Asks prompt validation
         if (!node.config.question || !node.config.question.trim()) {
           alert(`⚠️ Validation Error: "Bot Asks" prompt is required for component #${i + 1} (${label}).`);
-          return;
+          return false;
         }
 
         // 2. Choice components options validation
@@ -2178,7 +2178,7 @@
           const validOptions = options.filter(opt => opt && opt.trim());
           if (validOptions.length === 0) {
             alert(`⚠️ Validation Error: At least one option/choice is required for component #${i + 1} (${label}).`);
-            return;
+            return false;
           }
         }
 
@@ -2189,17 +2189,17 @@
           
           if (!buttonLabel) {
             alert(`⚠️ Validation Error: Button Label is required for component #${i + 1} (${label}).`);
-            return;
+            return false;
           }
           if (!url) {
             alert(`⚠️ Validation Error: Redirect URL is required for component #${i + 1} (${label}).`);
-            return;
+            return false;
           }
           // Validate Redirect URL format
           const urlRegex = /^(https?:\/\/)[^\s$.?#].[^\s]*$/i;
           if (!urlRegex.test(url)) {
             alert(`⚠️ Validation Error: Redirect URL for component #${i + 1} (${label}) must be a valid URL starting with http:// or https://.`);
-            return;
+            return false;
           }
         }
 
@@ -2209,7 +2209,7 @@
           const validSlots = timeSlots.filter(t => t && t.trim());
           if (validSlots.length === 0) {
             alert(`⚠️ Validation Error: At least one Available Time Slot is required for component #${i + 1} (${label}).`);
-            return;
+            return false;
           }
         }
       }
@@ -2229,19 +2229,29 @@
         const data = await res.json();
         if (data.success) {
           demoCurrentFlowId = data.id;
-          alert('Flow saved successfully!');
+          if (showNotification) {
+            alert('Flow saved successfully!');
+          }
+          return true;
         } else {
-          alert('Failed to save flow.');
+          if (showNotification) {
+            alert('Failed to save flow.');
+          }
+          return false;
         }
       } catch (err) {
         console.error('Failed to save flow', err);
-        alert('Error saving flow.');
+        if (showNotification) {
+          alert('Error saving flow.');
+        }
+        return false;
       }
     }
 
     async function openDemoFlowPreview() {
       // Auto-save demo flow before previewing to ensure it's up to date
-      await saveDemoFlow();
+      const saved = await saveDemoFlow(false);
+      if (saved === false) return; // Prevent previewing if validations fail
 
       const overlay = document.getElementById('flow-preview-overlay');
       const iframe = document.getElementById('flow-preview-iframe');

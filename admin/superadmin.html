@@ -1158,14 +1158,9 @@
       window.location.replace('login.html');
     }
 
-    const token = sessionStorage.getItem('saas_token') || localStorage.getItem('saas_token');
-    const role  = sessionStorage.getItem('saas_role') || localStorage.getItem('saas_role');
+    const token = sessionStorage.getItem('saas_token');
+    const role  = sessionStorage.getItem('saas_role');
     
-    if (token) {
-      sessionStorage.setItem('saas_token', token);
-      sessionStorage.setItem('saas_role', role);
-    }
-
     if (!token || role !== 'super') {
       window.location.href = 'login.html';
     }
@@ -1194,7 +1189,7 @@
     }
 
     async function fetchAuth(url, options = {}) {
-      const activeToken = sessionStorage.getItem('saas_token') || localStorage.getItem('saas_token');
+      const activeToken = sessionStorage.getItem('saas_token');
       if (!activeToken) {
         window.location.href = 'login.html';
         return;

@@ -906,6 +906,7 @@
                 <p style="color:#666;font-size:13px;margin-top:4px;">Visually create chatbot conversation flows and components.</p>
               </div>
               <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="openDemoFlowPreview()" style="border-color:#4F46E5; color:#4F46E5; font-size:13px; padding: 8px 16px;">👁️ Preview Flow</button>
                 <button class="btn btn-primary" onclick="saveDemoFlow()" style="font-size:13px; padding: 8px 16px;">💾 Save Flow</button>
               </div>
             </div>
@@ -1120,6 +1121,24 @@
       <div class="form-actions" style="justify-content:flex-end;">
         <button class="btn btn-outline" onclick="closeEditPlanModal()">Cancel</button>
         <button class="btn btn-primary" onclick="submitEditPlan()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow Preview Modal -->
+  <div class="modal-overlay" id="flow-preview-overlay" onclick="closeDemoFlowPreview(event)" style="position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9999; display:none; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width: 450px; height: 80vh; background: #f0f2f5; display:flex; flex-direction:column; border-radius:12px; overflow:hidden;" onclick="event.stopPropagation()">
+      <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; padding: 15px 20px; display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin:0;">
+          <span style="color: #4F46E5;">👁️</span> Live Flow Preview
+        </h2>
+        <button class="btn btn-outline" onclick="document.getElementById('flow-preview-overlay').style.display='none'" style="padding: 6px 12px; font-size: 11px; cursor:pointer;">Close</button>
+      </div>
+      <div style="flex: 1; position: relative; overflow: hidden;">
+        <iframe id="flow-preview-iframe" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
+      </div>
+      <div style="padding: 12px; background: white; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b;">
+        This is a live preview of how your flow will appear to users.
       </div>
     </div>
   </div>
@@ -2142,6 +2161,59 @@
     }
 
     async function saveDemoFlow() {
+      // Flow nodes validations
+      for (let i = 0; i < demoFlowNodes.length; i++) {
+        const node = demoFlowNodes[i];
+        const label = node.label || node.type;
+        
+        // 1. Bot Asks prompt validation
+        if (!node.config.question || !node.config.question.trim()) {
+          alert(`⚠️ Validation Error: "Bot Asks" prompt is required for component #${i + 1} (${label}).`);
+          return;
+        }
+
+        // 2. Choice components options validation
+        if (node.type === 'single_choice' || node.type === 'multiple_choice') {
+          const options = node.config.options || [];
+          const validOptions = options.filter(opt => opt && opt.trim());
+          if (validOptions.length === 0) {
+            alert(`⚠️ Validation Error: At least one option/choice is required for component #${i + 1} (${label}).`);
+            return;
+          }
+        }
+
+        // 3. Website / Redirect URL components validation
+        if (node.type === 'website' || node.type === 'link') {
+          const buttonLabel = node.config.buttonLabel ? node.config.buttonLabel.trim() : '';
+          const url = node.config.url ? node.config.url.trim() : '';
+          
+          if (!buttonLabel) {
+            alert(`⚠️ Validation Error: Button Label is required for component #${i + 1} (${label}).`);
+            return;
+          }
+          if (!url) {
+            alert(`⚠️ Validation Error: Redirect URL is required for component #${i + 1} (${label}).`);
+            return;
+          }
+          // Validate Redirect URL format
+          const urlRegex = /^(https?:\/\/)[^\s$.?#].[^\s]*$/i;
+          if (!urlRegex.test(url)) {
+            alert(`⚠️ Validation Error: Redirect URL for component #${i + 1} (${label}) must be a valid URL starting with http:// or https://.`);
+            return;
+          }
+        }
+
+        // 4. Appointment components validation
+        if (node.type === 'appointment') {
+          const timeSlots = node.config.timeSlots || [];
+          const validSlots = timeSlots.filter(t => t && t.trim());
+          if (validSlots.length === 0) {
+            alert(`⚠️ Validation Error: At least one Available Time Slot is required for component #${i + 1} (${label}).`);
+            return;
+          }
+        }
+      }
+
       try {
         const payload = {
           id: demoCurrentFlowId,
@@ -2164,6 +2236,26 @@
       } catch (err) {
         console.error('Failed to save flow', err);
         alert('Error saving flow.');
+      }
+    }
+
+    async function openDemoFlowPreview() {
+      // Auto-save demo flow before previewing to ensure it's up to date
+      await saveDemoFlow();
+
+      const overlay = document.getElementById('flow-preview-overlay');
+      const iframe = document.getElementById('flow-preview-iframe');
+
+      if (overlay && iframe) {
+        iframe.src = `/admin/preview-test.html?bot_id=bot_demo_landing&api_key=key_gadigital_demo_bot&server=${encodeURIComponent(window.location.origin)}`;
+        overlay.style.display = 'flex';
+      }
+    }
+
+    function closeDemoFlowPreview(e) {
+      if (e.target.id === 'flow-preview-overlay') {
+        document.getElementById('flow-preview-overlay').style.display = 'none';
+        document.getElementById('flow-preview-iframe').src = 'about:blank';
       }
     }
 

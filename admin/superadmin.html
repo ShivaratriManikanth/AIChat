@@ -615,51 +615,15 @@
         </div>
       </div>
 
-      <!-- Create client -->
-      <div class="card">
-        <div class="card-header"><h2>➕ Onboard New Client</h2></div>
-        <div class="card-body">
-          <div class="create-form">
-            <div class="form-group">
-              <label>Company Name</label>
-              <input type="text" id="companyName" placeholder="e.g. Acme Corp">
-            </div>
-            <div class="form-group">
-              <label>Client Email</label>
-              <input type="email" id="clientEmail" placeholder="client@company.com">
-            </div>
-            <div class="form-group">
-              <label>Subscription Plan</label>
-              <select id="planId"></select>
-            </div>
-            <div class="form-group">
-              <label>Temporary Password</label>
-              <input type="text" id="clientPassword" placeholder="Auto-generated if blank">
-              <div class="password-requirements" id="createPwRequirements" style="display: none; margin-top: 10px;">
-                <p>Password Must Contain:</p>
-                <ul>
-                  <li id="create-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
-                  <li id="create-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
-                  <li id="create-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
-                  <li id="create-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
-                  <li id="create-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
-                </ul>
-              </div>
-              <div id="createPwStatusMsg" style="font-size: 13px; margin-top: 8px; display: none; text-align: left; font-weight: 500;"></div>
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-primary" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
-              <div id="statusMsg"></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Clients table -->
       <div class="card">
         <div class="card-header">
           <h2>🏢 Active Clients</h2>
-          <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="openOnboardModal()" style="font-size:13px;padding:8px 16px;">➕ Onboard New Client</button>
+            <button class="btn btn-outline" onclick="loadClients()" style="font-size:13px;padding:8px 16px;">🔄 Refresh</button>
+          </div>
         </div>
         <div style="padding:0;">
           <table class="data-table">
@@ -1062,6 +1026,48 @@
     </div>
   </div>
 
+  <!-- Onboard Client Modal -->
+  <div class="modal-overlay" id="onboardModal">
+    <div class="modal-content">
+      <div class="modal-header">➕ Onboard New Client</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Company Name</label>
+        <input type="text" id="companyName" placeholder="e.g. Acme Corp">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Client Email</label>
+        <input type="email" id="clientEmail" placeholder="client@company.com">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Subscription Plan</label>
+        <select id="planId"></select>
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Temporary Password <span style="font-weight:400;color:#aaa;font-size:11px;">(Auto-generated if blank)</span></label>
+        <div class="pw-wrap">
+          <input type="password" id="clientPassword" placeholder="Auto-generated if blank">
+          <button type="button" class="eye-btn" onclick="toggleOnboardPw()" title="Show/hide password">👁️</button>
+        </div>
+        <div class="password-requirements" id="createPwRequirements" style="display: none; margin-top: 10px;">
+          <p>Password Must Contain:</p>
+          <ul>
+            <li id="create-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
+            <li id="create-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+            <li id="create-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+            <li id="create-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
+            <li id="create-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
+          </ul>
+        </div>
+        <div id="createPwStatusMsg" style="font-size: 13px; margin-top: 8px; display: none; text-align: left; font-weight: 500;"></div>
+      </div>
+      <div class="form-actions" style="justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="closeOnboardModal()">Cancel</button>
+        <button class="btn btn-primary" id="onboardSubmitBtn" onclick="createClient()">🚀 Create Client &amp; Send Email</button>
+      </div>
+      <div id="statusMsg" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
   <!-- Add Plan Modal -->
   <div class="modal-overlay" id="addPlanModal">
     <div class="modal-content">
@@ -1457,6 +1463,34 @@
       }
     });
 
+    function openOnboardModal() {
+      document.getElementById('companyName').value = '';
+      document.getElementById('clientEmail').value = '';
+      document.getElementById('clientPassword').value = '';
+      document.getElementById('clientPassword').type = 'password';
+      document.getElementById('createPwRequirements').style.display = 'none';
+      document.getElementById('createPwStatusMsg').style.display = 'none';
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.className = ''; statusMsg.style.display = 'none';
+      
+      // Populate the select dropdown for subscription plans
+      const planOptions = PLANS.map(p => `<option value="${p.id}">${p.name} — ₹${p.price}/${p.duration}</option>`).join('');
+      document.getElementById('planId').innerHTML = planOptions;
+      
+      document.getElementById('onboardModal').classList.add('show');
+    }
+
+    function closeOnboardModal() {
+      document.getElementById('onboardModal').classList.remove('show');
+      document.getElementById('createPwRequirements').style.display = 'none';
+      document.getElementById('createPwStatusMsg').style.display = 'none';
+    }
+
+    function toggleOnboardPw() {
+      const inp = document.getElementById('clientPassword');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
     async function createClient() {
       const company = document.getElementById('companyName').value.trim();
       const email = document.getElementById('clientEmail').value.trim();
@@ -1480,6 +1514,12 @@
         msg.className = 'error'; return;
       }
 
+      const onboardBtn = document.getElementById('onboardSubmitBtn');
+      if (onboardBtn) {
+        onboardBtn.textContent = 'Creating...';
+        onboardBtn.disabled = true;
+      }
+
       try {
         const body = { company_name: company, email, plan_id: planId };
         if (password) body.password = password;
@@ -1499,6 +1539,7 @@
           document.getElementById('createPwRequirements').style.display = 'none';
           document.getElementById('createPwStatusMsg').style.display = 'none';
           loadClients();
+          setTimeout(closeOnboardModal, 2500);
         } else {
           const err = await res.json().catch(() => ({}));
           msg.textContent = '❌ ' + (err.error || 'Failed to create client.');
@@ -1507,6 +1548,11 @@
       } catch (e) {
         msg.textContent = '❌ Network error. Please try again.';
         msg.className = 'error';
+      } finally {
+        if (onboardBtn) {
+          onboardBtn.textContent = '🚀 Create Client & Send Email';
+          onboardBtn.disabled = false;
+        }
       }
     }
 

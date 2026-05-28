@@ -1321,7 +1321,7 @@
   // ---- Suggestions ------------------------------------------
   function renderSuggestions() {
     const box = document.getElementById('chatbot-suggestions');
-    if (!CONFIG.suggestedQuestions.length) { box.style.display = 'none'; return; }
+    if (!CONFIG.suggestedQuestions.length || (activeFlow && activeFlow.length > 0)) { box.style.display = 'none'; return; }
     box.innerHTML = CONFIG.suggestedQuestions.map(q =>
       `<button class="chatbot-suggestion">${q}</button>`
     ).join('');

@@ -1069,7 +1069,7 @@
                   </div>
                 </div>
                 <div class="form-actions">
-                  <button class="btn btn-primary" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
+                  <button class="btn btn-primary" id="dbot-save-btn" onclick="saveDemoBotConfig()">💾 Save Demo Bot Settings</button>
                 </div>
               </div>
             </div>
@@ -2212,6 +2212,26 @@
     }
 
     async function saveDemoBotConfig() {
+      const saveBtn = document.getElementById('dbot-save-btn');
+      const originalBtnHtml = saveBtn ? saveBtn.innerHTML : '💾 Save Demo Bot Settings';
+      
+      // Inject spin keyframes style if not present
+      if (!document.getElementById('dbot-spin-keyframes')) {
+        const style = document.createElement('style');
+        style.id = 'dbot-spin-keyframes';
+        style.textContent = `
+          @keyframes dbotSpin {
+            to { transform: rotate(360deg); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid #fff; border-radius:50%; border-top-color:transparent; animation:dbotSpin 0.6s linear infinite; margin-right:8px; vertical-align:middle;"></span> Saving Settings...`;
+      }
+
       const chatbotMode = document.querySelector('input[name="dbot-primary-mode"]:checked')?.value || 'aichat';
       const botName = document.getElementById('dbot-botName').value.trim();
       const companyName = document.getElementById('dbot-companyName').value.trim();
@@ -2271,6 +2291,11 @@
         msg.textContent = '❌ Network error. Please try again.';
         msg.className = 'error';
         msg.style.display = 'block';
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalBtnHtml;
+        }
       }
     }
 

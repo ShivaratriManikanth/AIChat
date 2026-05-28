@@ -811,6 +811,13 @@
       purchaseError.style.display = 'none';
       purchaseError.textContent = '';
 
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        purchaseError.textContent = '❌ Please enter a valid email address (e.g., name@company.com).';
+        purchaseError.style.display = 'block';
+        return;
+      }
+
       if (!checkPasswordStrength(password)) {
         return;
       }

@@ -502,7 +502,7 @@
       .chatbot-msg a { text-decoration: underline; }
 
       /* Reactions */
-      .msg-reactions { display: flex; gap: 4px; margin-top: 4px; }
+      .msg-reactions { display: none !important; }
       .msg-reactions button {
         background: none; border: 1px solid rgba(128,128,128,0.25);
         border-radius: 12px; padding: 2px 8px; font-size: 14px;
@@ -1552,7 +1552,6 @@
 
       typeText(textNode, text, () => {
         playSound('receive');
-        bubbleContainer.appendChild(createReactions(msgId));
         if (options.quickReplies) {
           bubbleContainer.appendChild(createQuickReplies(options.quickReplies));
         }

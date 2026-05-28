@@ -441,6 +441,9 @@
       color: #64748b; font-size: 14px;
     }
     .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; display: block; }
+    
+    .plan-price-val { color: #ffffff !important; font-size: 14.5px !important; }
+    .plan-price-duration { color: #cbd5e1 !important; font-size: 12px !important; margin-left: 2px !important; }
 
     @media (max-width: 768px) {
       .stats-row { grid-template-columns: 1fr; }
@@ -769,6 +772,8 @@
     body.light-theme .password-requirements li.invalid { color: #EF4444 !important; }
     body.light-theme .password-requirements li.valid .indicator { background: rgba(16, 185, 129, 0.1) !important; color: #10B981 !important; }
     body.light-theme .password-requirements li.invalid .indicator { background: rgba(239, 68, 68, 0.1) !important; color: #EF4444 !important; }
+    body.light-theme .plan-price-val { color: #1a1a2e !important; }
+    body.light-theme .plan-price-duration { color: #64748b !important; }
   </style>
 </head>
 <body>
@@ -1503,8 +1508,8 @@
               </div>
             </td>
             <td>
-                <strong style="color: #ffffff; font-size: 14.5px;">₹${p.price.toLocaleString()}</strong>
-                <span style="font-size: 12px; color: #cbd5e1; margin-left: 2px;">/mo</span>
+                <strong class="plan-price-val">₹${p.price.toLocaleString()}</strong>
+                <span class="plan-price-duration">/mo</span>
             </td>
             <td>
               <span class="badge badge-inactive" style="font-size: 12px; padding: 5px 10px;">⏳ ${p.duration}</span>

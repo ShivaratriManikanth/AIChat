@@ -674,19 +674,13 @@
           </div>
           <div class="form-group">
             <label>Choose a Password</label>
-            <input type="password" id="clientPassword" placeholder="Minimum 8 characters" required>
-            <div class="password-requirements" id="purchasePwRequirements">
-              <p>Password Must Contain:</p>
-              <ul>
-                <li id="purchase-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
-                <li id="purchase-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
-                <li id="purchase-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
-                <li id="purchase-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
-                <li id="purchase-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character</li>
-              </ul>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="password" id="clientPassword" placeholder="Minimum 8 characters" style="padding-right: 46px;" required>
+              <button type="button" onclick="togglePurchasePassword(event)" style="position: absolute; right: 12px; background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 16px; outline: none; display: flex; align-items: center; justify-content: center; height: 100%;" title="Toggle Password Visibility">👁️</button>
             </div>
             <div id="purchasePwStatusMsg" style="font-size: 13.5px; margin-top: 10px; display: none; text-align: left; font-weight: 500;"></div>
           </div>
+
           <p id="payment-disclaimer" style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px; text-align: center; min-height: 36px; line-height: 1.4;">
             By clicking "Proceed to Payment", you will be redirected to the secure Razorpay popup to pay for the selected plan instantly.
           </p>
@@ -746,55 +740,61 @@
       document.body.style.overflow = 'auto';
     }
 
-    // Password Strength Real-time Validation Helper
-    const purchaseReqElements = {
-      len: document.getElementById('purchase-req-len'),
-      upper: document.getElementById('purchase-req-upper'),
-      lower: document.getElementById('purchase-req-lower'),
-      number: document.getElementById('purchase-req-number'),
-      special: document.getElementById('purchase-req-special')
-    };
+    function togglePurchasePassword(event) {
+      event.preventDefault();
+      const input = document.getElementById('clientPassword');
+      const btn = event.currentTarget;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    }
 
-    function checkPasswordStrength(password, reqElements) {
+    function checkPasswordStrength(password) {
       const criteria = {
-        len: password.length >= 8,
-        upper: /[A-Z]/.test(password),
-        lower: /[a-z]/.test(password),
-        number: /[0-9]/.test(password),
-        special: /[^a-zA-Z0-9]/.test(password)
+        'Min 8 characters': password.length >= 8,
+        'At least 1 uppercase letter': /[A-Z]/.test(password),
+        'At least 1 lowercase letter': /[a-z]/.test(password),
+        'At least 1 number': /[0-9]/.test(password),
+        'At least 1 special character': /[^a-zA-Z0-9]/.test(password)
       };
 
-      for (const [key, met] of Object.entries(criteria)) {
-        const el = reqElements[key];
-        if (el) {
-          if (met) {
-            el.className = 'valid';
-            el.querySelector('.indicator').textContent = '✓';
-          } else {
-            el.className = 'invalid';
-            el.querySelector('.indicator').textContent = '✗';
-          }
-        }
-      }
+      const failed = Object.entries(criteria)
+        .filter(([_, met]) => !met)
+        .map(([label]) => label);
 
-      return Object.values(criteria).every(Boolean);
+      const statusMsg = document.getElementById('purchasePwStatusMsg');
+      if (failed.length > 0) {
+        statusMsg.innerHTML = `
+          <div style="color: #EF4444; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 12px; margin-top: 8px;">
+            <p style="font-weight: 600; margin-bottom: 6px; color: #FCA5A5; text-align: left;">⚠️ Please add the following details to your password:</p>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; text-align: left;">
+              ${failed.map(f => `<li style="display: flex; align-items: center; gap: 6px; color: #FCA5A5; font-size: 12.5px;"><span style="color: #EF4444; font-weight: bold;">✗</span> ${f}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+        statusMsg.style.display = 'block';
+        return false;
+      } else {
+        statusMsg.innerHTML = `
+          <div style="color: #10B981; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px; margin-top: 8px; font-weight: 600; text-align: left;">
+            ✓ Password meets all strength requirements.
+          </div>
+        `;
+        statusMsg.style.display = 'block';
+        return true;
+      }
     }
 
     document.getElementById('clientPassword').addEventListener('input', (e) => {
       const val = e.target.value;
-      const statusMsg = document.getElementById('purchasePwStatusMsg');
       if (val) {
-        const isStrong = checkPasswordStrength(val, purchaseReqElements);
-        statusMsg.style.display = 'block';
-        if (isStrong) {
-          statusMsg.textContent = '✓ Password meets all strength requirements.';
-          statusMsg.style.color = '#10B981';
-        } else {
-          statusMsg.textContent = '✗ Password must meet all requirements.';
-          statusMsg.style.color = '#EF4444';
-        }
+        checkPasswordStrength(val);
       } else {
-        statusMsg.style.display = 'none';
+        document.getElementById('purchasePwStatusMsg').style.display = 'none';
       }
     });
 
@@ -811,11 +811,7 @@
       purchaseError.style.display = 'none';
       purchaseError.textContent = '';
 
-      if (!checkPasswordStrength(password, purchaseReqElements)) {
-        const statusMsg = document.getElementById('purchasePwStatusMsg');
-        statusMsg.textContent = '⚠️ Password must meet all the requirements shown below.';
-        statusMsg.style.color = '#EF4444';
-        statusMsg.style.display = 'block';
+      if (!checkPasswordStrength(password)) {
         return;
       }
       

@@ -1351,7 +1351,7 @@
             </td>
             <td style="display:flex;gap:6px;">
               <button class="btn-sm" style="background:#F3F4F6;color:#333;" onclick="editClient('${c.id}','${email}','${company}', '${c.plan_id}')">Edit</button>
-              <button class="btn-sm btn-sm-view" onclick="alert('Client ID: ${c.id}')">View</button>
+              <button class="btn-sm btn-sm-view" onclick="viewClientDashboard('${c.id}')">View</button>
               <button class="btn-sm btn-sm-danger" onclick="deleteClient('${c.id}')">Delete</button>
             </td>
           </tr>`;
@@ -1565,6 +1565,11 @@
       document.getElementById('editPlanId').value = oldPlanId;
       document.getElementById('editPassword').value = '';
       document.getElementById('editModal').classList.add('show');
+    }
+
+    function viewClientDashboard(clientId) {
+      localStorage.setItem('impersonate_client_id', clientId);
+      window.location.href = '/admin/index.html';
     }
 
     function toggleEditPw() {

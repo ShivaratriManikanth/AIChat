@@ -595,6 +595,17 @@
       <h1 id="page-title">Dashboard</h1>
       <div class="topbar-right">
 
+        <!-- Super Admin Client Selector -->
+        <div class="domain-selector-wrap" id="super-client-selector-wrap" style="display: none; background: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%); margin-right: 8px;">
+          <span class="ds-icon">🏢</span>
+          <div>
+            <div class="ds-label">Impersonate Client</div>
+            <select id="super-client-selector" onchange="onSuperClientChange()">
+              <option value="system_demo_client">GAdigital Demo</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Global Domain / Bot Selector (always visible) -->
         <div class="domain-selector-wrap" id="global-domain-selector-wrap">
           <span class="ds-icon">🌐</span>
@@ -606,9 +617,8 @@
           </div>
         </div>
 
-
-
         <div class="server-status">Server Online</div>
+        <button class="refresh-btn" id="super-admin-btn" onclick="window.location.href='superadmin.html'" style="display: none; background: #FFF7ED; color: #D97706; border: 1px solid #FED7AA; margin-right: 8px;">⚡ Super Admin Panel</button>
         <button class="refresh-btn" onclick="logout()" style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3;">🚪 Logout</button>
         <button class="refresh-btn" onclick="refreshAll()">🔄 Refresh</button>
       </div>
@@ -1578,9 +1588,10 @@
     const role  = localStorage.getItem('saas_role');
     if (!token) {
       window.location.href = '/admin/login.html';
-    } else if (role === 'super') {
-      window.location.href = '/admin/superadmin.html';
     }
+
+    // Impersonation helper variable for super admins
+    let impersonateClientId = localStorage.getItem('impersonate_client_id') || 'system_demo_client';
 
     function clearSaasSession() {
       localStorage.removeItem('saas_token');
@@ -1598,6 +1609,9 @@
     async function fetchAuth(url, options = {}) {
       if (!options.headers) options.headers = {};
       options.headers['Authorization'] = `Bearer ${token}`;
+      if (role === 'super') {
+        options.headers['X-Impersonate-Client'] = impersonateClientId;
+      }
       const res = await fetch(url, options);
       if (res.status === 401) {
         clearSaasSession();
@@ -3186,16 +3200,72 @@
 
 
 
+    async function initSuperAdminImpersonation() {
+      if (role !== 'super') return;
+
+      // Show super admin buttons and dropdowns
+      const clientSelectWrap = document.getElementById('super-client-selector-wrap');
+      const superAdminBtn = document.getElementById('super-admin-btn');
+      if (clientSelectWrap) clientSelectWrap.style.display = 'flex';
+      if (superAdminBtn) superAdminBtn.style.display = 'flex';
+
+      // Load all clients to populate the dropdown
+      try {
+        const res = await fetchAuth(`${API}/api/super/clients`);
+        if (res && res.ok) {
+          const clients = await res.json();
+          const select = document.getElementById('super-client-selector');
+          if (select && clients.length > 0) {
+            let options = `<option value="system_demo_client">GAdigital Demo (Demo)</option>`;
+            clients.forEach(c => {
+              if (c.id !== 'system_demo_client') {
+                options += `<option value="${c.id}">${c.company_name || c.email} (${c.email})</option>`;
+              }
+            });
+            select.innerHTML = options;
+            select.value = impersonateClientId;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load clients for impersonation:', err);
+      }
+    }
+
+    function onSuperClientChange() {
+      const select = document.getElementById('super-client-selector');
+      if (!select) return;
+      impersonateClientId = select.value;
+      localStorage.setItem('impersonate_client_id', impersonateClientId);
+      
+      // Reset selected bot
+      selectedBotId = '';
+      localStorage.removeItem('dashboard_domain_filter');
+      const domainSelect = document.getElementById('global-domain-selector');
+      if (domainSelect) domainSelect.value = '';
+
+      // Reload config, stats, and lists
+      populateDomainDropdown().then(() => {
+        loadStats();
+        loadUsers();
+        loadSessions();
+        loadLeads();
+      });
+      loadConfig();
+      loadFlow();
+    }
+
     // ---- Init -----------------------------------------------
-    populateDomainDropdown().then(() => {
-      loadStats();
-      loadUsers();
-      loadSessions();
-      loadLeads();
+    initSuperAdminImpersonation().then(() => {
+      populateDomainDropdown().then(() => {
+        loadStats();
+        loadUsers();
+        loadSessions();
+        loadLeads();
+      });
+      loadConfig();
+      loadFlow();
+      initEmbedPage();
     });
-    loadConfig();
-    loadFlow();
-    initEmbedPage();
   </script>
 
   <!-- Flow Preview Modal -->

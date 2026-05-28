@@ -2180,6 +2180,16 @@ function requireAuth(req, res, next) {
     if (err) return res.status(401).json({ error: 'Invalid or expired token' });
     req.clientId = decoded.clientId;
     req.userRole = decoded.role;
+    if (decoded.role === 'super') {
+      const impersonateHeader = req.headers['x-impersonate-client'];
+      const impersonateQuery = req.query.impersonateClientId;
+      const impersonateId = impersonateHeader || impersonateQuery;
+      if (impersonateId) {
+        req.clientId = impersonateId;
+      } else {
+        req.clientId = 'system_demo_client';
+      }
+    }
     next();
   });
 }

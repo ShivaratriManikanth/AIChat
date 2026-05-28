@@ -1828,6 +1828,41 @@
     // Flow Interception
     if (activeFlow && activeFlow.length > 0 && currentFlowNodeIndex >= 0 && currentFlowNodeIndex < activeFlow.length) {
       const node = activeFlow[currentFlowNodeIndex];
+      
+      // Constraint validation for email, phone, and numbers
+      if (node.type === 'email') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(sendText.trim())) {
+          hideTyping();
+          setTimeout(() => {
+            addMessage("⚠️ Please enter a valid email address (e.g., name@company.com).", "bot", {});
+          }, 300);
+          return;
+        }
+      }
+      
+      if (node.type === 'mobile' || node.type === 'phone') {
+        const phoneRegex = /^\+?[0-9\s\-()]{7,15}$/;
+        if (!phoneRegex.test(sendText.trim())) {
+          hideTyping();
+          setTimeout(() => {
+            addMessage("⚠️ Please enter a valid phone number (e.g., +91 98765-43210 or 9876543210).", "bot", {});
+          }, 300);
+          return;
+        }
+      }
+
+      if (node.type === 'number') {
+        const numStr = sendText.trim();
+        if (numStr === '' || isNaN(Number(numStr))) {
+          hideTyping();
+          setTimeout(() => {
+            addMessage("⚠️ Please enter a valid number.", "bot", {});
+          }, 300);
+          return;
+        }
+      }
+
       try {
         const headers = { 'Content-Type': 'application/json' };
         if (API_KEY) headers['X-Bot-Key'] = API_KEY;

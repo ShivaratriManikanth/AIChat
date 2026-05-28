@@ -1126,13 +1126,13 @@
   </div>
 
   <!-- Flow Preview Modal -->
-  <div class="modal-overlay" id="flow-preview-overlay" onclick="closeDemoFlowPreview(event)" style="position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9999; display:none; align-items:center; justify-content:center;">
+  <div class="modal-overlay" id="flow-preview-overlay" onclick="closeDemoFlowPreview(event)">
     <div class="modal-content" style="max-width: 450px; height: 80vh; background: #f0f2f5; display:flex; flex-direction:column; border-radius:12px; overflow:hidden;" onclick="event.stopPropagation()">
       <div class="card-header" style="background: white; border-bottom: 1px solid #e2e8f0; padding: 15px 20px; display:flex; justify-content:space-between; align-items:center;">
         <h2 style="font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin:0;">
           <span style="color: #4F46E5;">👁️</span> Live Flow Preview
         </h2>
-        <button class="btn btn-outline" onclick="document.getElementById('flow-preview-overlay').style.display='none'" style="padding: 6px 12px; font-size: 11px; cursor:pointer;">Close</button>
+        <button class="btn btn-outline" onclick="closeDemoFlowPreviewBtn()" style="padding: 6px 12px; font-size: 11px; cursor:pointer;">Close</button>
       </div>
       <div style="flex: 1; position: relative; overflow: hidden;">
         <iframe id="flow-preview-iframe" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
@@ -2257,16 +2257,23 @@
       const iframe = document.getElementById('flow-preview-iframe');
 
       if (overlay && iframe) {
-        iframe.src = `/admin/preview-test.html?bot_id=bot_demo_landing&api_key=key_gadigital_demo_bot&server=${encodeURIComponent(window.location.origin)}`;
-        overlay.style.display = 'flex';
+        iframe.src = `preview-test.html?bot_id=bot_demo_landing&api_key=key_gadigital_demo_bot&server=${encodeURIComponent(window.location.origin)}`;
+        overlay.classList.add('show');
       }
     }
 
     function closeDemoFlowPreview(e) {
       if (e.target.id === 'flow-preview-overlay') {
-        document.getElementById('flow-preview-overlay').style.display = 'none';
+        const overlay = document.getElementById('flow-preview-overlay');
+        overlay.classList.remove('show');
         document.getElementById('flow-preview-iframe').src = 'about:blank';
       }
+    }
+
+    function closeDemoFlowPreviewBtn() {
+      const overlay = document.getElementById('flow-preview-overlay');
+      overlay.classList.remove('show');
+      document.getElementById('flow-preview-iframe').src = 'about:blank';
     }
 
     // ---- Demo Bot Chat History Logic ----

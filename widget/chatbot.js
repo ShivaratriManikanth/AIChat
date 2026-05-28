@@ -448,41 +448,41 @@
       }
 
       .chatbot-msg {
-        padding: 12px 18px;
-        font-size: 14px;
-        line-height: 1.5;
-        word-wrap: break-word; word-break: break-word; overflow-wrap: break-word;
-        width: fit-content;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+        padding: 12px 18px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important;
+        width: fit-content !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
       }
       .chatbot-msg .msg-text {
         display: inline;
       }
       .light .chatbot-msg.bot {
-        background: #ffffff;
-        color: #1e293b;
-        border-radius: 18px 18px 18px 4px;
-        border: 1px solid rgba(226, 232, 240, 0.5);
+        background: #ffffff !important;
+        color: #1e293b !important;
+        border-radius: 18px 18px 18px 4px !important;
+        border: 1px solid #e2e8f0 !important;
       }
       .dark .chatbot-msg.bot {
-        background: #1f2937;
-        color: #f3f4f6;
-        border-radius: 18px 18px 18px 4px;
-        border: 1px solid rgba(55, 65, 81, 0.5);
+        background: #1f2937 !important;
+        color: #f3f4f6 !important;
+        border-radius: 18px 18px 18px 4px !important;
+        border: 1px solid rgba(55, 65, 81, 0.5) !important;
       }
       .chatbot-msg.user {
-        background: #0b113a;
-        color: #ffffff;
-        border-radius: 18px 18px 4px 18px;
-        border: none;
-        box-shadow: 0 4px 15px rgba(11, 17, 58, 0.15);
+        background: #0b113a !important;
+        color: #ffffff !important;
+        border-radius: 18px 18px 4px 18px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(11, 17, 58, 0.15) !important;
       }
       .dark .chatbot-msg.user {
-        background: #4f46e5;
-        color: #ffffff;
-        border-radius: 18px 18px 4px 18px;
-        border: none;
-        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25);
+        background: #4f46e5 !important;
+        color: #ffffff !important;
+        border-radius: 18px 18px 4px 18px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25) !important;
       }
 
       .msg-time {

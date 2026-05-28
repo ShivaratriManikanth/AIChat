@@ -685,6 +685,21 @@
       color: #f87171;
     }
 
+    /* Theme Text Adaptability */
+    .theme-text-main {
+      color: #f8fafc !important;
+    }
+    body.light-theme .theme-text-main {
+      color: #1e293b !important;
+    }
+    
+    .theme-text-muted {
+      color: #94a3b8 !important;
+    }
+    body.light-theme .theme-text-muted {
+      color: #64748b !important;
+    }
+
     /* ============ LIGHT THEME OVERRIDES ============ */
     body.light-theme {
       background: #f8fafc !important;
@@ -1079,8 +1094,8 @@
     <div class="panel" id="page-dbot-aichat">
             <div style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
               <div>
-                <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
-                <p style="color:#666;font-size:13px;margin-top:4px;">Train your landing page chatbot on your custom domain, texts, and PDF documents.</p>
+                <h2 class="theme-text-main" style="font-size:18px; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
+                <p class="theme-text-muted" style="font-size:13px;margin-top:4px;">Train your landing page chatbot on your custom domain, texts, and PDF documents.</p>
               </div>
               <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:10px 16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <span style="font-size:13px; font-weight:700; color:#1e293b;">AI Responses</span>
@@ -1166,7 +1181,7 @@
                 <div style="display:flex; align-items:center; gap:10px;">
                   <div style="width:32px; height:32px; background:#f3f4f6; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:15px;">📚</div>
                   <div>
-                    <h2 style="font-size:14px; font-weight:700; color:#1a1a2e; margin:0;">Trained Knowledge Base Chunks</h2>
+                    <h2 class="theme-text-main" style="font-size:14px; font-weight:700; margin:0;">Trained Knowledge Base Chunks</h2>
                     <div style="font-size:11px; color:#888; margin-top:2px;" id="dbot-faq-count">Loading...</div>
                   </div>
                 </div>
@@ -1184,8 +1199,8 @@
     <div class="panel" id="page-dbot-flow">
             <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <h2 style="font-size:18px;color:#1a1a2e; font-weight: 700;">🔀 Flow Builder</h2>
-                <p style="color:#666;font-size:13px;margin-top:4px;">Visually create chatbot conversation flows and components.</p>
+                <h2 class="theme-text-main" style="font-size:18px; font-weight: 700;">🔀 Flow Builder</h2>
+                <p class="theme-text-muted" style="font-size:13px;margin-top:4px;">Create visual guided flows for the landing page chatbot.</p>
               </div>
               <div style="display:flex; gap:10px;">
                 <button class="btn btn-outline" onclick="openDemoFlowPreview()" style="border-color:#4F46E5; color:#4F46E5; font-size:13px; padding: 8px 16px;">👁️ Preview Flow</button>
@@ -1231,8 +1246,8 @@
     <!-- ============ PANEL: CHAT HISTORY ============ -->
     <div class="panel" id="page-dbot-chats">
             <div style="margin-bottom:20px;">
-              <h2 style="font-size:18px;color:#1a1a2e; font-weight:700;">💬 User Conversations</h2>
-              <p style="color:#666;font-size:13px;margin-top:4px;">View conversations between users and the landing page demo chatbot.</p>
+              <h2 class="theme-text-main" style="font-size:18px; font-weight:700;">💬 User Conversations</h2>
+              <p class="theme-text-muted" style="font-size:13px;margin-top:4px;">View conversations between users and the landing page demo chatbot.</p>
             </div>
             
             <div style="display:grid; grid-template-columns: 320px 1fr; gap: 20px; background: white; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; height: 500px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">

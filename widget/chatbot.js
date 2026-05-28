@@ -42,6 +42,7 @@
   const LS_LEAD    = `chatbot_lead_captured_${BOT_ID}`;
   const LS_INTER   = `chatbot_interactions_${BOT_ID}`;
   const LS_SESSION_TS = `chatbot_session_ts_${BOT_ID}`;
+  const LS_NAME    = `chatbot_user_name_${BOT_ID}`;
 
   // Clear previous chat history and session on startup to ensure a completely fresh chat session upon page refresh
   localStorage.removeItem(LS_HISTORY);
@@ -56,6 +57,31 @@
   let messageCount = 0;
   let ratingGiven = false;
   let isFullscreen = false;
+  let userName = localStorage.getItem(LS_NAME) || '';
+
+  function extractUserName(text) {
+    if (!text) return null;
+    const namePatterns = [
+      /my name is\s+([a-zA-Z\s]{2,30})/i,
+      /i'm\s+([a-zA-Z\s]{2,30})/i,
+      /i am\s+([a-zA-Z\s]{2,30})/i,
+      /im\s+([a-zA-Z\s]{2,30})/i,
+      /this is\s+([a-zA-Z\s]{2,30})/i,
+      /call me\s+([a-zA-Z\s]{2,30})/i,
+      /myself\s+([a-zA-Z\s]{2,30})/i
+    ];
+    for (const regex of namePatterns) {
+      const match = text.match(regex);
+      if (match && match[1]) {
+        let extracted = match[1].trim();
+        extracted = extracted.replace(/[.,?!]/g, '').trim();
+        if (extracted.length >= 2) {
+          return extracted.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+      }
+    }
+    return null;
+  }
   let isSearchOpen = false;
   let chatIsOpen = false;
   let userEmail = localStorage.getItem(LS_EMAIL) || '';
@@ -89,6 +115,7 @@
           localStorage.removeItem(LS_INTER);
           localStorage.removeItem(LS_LEAD);
           localStorage.removeItem(LS_EMAIL);
+          localStorage.removeItem(LS_NAME);
         }
       }
     } catch (e) {}
@@ -1858,6 +1885,36 @@
   async function sendMessage(text) {
     if (!text.trim() && !pendingFile) return;
 
+    // Extract user's name if they reply with it
+    if (!userName && text) {
+      let extracted = extractUserName(text);
+      if (!extracted) {
+        // Fallback: check if the previous message in history asked for their name
+        try {
+          const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
+          if (history.length > 0) {
+            const lastBotMsg = history[history.length - 1];
+            if (lastBotMsg && lastBotMsg.role === 'bot') {
+              const botText = lastBotMsg.content.toLowerCase();
+              if (botText.includes('your name') || botText.includes('may i know who') || botText.includes('call you') || botText.includes('introduce yourself') || botText.includes('introduce you')) {
+                const words = text.trim().split(/\s+/);
+                if (words.length >= 1 && words.length <= 3) {
+                  const cleaned = text.trim().replace(/[.,?!]/g, '');
+                  if (cleaned.length >= 2 && /^[a-zA-Z\s]+$/.test(cleaned)) {
+                    extracted = cleaned.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      if (extracted) {
+        userName = extracted;
+        localStorage.setItem(LS_NAME, userName);
+      }
+    }
+
     const fileOpts = {};
     let fileToSend = null;
     if (pendingFile) {
@@ -1888,6 +1945,15 @@
     if (activeFlow && activeFlow.length > 0 && currentFlowNodeIndex >= 0 && currentFlowNodeIndex < activeFlow.length) {
       const node = activeFlow[currentFlowNodeIndex];
       
+      // If node asks for name, save it
+      if (node.type === 'name' || (node.config && node.config.question && node.config.question.toLowerCase().includes('name')) || (node.label && node.label.toLowerCase().includes('name'))) {
+        const extracted = sendText.trim().replace(/[.,?!]/g, '');
+        if (extracted.length >= 2) {
+          userName = extracted.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          localStorage.setItem(LS_NAME, userName);
+        }
+      }
+
       // Constraint validation for email, phone, and numbers
       if (node.type === 'email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1931,7 +1997,7 @@
           headers,
           body: JSON.stringify({
             message: sendText, sessionId: SESSION_ID, clientId: CLIENT_ID, flowNodeId: node.id, flowId: currentFlowId,
-            lang: currentLang, email: userEmail, file: fileToSend, pageUrl, botId: BOT_ID, widgetVersion: WIDGET_VERSION
+            lang: currentLang, email: userEmail, userName: userName, file: fileToSend, pageUrl, botId: BOT_ID, widgetVersion: WIDGET_VERSION
           })
         });
         
@@ -1970,6 +2036,7 @@
           clientId: CLIENT_ID,
           lang: currentLang,
           email: userEmail,
+          userName: userName,
           file: fileToSend,
           pageUrl,
           botId: BOT_ID,
@@ -1981,8 +2048,18 @@
 
       if (res.ok) {
         const data = await res.json();
-        const qr = (data.suggestions && data.suggestions.length > 0) ? data.suggestions : detectQuickReplies(data.reply);
-        addMessage(data.reply, 'bot', { quickReplies: qr });
+        let reply = data.reply;
+        if (userName) {
+          const lowerReply = reply.toLowerCase();
+          const lowerName = userName.toLowerCase();
+          if (!lowerReply.includes(lowerName)) {
+            const greetings = ["Hi", "Hello", "Nice to meet you", "Welcome"];
+            const chosenGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+            reply = `${chosenGreeting} ${userName}! ${reply}`;
+          }
+        }
+        const qr = (data.suggestions && data.suggestions.length > 0) ? data.suggestions : detectQuickReplies(reply);
+        addMessage(reply, 'bot', { quickReplies: qr });
         // Show lead form after N interactions
         setTimeout(maybeShowLeadForm, 1500);
         // Auto-suggest complaint form if user mentioned a complaint
@@ -2422,7 +2499,10 @@
         renderNextFlowNode();
       } else {
         const greeting = getTimeGreeting();
-        addMessage(`${greeting}! ${CONFIG.welcomeMessage}`, 'bot', {
+        const welcomeText = userName 
+          ? `${greeting} ${userName}! ${CONFIG.welcomeMessage}` 
+          : `${greeting}! ${CONFIG.welcomeMessage}`;
+        addMessage(welcomeText, 'bot', {
           quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
         });
       }
@@ -2498,10 +2578,14 @@
             sessionId: SESSION_ID, name, phone, email: userEmail, pageUrl
           })
         });
+        if (name) {
+          userName = name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          localStorage.setItem(LS_NAME, userName);
+        }
         leadCaptured = true;
         localStorage.setItem(LS_LEAD, 'true');
         form.remove();
-        addMessage('Thanks! Our team will contact you soon. 🙌', 'bot', { noAnimate: false });
+        addMessage(`Thanks ${userName || ''}! Our team will contact you soon. 🙌`.replace('  ', ' '), 'bot', { noAnimate: false });
       } catch (e) {
         alert('Could not save — please try again.');
       }
@@ -2616,6 +2700,10 @@
         const data = await res.json();
 
         if (res.ok) {
+          if (name) {
+            userName = name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            localStorage.setItem(LS_NAME, userName);
+          }
           // KEEP the form visible. Disable inputs, lock button, append confirmation row.
           card.querySelectorAll('[data-cmp]').forEach(el => { el.disabled = true; });
           submitBtn.disabled = true;

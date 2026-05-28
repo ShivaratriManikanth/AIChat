@@ -880,13 +880,37 @@ app.get('/api/active-flow', checkApiKey, (req, res) => {
 
 // POST /api/chat — Main chat endpoint
 app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) => {
-  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email, flowNodeId, flowId } = req.body;
+  let { message, sessionId, file, pageUrl, botId, widgetVersion, lang, email, flowNodeId, flowId, userName } = req.body;
 
   if (!message && !file) {
     return res.status(400).json({ error: 'message or file is required' });
   }
   if (!sessionId) {
     return res.status(400).json({ error: 'sessionId is required' });
+  }
+
+  // Extract user's name if they reply with it
+  if (!userName && message) {
+    const namePatterns = [
+      /my name is\s+([a-zA-Z\s]{2,30})/i,
+      /i'm\s+([a-zA-Z\s]{2,30})/i,
+      /i am\s+([a-zA-Z\s]{2,30})/i,
+      /im\s+([a-zA-Z\s]{2,30})/i,
+      /this is\s+([a-zA-Z\s]{2,30})/i,
+      /call me\s+([a-zA-Z\s]{2,30})/i,
+      /myself\s+([a-zA-Z\s]{2,30})/i
+    ];
+    for (const regex of namePatterns) {
+      const match = message.match(regex);
+      if (match && match[1]) {
+        let extracted = match[1].trim();
+        extracted = extracted.replace(/[.,?!]/g, '').trim();
+        if (extracted.length >= 2) {
+          userName = extracted.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          break;
+        }
+      }
+    }
   }
 
   // ---- Plan Limit Check ----
@@ -1022,7 +1046,10 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
 3. NEVER make up or hallucinate facts, numbers, dates, pricing, features, or links not explicitly stated in the KNOWLEDGE BASE.
 4. Keep your response factual, precise, and directly based on the provided KNOWLEDGE BASE.`;
 
-  const contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + kbDirective + advancedInstructions;
+  let contextHint = (pageUrl ? `\n\nUser is currently on the page: ${pageUrl}` : '') + langHint + kbDirective + advancedInstructions;
+  if (userName) {
+    contextHint += `\n\nUser's Name: The user's name is "${userName}". You MUST address/reply to the user by their name ("${userName}") naturally in your responses.`;
+  }
 
   let systemPromptToUse = config.systemPrompt || '';
   if (req.bot?.bot_id === 'bot_demo_landing') {

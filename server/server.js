@@ -260,6 +260,31 @@ try {
     db.prepare("INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES ('bot_demo_landing', 'GAdigital Assistant', 'key_gadigital_demo_bot', ?, 'system_demo_client')").run(defaultDemoConfig);
   }
 
+  // Auto-sanitize all bots configurations: Remove "pramod" from welcome messages
+  try {
+    const allBots = db.prepare("SELECT bot_id, config FROM bots").all();
+    for (const b of allBots) {
+      if (b.config) {
+        let cfg = JSON.parse(b.config);
+        if (cfg.welcomeMessage && cfg.welcomeMessage.toLowerCase().includes('pramod')) {
+          // Remove "I am pramod" or "pramod" from welcomeMessage
+          cfg.welcomeMessage = cfg.welcomeMessage
+            .replace(/[\s.,?!]*i am pramod[\s.,?!]*/gi, ' ')
+            .replace(/[\s.,?!]*pramod[\s.,?!]*/gi, ' ')
+            .trim();
+          // If message got cleared or empty, set standard fallback
+          if (!cfg.welcomeMessage || cfg.welcomeMessage.length < 5) {
+            cfg.welcomeMessage = "Hello! Welcome to GAdigital Solution. How can I assist you today?";
+          }
+          db.prepare("UPDATE bots SET config = ? WHERE bot_id = ?").run(JSON.stringify(cfg), b.bot_id);
+          console.log(`Successfully removed 'pramod' from bot ${b.bot_id} welcomeMessage configuration.`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error sanitizing chatbot configs from 'pramod':", e);
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS flows (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

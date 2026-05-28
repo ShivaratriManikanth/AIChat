@@ -554,7 +554,6 @@
       <h1 id="page-title">Platform Stats</h1>
       <div class="topbar-right">
         <span class="super-badge">⚡ SUPER ADMIN</span>
-        <a href="/admin/" style="font-size:13px;color:#6366F1;text-decoration:none;font-weight:600;">← Client Dashboard</a>
         <button class="refresh-btn" onclick="logout()" style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight:600; cursor:pointer; border: none;">🚪 Logout</button>
       </div>
     </div>
@@ -1126,8 +1125,28 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('saas_token');
-    const role  = localStorage.getItem('saas_role');
+    // Page reload/refresh detection
+    const isReload = (window.performance && window.performance.navigation && window.performance.navigation.type === 1) || 
+      (window.performance && window.performance.getEntriesByType && window.performance.getEntriesByType('navigation')[0] && window.performance.getEntriesByType('navigation')[0].type === 'reload');
+
+    if (isReload) {
+      sessionStorage.clear();
+      localStorage.removeItem('saas_token');
+      localStorage.removeItem('saas_role');
+      localStorage.removeItem('saas_client_id');
+      localStorage.removeItem('token');
+      localStorage.removeItem('impersonate_client_id');
+      window.location.replace('login.html');
+    }
+
+    const token = sessionStorage.getItem('saas_token') || localStorage.getItem('saas_token');
+    const role  = sessionStorage.getItem('saas_role') || localStorage.getItem('saas_role');
+    
+    if (token) {
+      sessionStorage.setItem('saas_token', token);
+      sessionStorage.setItem('saas_role', role);
+    }
+
     if (!token || role !== 'super') {
       window.location.href = 'login.html';
     }
@@ -1140,11 +1159,14 @@
     }
 
     function clearSaasSession() {
+      sessionStorage.clear();
       localStorage.removeItem('saas_token');
       localStorage.removeItem('saas_role');
       localStorage.removeItem('saas_client_id');
       localStorage.removeItem('dashboard_domain_filter');
       localStorage.removeItem('current_working_bot_id');
+      localStorage.removeItem('token');
+      localStorage.removeItem('impersonate_client_id');
     }
 
     function logout() {
@@ -1153,7 +1175,7 @@
     }
 
     async function fetchAuth(url, options = {}) {
-      const activeToken = localStorage.getItem('saas_token');
+      const activeToken = sessionStorage.getItem('saas_token') || localStorage.getItem('saas_token');
       if (!activeToken) {
         window.location.href = 'login.html';
         return;
@@ -1568,6 +1590,7 @@
     }
 
     function viewClientDashboard(clientId) {
+      sessionStorage.setItem('impersonate_client_id', clientId);
       localStorage.setItem('impersonate_client_id', clientId);
       window.location.href = '/admin/index.html';
     }

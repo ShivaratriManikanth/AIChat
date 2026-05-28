@@ -280,8 +280,8 @@
   <script>
     // Auto-redirect if already logged in to prevent having to re-authenticate
     (function() {
-      const existingToken = localStorage.getItem('saas_token');
-      const existingRole = localStorage.getItem('saas_role');
+      const existingToken = sessionStorage.getItem('saas_token');
+      const existingRole = sessionStorage.getItem('saas_role');
       if (existingToken) {
         if (existingRole === 'super') {
           window.location.href = '/admin/superadmin.html';
@@ -324,6 +324,7 @@
 
         if (res.ok && data.token) {
           // Clear stale filters and cached views from previous/other login sessions
+          sessionStorage.clear();
           localStorage.removeItem('saas_token');
           localStorage.removeItem('saas_role');
           localStorage.removeItem('saas_client_id');
@@ -331,7 +332,12 @@
           localStorage.removeItem('current_working_bot_id');
           localStorage.removeItem('token');
 
-          // Store new session tokens
+          // Store new session tokens in sessionStorage and localStorage
+          sessionStorage.setItem('saas_token', data.token);
+          sessionStorage.setItem('saas_role', data.role);
+          sessionStorage.setItem('saas_client_id', data.clientId || '');
+          sessionStorage.setItem('token', data.token);
+
           localStorage.setItem('saas_token', data.token);
           localStorage.setItem('saas_role', data.role);
           localStorage.setItem('saas_client_id', data.clientId || '');

@@ -1739,21 +1739,30 @@
         <!-- Trained Knowledge List -->
         <div class="card">
           <div class="card-header"
-            style="background:white;display:flex;justify-content:space-between;align-items:center;">
+            style="background:white;display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding:15px 20px;">
             <div style="display:flex;align-items:center;gap:10px;">
               <div
-                style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;">
+                style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;color:white;">
                 📚</div>
               <div>
-                <div style="font-size:14px;font-weight:700;color:#0f172a;">Trained Knowledge</div>
+                <div style="font-size:15px;font-weight:800;color:#0f172a;">Trained Knowledge Base</div>
                 <div style="font-size:12px;color:#64748b;" id="faq-count-label">Loading...</div>
               </div>
             </div>
-            <button class="btn btn-danger" style="padding:6px 14px;font-size:12px;" onclick="clearAllKnowledge()">🗑
-              Clear All</button>
+            <button class="btn btn-danger" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;" onclick="clearAllKnowledge()">🗑
+              Clear All Knowledge</button>
           </div>
-          <div class="card-body" style="padding:0;">
-            <div id="faq-list" style="max-height:420px;overflow-y:auto;"></div>
+          <div class="card-body" style="padding:20px;">
+            <!-- 3 Tabs Navigation -->
+            <div style="display:flex; gap:10px; margin-bottom:16px; border-bottom:1.5px solid #f1f5f9; padding-bottom:10px;">
+              <button class="kb-tab-btn-client active" id="tab-btn-url" onclick="switchClientKbTab('url')" style="padding:8px 16px; border:none; background:none; font-size:13px; font-weight:700; color:#6366f1; border-bottom:2px solid #6366f1; cursor:pointer; transition:all 0.2s;">🌐 Website URLs (<span id="client-count-url">0</span>)</button>
+              <button class="kb-tab-btn-client" id="tab-btn-pdf" onclick="switchClientKbTab('pdf')" style="padding:8px 16px; border:none; background:none; font-size:13px; font-weight:600; color:#64748b; border-bottom:2px solid transparent; cursor:pointer; transition:all 0.2s;">📄 PDF Uploads (<span id="client-count-pdf">0</span>)</button>
+              <button class="kb-tab-btn-client" id="tab-btn-text" onclick="switchClientKbTab('text')" style="padding:8px 16px; border:none; background:none; font-size:13px; font-weight:600; color:#64748b; border-bottom:2px solid transparent; cursor:pointer; transition:all 0.2s;">📝 Paste Text Content (<span id="client-count-text">0</span>)</button>
+            </div>
+
+            <div id="faq-list-url" class="client-kb-tab-content" style="display:block; max-height:420px;overflow-y:auto;"></div>
+            <div id="faq-list-pdf" class="client-kb-tab-content" style="display:none; max-height:420px;overflow-y:auto;"></div>
+            <div id="faq-list-text" class="client-kb-tab-content" style="display:none; max-height:420px;overflow-y:auto;"></div>
           </div>
         </div>
 
@@ -3099,33 +3108,140 @@
     }
 
     // ---- FAQ Management -------------------------------------
-    function renderFaqs() {
-      const list = document.getElementById('faq-list');
-      const countLabel = document.getElementById('faq-count-label');
-      if (!list) return;
-      if (!config.faqs || config.faqs.length === 0) {
-        list.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;">No knowledge entries yet. Add content above to train the bot.</div>';
-        if (countLabel) countLabel.textContent = '0 entries';
-        return;
+    let activeClientKbTab = 'url';
+    function switchClientKbTab(tab) {
+      activeClientKbTab = tab;
+      document.querySelectorAll('.kb-tab-btn-client').forEach(el => {
+        el.classList.remove('active');
+        el.style.color = '#64748b';
+        el.style.fontWeight = '600';
+        el.style.borderBottomColor = 'transparent';
+      });
+      const activeBtn = document.getElementById(`tab-btn-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.color = '#6366f1';
+        activeBtn.style.fontWeight = '700';
+        activeBtn.style.borderBottomColor = '#6366f1';
       }
-      if (countLabel) countLabel.textContent = config.faqs.length + ' entries trained';
-      list.innerHTML = config.faqs.map((f, i) => `
-        <div style="border-bottom:1px solid #f1f5f9;">
-          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml((f.question || '').replace('[Text Training] ', '').replace('[Text Training]', ''))}</div>
+
+      document.querySelectorAll('.client-kb-tab-content').forEach(el => el.style.display = 'none');
+      const activeContent = document.getElementById(`faq-list-${tab}`);
+      if (activeContent) activeContent.style.display = 'block';
+    }
+
+    function renderFaqs() {
+      const countLabel = document.getElementById('faq-count-label');
+      if (countLabel) countLabel.textContent = (config.faqs ? config.faqs.length : 0) + ' entries trained';
+      
+      const mapped = (config.faqs || []).map((faq, originalIndex) => ({ faq, originalIndex }));
+      
+      const urlChunks = mapped.filter(item => {
+        const q = item.faq.question || '';
+        return q.startsWith('[From ') && !q.toLowerCase().includes('.pdf') && !q.toLowerCase().includes('pdf]');
+      });
+      
+      const pdfChunks = mapped.filter(item => {
+        const q = item.faq.question || '';
+        return q.startsWith('[From ') && (q.toLowerCase().includes('.pdf') || q.toLowerCase().includes('pdf]'));
+      });
+      
+      const textChunks = mapped.filter(item => {
+        const q = item.faq.question || '';
+        return !q.startsWith('[From ');
+      });
+
+      document.getElementById('client-count-url').textContent = urlChunks.length;
+      document.getElementById('client-count-pdf').textContent = pdfChunks.length;
+      document.getElementById('client-count-text').textContent = textChunks.length;
+
+      // Render URL chunks
+      const listUrl = document.getElementById('faq-list-url');
+      if (!listUrl) return;
+      if (urlChunks.length === 0) {
+        listUrl.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>';
+      } else {
+        listUrl.innerHTML = urlChunks.map(item => {
+          const f = item.faq;
+          const i = item.originalIndex;
+          return `
+            <div style="border-bottom:1px solid #f1f5f9; background:#faf5ff;">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
+                <div style="flex:1;min-width:0;">
+                  <span style="font-size:10px; background:#f3e8ff; color:#6b21a8; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">WEBSITE</span>
+                  <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml(f.question)}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+                  <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
+                  <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+                </div>
+              </div>
+              <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
+                <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+              </div>
             </div>
-            <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-              <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
-              <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
-              <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+          `;
+        }).join('');
+      }
+
+      // Render PDF chunks
+      const listPdf = document.getElementById('faq-list-pdf');
+      if (pdfChunks.length === 0) {
+        listPdf.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>';
+      } else {
+        listPdf.innerHTML = pdfChunks.map(item => {
+          const f = item.faq;
+          const i = item.originalIndex;
+          return `
+            <div style="border-bottom:1px solid #f1f5f9; background:#f0f9ff;">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
+                <div style="flex:1;min-width:0;">
+                  <span style="font-size:10px; background:#e0f2fe; color:#0369a1; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">PDF</span>
+                  <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml(f.question)}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+                  <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
+                  <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+                </div>
+              </div>
+              <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
+                <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+              </div>
             </div>
-          </div>
-          <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
-            <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
-          </div>
-        </div>
-      `).join('');
+          `;
+        }).join('');
+      }
+
+      // Render Paste Text chunks
+      const listText = document.getElementById('faq-list-text');
+      if (textChunks.length === 0) {
+        listText.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>';
+      } else {
+        listText.innerHTML = textChunks.map(item => {
+          const f = item.faq;
+          const i = item.originalIndex;
+          return `
+            <div style="border-bottom:1px solid #f1f5f9; background:#f0fdf4;">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
+                <div style="flex:1;min-width:0;">
+                  <span style="font-size:10px; background:#dcfce7; color:#15803d; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">PASTED TEXT</span>
+                  <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml((f.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', ''))}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+                  <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
+                  <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+                </div>
+              </div>
+              <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
+                <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
     }
 
     function toggleFaqItem(i) {

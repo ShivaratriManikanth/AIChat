@@ -2491,6 +2491,19 @@
     const advancedFeatures = document.getElementById('chatbot-advanced-features');
     if (advancedFeatures) advancedFeatures.style.display = 'flex';
 
+    // Sanitize any configured welcome message with "pramod" in it
+    if (CONFIG.welcomeMessage && CONFIG.welcomeMessage.toLowerCase().includes('pramod')) {
+      CONFIG.welcomeMessage = CONFIG.welcomeMessage
+        .replace(/[\s.,?!]*i am pramod[\s.,?!]*/gi, ' ')
+        .replace(/[\s.,?!]*pramod[\s.,?!]*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      // Ensure professional default ending if parsed too short
+      if (!CONFIG.welcomeMessage || CONFIG.welcomeMessage.length < 5) {
+        CONFIG.welcomeMessage = "Welcome to GAdigital Bot! How can I help you today?";
+      }
+    }
+
     // Show welcome message or flow
     const history = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
     if (history.length === 0) {
@@ -2499,9 +2512,19 @@
         renderNextFlowNode();
       } else {
         const greeting = getTimeGreeting();
-        const welcomeText = userName 
+        let welcomeText = userName 
           ? `${greeting} ${userName}! ${CONFIG.welcomeMessage}` 
           : `${greeting}! ${CONFIG.welcomeMessage}`;
+        
+        // Final safety cleanup of welcomeText
+        if (welcomeText.toLowerCase().includes('pramod')) {
+          welcomeText = welcomeText
+            .replace(/[\s.,?!]*i am pramod[\s.,?!]*/gi, ' ')
+            .replace(/[\s.,?!]*pramod[\s.,?!]*/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+
         addMessage(welcomeText, 'bot', {
           quickReplies: CONFIG.suggestedQuestions.length ? CONFIG.suggestedQuestions.slice(0, 3) : null
         });

@@ -543,47 +543,38 @@
       }
 
       /* Quick Reply Buttons */
-      .quick-replies { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; width: 100%; max-width: 280px; }
+      /* Quick Reply Buttons */
+      .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; width: 100%; max-width: 100%; }
       .quick-reply-btn {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
-        color: #1e293b;
-        border-radius: 12px;
-        padding: 12px 16px;
-        font-size: 13px;
-        font-weight: 500;
+        border: 1.5px solid ${theme};
+        color: ${theme};
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 12.5px;
+        font-weight: 600;
         cursor: pointer;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-      }
-      .quick-reply-btn::after {
-        content: '→';
-        font-size: 14px;
-        color: #94a3b8;
-        transition: transform 0.2s ease;
+        text-align: center;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        display: inline-block;
       }
       .quick-reply-btn:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: #0b113a;
-      }
-      .quick-reply-btn:hover::after {
-        transform: translateX(4px);
-        color: #0b113a;
+        background: ${theme};
+        color: #ffffff !important;
+        border-color: ${theme};
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
       }
       .dark .quick-reply-btn {
-        background: #1f2937;
-        border-color: #374151;
-        color: #f3f4f6;
+        background: rgba(255, 255, 255, 0.03);
+        border-color: ${theme};
+        color: #ffffff;
       }
       .dark .quick-reply-btn:hover {
-        background: #374151;
-        border-color: #4b5563;
-        color: #ffffff;
+        background: ${theme};
+        border-color: ${theme};
+        color: #ffffff !important;
       }
 
       /* File Attachment Preview */

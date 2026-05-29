@@ -479,8 +479,9 @@
         padding: 12px 18px !important;
         font-size: 14px !important;
         line-height: 1.5 !important;
-        word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important;
+        word-wrap: break-word !important; word-break: normal !important; overflow-wrap: break-word !important;
         width: fit-content !important;
+        min-width: 40px !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
       }
       .chatbot-msg .msg-text {

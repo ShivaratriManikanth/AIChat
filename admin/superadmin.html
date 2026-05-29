@@ -802,6 +802,199 @@
       background: #ffffff !important;
       color: #1e293b !important;
     }
+
+    /* ============ KB ACCORDION REDESIGN ============ */
+    .kb-accordion-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .kb-accordion-item:hover {
+      border-color: rgba(99, 102, 241, 0.2);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .kb-accordion-item.expanded {
+      border-color: rgba(99, 102, 241, 0.35);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .kb-accordion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+      gap: 12px;
+      transition: background 0.2s ease;
+    }
+    .kb-accordion-header:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .kb-accordion-title-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0; /* allows text truncation */
+    }
+    
+    .kb-accordion-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+    .kb-accordion-badge.website {
+      background: rgba(168, 85, 247, 0.12);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.25);
+    }
+    .kb-accordion-badge.pdf {
+      background: rgba(14, 165, 233, 0.12);
+      color: #7dd3fc;
+      border: 1px solid rgba(14, 165, 233, 0.25);
+    }
+    .kb-accordion-badge.text {
+      background: rgba(34, 197, 94, 0.12);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+    
+    .kb-accordion-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .kb-accordion-actions-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    
+    .kb-accordion-meta {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+    }
+    
+    .kb-accordion-buttons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .kb-accordion-buttons button {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    
+    .kb-accordion-chevron {
+      color: #94a3b8;
+      font-size: 11px;
+      transition: transform 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .kb-accordion-item.expanded .kb-accordion-chevron {
+      transform: rotate(180deg);
+      background: rgba(99, 102, 241, 0.1);
+      color: #818cf8;
+    }
+    
+    .kb-accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.3s cubic-bezier(0, 1, 0, 1), opacity 0.2s ease-out;
+    }
+    .kb-accordion-item.expanded .kb-accordion-content {
+      max-height: 1000px;
+      opacity: 1;
+      transition: max-height 0.3s cubic-bezier(1, 0, 1, 0), opacity 0.3s ease-in;
+    }
+    
+    .kb-accordion-body {
+      padding: 16px 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* LIGHT THEME OVERRIDES FOR KB ACCORDION */
+    body.light-theme .kb-accordion-item {
+      background: #ffffff !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
+    }
+    body.light-theme .kb-accordion-item:hover {
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+    }
+    body.light-theme .kb-accordion-item.expanded {
+      border-color: #94a3b8 !important;
+      background: #ffffff !important;
+    }
+    body.light-theme .kb-accordion-header:hover {
+      background: #f8fafc !important;
+    }
+    body.light-theme .kb-accordion-title {
+      color: #1e293b !important;
+    }
+    body.light-theme .kb-accordion-badge.website {
+      background: #faf5ff !important;
+      color: #6b21a8 !important;
+      border-color: #e9d5ff !important;
+    }
+    body.light-theme .kb-accordion-badge.pdf {
+      background: #f0f9ff !important;
+      color: #0369a1 !important;
+      border-color: #bae6fd !important;
+    }
+    body.light-theme .kb-accordion-badge.text {
+      background: #f0fdf4 !important;
+      color: #15803d !important;
+      border-color: #bbf7d0 !important;
+    }
+    body.light-theme .kb-accordion-chevron {
+      background: #f1f5f9 !important;
+      color: #64748b !important;
+    }
+    body.light-theme .kb-accordion-item.expanded .kb-accordion-chevron {
+      background: #eef2ff !important;
+      color: #4f46e5 !important;
+    }
+    body.light-theme .kb-accordion-body {
+      border-top-color: #e2e8f0 !important;
+      color: #334155 !important;
+      background: #f8fafc !important;
+    }
   </style>
 </head>
 <body>

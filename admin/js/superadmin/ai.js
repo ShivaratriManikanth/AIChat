@@ -57,23 +57,32 @@ async function loadDemoKnowledge() {
     // Render URL chunks
     const listUrl = document.getElementById('dbot-faq-list-url');
     if (urlChunks.length === 0) {
-      listUrl.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:#fafafa; border-radius:8px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>`;
+      listUrl.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>`;
     } else {
       listUrl.innerHTML = urlChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
+        const answerText = faq.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="padding:14px; background:#faf5ff; border:1px solid #f3e8ff; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-            <div style="flex:1;">
-              <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                <span style="font-size:10px; background:#f3e8ff; color:#6b21a8; font-weight:700; padding:2px 6px; border-radius:4px;">WEBSITE</span>
-                <div style="font-weight:700; font-size:12.5px; color:#1e293b;">${escapeHtml(faq.question)}</div>
+          <div class="kb-accordion-item">
+            <div class="kb-accordion-header" onclick="toggleDemoKbAccordion(this)">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge website">Website</span>
+                <span class="kb-accordion-title" title="${escapeHtml(faq.question)}">${escapeHtml(faq.question)}</span>
               </div>
-              <div style="font-size:12px; color:#475569; line-height:1.5; white-space:pre-wrap;">${escapeHtml(faq.answer)}</div>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation(); editDemoKnowledgeChunk(${idx})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation(); deleteDemoKnowledgeChunk(${idx})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
+              </div>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button class="btn-sm btn-sm-view" onclick="editDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">✏️ Edit</button>
-              <button class="flow-node-btn delete" onclick="deleteDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">🗑️</button>
+            <div class="kb-accordion-content">
+              <div class="kb-accordion-body">${escapeHtml(faq.answer)}</div>
             </div>
           </div>
         `;
@@ -83,23 +92,32 @@ async function loadDemoKnowledge() {
     // Render PDF chunks
     const listPdf = document.getElementById('dbot-faq-list-pdf');
     if (pdfChunks.length === 0) {
-      listPdf.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:#fafafa; border-radius:8px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>`;
+      listPdf.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>`;
     } else {
       listPdf.innerHTML = pdfChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
+        const answerText = faq.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="padding:14px; background:#f0f9ff; border:1px solid #e0f2fe; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-            <div style="flex:1;">
-              <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                <span style="font-size:10px; background:#e0f2fe; color:#0369a1; font-weight:700; padding:2px 6px; border-radius:4px;">PDF</span>
-                <div style="font-weight:700; font-size:12.5px; color:#1e293b;">${escapeHtml(faq.question)}</div>
+          <div class="kb-accordion-item">
+            <div class="kb-accordion-header" onclick="toggleDemoKbAccordion(this)">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge pdf">PDF</span>
+                <span class="kb-accordion-title" title="${escapeHtml(faq.question)}">${escapeHtml(faq.question)}</span>
               </div>
-              <div style="font-size:12px; color:#475569; line-height:1.5; white-space:pre-wrap;">${escapeHtml(faq.answer)}</div>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation(); editDemoKnowledgeChunk(${idx})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation(); deleteDemoKnowledgeChunk(${idx})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
+              </div>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button class="btn-sm btn-sm-view" onclick="editDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">✏️ Edit</button>
-              <button class="flow-node-btn delete" onclick="deleteDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">🗑️</button>
+            <div class="kb-accordion-content">
+              <div class="kb-accordion-body">${escapeHtml(faq.answer)}</div>
             </div>
           </div>
         `;
@@ -109,23 +127,33 @@ async function loadDemoKnowledge() {
     // Render Paste Text chunks
     const listText = document.getElementById('dbot-faq-list-text');
     if (textChunks.length === 0) {
-      listText.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:#fafafa; border-radius:8px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>`;
+      listText.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>`;
     } else {
       listText.innerHTML = textChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
+        const cleanedQuestion = (faq.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', '');
+        const answerText = faq.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="padding:14px; background:#f0fdf4; border:1px solid #dcfce7; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-            <div style="flex:1;">
-              <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                <span style="font-size:10px; background:#dcfce7; color:#15803d; font-weight:700; padding:2px 6px; border-radius:4px;">PASTED TEXT</span>
-                <div style="font-weight:700; font-size:12.5px; color:#1e293b;">${escapeHtml((faq.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', ''))}</div>
+          <div class="kb-accordion-item">
+            <div class="kb-accordion-header" onclick="toggleDemoKbAccordion(this)">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge text">Pasted Text</span>
+                <span class="kb-accordion-title" title="${escapeHtml(cleanedQuestion)}">${escapeHtml(cleanedQuestion)}</span>
               </div>
-              <div style="font-size:12px; color:#475569; line-height:1.5; white-space:pre-wrap;">${escapeHtml(faq.answer)}</div>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation(); editDemoKnowledgeChunk(${idx})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation(); deleteDemoKnowledgeChunk(${idx})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
+              </div>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button class="btn-sm btn-sm-view" onclick="editDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">✏️ Edit</button>
-              <button class="flow-node-btn delete" onclick="deleteDemoKnowledgeChunk(${idx})" style="padding: 4px 8px; font-size: 11px;">🗑️</button>
+            <div class="kb-accordion-content">
+              <div class="kb-accordion-body">${escapeHtml(faq.answer)}</div>
             </div>
           </div>
         `;
@@ -133,6 +161,36 @@ async function loadDemoKnowledge() {
     }
   } catch (err) {
     console.error('Failed to load demo knowledge:', err);
+  }
+}
+
+function toggleDemoKbAccordion(headerEl) {
+  const item = headerEl.closest('.kb-accordion-item');
+  if (!item) return;
+  
+  const isExpanded = item.classList.contains('expanded');
+  
+  // Collapse other expanded ones in the same tab to be super clean
+  const tabContent = item.closest('.kb-tab-content');
+  if (tabContent) {
+    tabContent.querySelectorAll('.kb-accordion-item.expanded').forEach(el => {
+      if (el !== item) {
+        el.classList.remove('expanded');
+        const content = el.querySelector('.kb-accordion-content');
+        if (content) content.style.maxHeight = null;
+      }
+    });
+  }
+
+  // Toggle current item
+  item.classList.toggle('expanded');
+  const content = item.querySelector('.kb-accordion-content');
+  if (content) {
+    if (item.classList.contains('expanded')) {
+      content.style.maxHeight = content.scrollHeight + 'px';
+    } else {
+      content.style.maxHeight = null;
+    }
   }
 }
 

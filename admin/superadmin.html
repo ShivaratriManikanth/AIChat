@@ -1255,8 +1255,8 @@
             
             <div style="display:grid; grid-template-columns: 320px 1fr; gap: 20px; background: white; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; height: 500px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
               <!-- Session List -->
-              <div style="border-right: 1px solid #f0f0f0; display:flex; flex-direction:column; background: #fafafa;">
-                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+              <div style="border-right: 1px solid #f0f0f0; display:flex; flex-direction:column; background: #fafafa; height: 100%; overflow: hidden;">
+                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
                   <strong style="font-size: 13px; color: #555;">Chat Sessions</strong>
                   <button class="btn btn-outline" onclick="loadDemoSessions()" style="font-size:11px; padding: 6px 12px;">🔄 Refresh</button>
                 </div>
@@ -1265,8 +1265,8 @@
                 </div>
               </div>
               <!-- Session Log Viewer -->
-              <div style="display:flex; flex-direction:column; background: white;">
-                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap: 10px;">
+              <div style="display:flex; flex-direction:column; background: white; height: 100%; overflow: hidden;">
+                <div style="padding: 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap: 10px; flex-shrink: 0;">
                   <span style="font-size: 18px;">💬</span>
                   <div>
                     <div style="font-weight: 700; font-size: 14px;" id="dbot-chat-title">Select a session</div>

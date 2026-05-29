@@ -19,6 +19,7 @@ async function loadDemoFlow() {
     const tFlow = document.getElementById('dbot-sidebar-toggle-flow');
     if (tFlow) tFlow.className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
     renderDemoFlowNodes();
+    setTimeout(openDemoFlowPreview, 200);
   } catch (err) {
     console.error('Failed to load demo flow', err);
   }
@@ -40,12 +41,14 @@ function addDemoFlowNode(type, label) {
     config: { question: 'Please provide your ' + label.replace(/[^a-zA-Z ]/g, '').trim() + '?', options: [] }
   });
   renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
 function deleteDemoFlowNode(index) {
   if (confirm('Delete this component?')) {
     demoFlowNodes.splice(index, 1);
     renderDemoFlowNodes();
+    saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
   }
 }
 
@@ -55,6 +58,7 @@ function duplicateDemoFlowNode(index) {
   newNode.id = 'node_' + Math.random().toString(36).substr(2, 9);
   demoFlowNodes.splice(index + 1, 0, newNode);
   renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
 function moveDemoNodeUp(index) {
@@ -63,6 +67,7 @@ function moveDemoNodeUp(index) {
   demoFlowNodes[index] = demoFlowNodes[index - 1];
   demoFlowNodes[index - 1] = temp;
   renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
 function moveDemoNodeDown(index) {
@@ -71,11 +76,13 @@ function moveDemoNodeDown(index) {
   demoFlowNodes[index] = demoFlowNodes[index + 1];
   demoFlowNodes[index + 1] = temp;
   renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
 function updateDemoNodeConfig(index, key, value) {
   if (!demoFlowNodes[index].config) demoFlowNodes[index].config = {};
   demoFlowNodes[index].config[key] = value;
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
 function renderDemoFlowNodes() {
@@ -157,7 +164,7 @@ async function saveDemoFlow(showNotification = true) {
     
     // 1. Bot Asks prompt validation
     if (!node.config.question || !node.config.question.trim()) {
-      alert(`⚠️ Validation Error: "Bot Asks" prompt is required for component #${i + 1} (${label}).`);
+      if (showNotification) alert(`⚠️ Validation Error: "Bot Asks" prompt is required for component #${i + 1} (${label}).`);
       return false;
     }
 
@@ -166,7 +173,7 @@ async function saveDemoFlow(showNotification = true) {
       const options = node.config.options || [];
       const validOptions = options.filter(opt => opt && opt.trim());
       if (validOptions.length === 0) {
-        alert(`⚠️ Validation Error: At least one option/choice is required for component #${i + 1} (${label}).`);
+        if (showNotification) alert(`⚠️ Validation Error: At least one option/choice is required for component #${i + 1} (${label}).`);
         return false;
       }
     }
@@ -177,17 +184,17 @@ async function saveDemoFlow(showNotification = true) {
       const url = node.config.url ? node.config.url.trim() : '';
       
       if (!buttonLabel) {
-        alert(`⚠️ Validation Error: Button Label is required for component #${i + 1} (${label}).`);
+        if (showNotification) alert(`⚠️ Validation Error: Button Label is required for component #${i + 1} (${label}).`);
         return false;
       }
       if (!url) {
-        alert(`⚠️ Validation Error: Redirect URL is required for component #${i + 1} (${label}).`);
+        if (showNotification) alert(`⚠️ Validation Error: Redirect URL is required for component #${i + 1} (${label}).`);
         return false;
       }
       // Validate Redirect URL format
       const urlRegex = /^(https?:\/\/)[^\s$.?#].[^\s]*$/i;
       if (!urlRegex.test(url)) {
-        alert(`⚠️ Validation Error: Redirect URL for component #${i + 1} (${label}) must be a valid URL starting with http:// or https://.`);
+        if (showNotification) alert(`⚠️ Validation Error: Redirect URL for component #${i + 1} (${label}) must be a valid URL starting with http:// or https://.`);
         return false;
       }
     }
@@ -197,7 +204,7 @@ async function saveDemoFlow(showNotification = true) {
       const timeSlots = node.config.timeSlots || [];
       const validSlots = timeSlots.filter(t => t && t.trim());
       if (validSlots.length === 0) {
-        alert(`⚠️ Validation Error: At least one Available Time Slot is required for component #${i + 1} (${label}).`);
+        if (showNotification) alert(`⚠️ Validation Error: At least one Available Time Slot is required for component #${i + 1} (${label}).`);
         return false;
       }
     }
@@ -241,25 +248,16 @@ async function openDemoFlowPreview() {
   const saved = await saveDemoFlow(false);
   if (saved === false) return;
 
-  const overlay = document.getElementById('flow-preview-overlay');
-  const iframe = document.getElementById('flow-preview-iframe');
-
-  if (overlay && iframe) {
-    iframe.src = `preview-test.html?bot_id=bot_demo_landing&api_key=key_gadigital_demo_bot&server=${encodeURIComponent(window.location.origin)}`;
-    overlay.classList.add('show');
+  const iframe = document.getElementById('dbot-flow-side-preview');
+  if (iframe) {
+    iframe.src = `preview-test.html?bot_id=bot_demo_landing&api_key=key_gadigital_demo_bot&server=${encodeURIComponent(window.location.origin)}&preview=true`;
   }
 }
 
 function closeDemoFlowPreview(e) {
-  if (e.target.id === 'flow-preview-overlay') {
-    const overlay = document.getElementById('flow-preview-overlay');
-    overlay.classList.remove('show');
-    document.getElementById('flow-preview-iframe').src = 'about:blank';
-  }
+  // Keeping for backward compatibility
 }
 
 function closeDemoFlowPreviewBtn() {
-  const overlay = document.getElementById('flow-preview-overlay');
-  overlay.classList.remove('show');
-  document.getElementById('flow-preview-iframe').src = 'about:blank';
+  // Keeping for backward compatibility
 }

@@ -1693,7 +1693,10 @@
       }
     }
     try {
-      const res = await fetch(`${SERVER_URL}/api/active-flow`, { headers: { 'x-bot-key': API_KEY } });
+      const url = IS_PREVIEW 
+        ? `${SERVER_URL}/api/active-flow?preview=true` 
+        : `${SERVER_URL}/api/active-flow`;
+      const res = await fetch(url, { headers: { 'x-bot-key': API_KEY } });
       if (res.ok) {
         const data = await res.json();
         if (data.flow && data.flow.flow_data.length > 0) {

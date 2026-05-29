@@ -2357,6 +2357,17 @@
               </div>
             </div>
           </div>
+          
+          <!-- Flow Preview Column -->
+          <div class="flow-preview-pane" style="width: 380px; background: #fafafa; border-left: 1px solid #ebebf0; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; position: relative;">
+            <div class="flow-workspace-header" style="border-bottom: 1px solid #ebebf0; flex-shrink:0; display:flex; justify-content:space-between; align-items:center; padding:12px 20px;">
+              <div style="font-size:14px; font-weight:600; color:#1e293b;">Live Preview</div>
+              <button class="btn btn-outline" onclick="openFlowPreview()" style="font-size:11px; padding: 4px 10px; border-color:#4F46E5; color:#4F46E5; background:transparent;">🔄 Refresh Preview</button>
+            </div>
+            <div style="flex:1; position:relative; background:#f0f2f5; display:flex; align-items:center; justify-content:center; padding:10px; overflow:hidden;">
+              <iframe id="flow-side-preview" style="width:100%; height:100%; border:none; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); background:#ffffff;" src="about:blank"></iframe>
+            </div>
+          </div>
         </div>
       </div>
 

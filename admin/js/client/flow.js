@@ -22,6 +22,7 @@ async function loadFlow() {
     const tFlow = document.getElementById('toggle-flow-active');
     if (tFlow) tFlow.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
     renderFlowNodes();
+    setTimeout(openFlowPreview, 200);
   } catch (err) {
     console.error('Failed to load flow', err);
   }
@@ -31,7 +32,7 @@ function toggleFlowActive() {
   isFlowActive = !isFlowActive;
   const tFlow = document.getElementById('toggle-flow-active');
   if (tFlow) tFlow.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
-  saveFlow();
+  saveFlow(false);
 }
 
 function addFlowNode(type, label) {
@@ -43,12 +44,14 @@ function addFlowNode(type, label) {
     config: { question: 'Please provide your ' + label.replace(/[^a-zA-Z ]/g, '').trim() + '?', options: [] }
   });
   renderFlowNodes();
+  saveFlow(false).then(() => { openFlowPreview(); });
 }
 
 function deleteFlowNode(index) {
   if (confirm('Delete this component?')) {
     flowNodes.splice(index, 1);
     renderFlowNodes();
+    saveFlow(false).then(() => { openFlowPreview(); });
   }
 }
 
@@ -58,6 +61,7 @@ function duplicateFlowNode(index) {
   newNode.id = 'node_' + Math.random().toString(36).substr(2, 9);
   flowNodes.splice(index + 1, 0, newNode);
   renderFlowNodes();
+  saveFlow(false).then(() => { openFlowPreview(); });
 }
 
 function moveNodeUp(index) {
@@ -66,6 +70,7 @@ function moveNodeUp(index) {
   flowNodes[index] = flowNodes[index - 1];
   flowNodes[index - 1] = temp;
   renderFlowNodes();
+  saveFlow(false).then(() => { openFlowPreview(); });
 }
 
 function moveNodeDown(index) {
@@ -74,11 +79,13 @@ function moveNodeDown(index) {
   flowNodes[index] = flowNodes[index + 1];
   flowNodes[index + 1] = temp;
   renderFlowNodes();
+  saveFlow(false).then(() => { openFlowPreview(); });
 }
 
 function updateNodeConfig(index, key, value) {
   if (!flowNodes[index].config) flowNodes[index].config = {};
   flowNodes[index].config[key] = value;
+  saveFlow(false).then(() => { openFlowPreview(); });
 }
 
 function renderFlowNodes() {
@@ -155,17 +162,15 @@ function renderFlowNodes() {
 }
 
 async function openFlowPreview() {
-  // Auto-save flow before previewing to ensure it's up to date
-  await saveFlow();
+  await saveFlow(false);
 
-  const overlay = document.getElementById('flow-preview-overlay');
-  const iframe = document.getElementById('flow-preview-iframe');
+  const iframe = document.getElementById('flow-side-preview');
+  if (!iframe) return;
 
   const botsRes = await fetchAuth(`${API}/api/bots`);
   const bots = await botsRes.json();
 
   if (!bots || bots.length === 0) {
-    alert('Please create at least one bot in the "Bots" section first.');
     return;
   }
 
@@ -177,19 +182,14 @@ async function openFlowPreview() {
     testBot = bots[0];
   }
 
-  // Load a special preview URL that has the chatbot script
-  iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}`;
-  overlay.style.display = 'flex';
+  iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}&preview=true`;
 }
 
 function closeFlowPreview(e) {
-  if (e.target.id === 'flow-preview-overlay') {
-    document.getElementById('flow-preview-overlay').style.display = 'none';
-    document.getElementById('flow-preview-iframe').src = 'about:blank';
-  }
+  // Keeping for backward compatibility
 }
 
-async function saveFlow() {
+async function saveFlow(showNotification = true) {
   try {
     const payload = {
       id: currentFlowId,
@@ -206,10 +206,17 @@ async function saveFlow() {
     const data = await res.json();
     if (data.success) {
       currentFlowId = data.id;
-      showToast('Flow saved successfully!');
+      if (showNotification) {
+        showToast('Flow saved successfully!');
+      }
+      return true;
     }
+    return false;
   } catch (err) {
     console.error('Failed to save flow', err);
-    showToast('Error saving flow');
+    if (showNotification) {
+      showToast('Error saving flow');
+    }
+    return false;
   }
 }

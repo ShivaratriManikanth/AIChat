@@ -884,13 +884,22 @@ app.get('/api/active-flow', checkApiKey, (req, res) => {
   if (!db) return res.json({ flow: null });
   // Find bot by api_key to get bot_id
   const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
+  const isPreview = req.query?.preview === 'true';
   const bot = db.prepare('SELECT bot_id FROM bots WHERE api_key = ?').get(apiKey);
   
   let flow;
   if (bot && bot.bot_id) {
-    flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? AND is_active = 1 LIMIT 1').get(req.clientId, bot.bot_id);
+    if (isPreview) {
+      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? LIMIT 1').get(req.clientId, bot.bot_id);
+    } else {
+      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? AND is_active = 1 LIMIT 1').get(req.clientId, bot.bot_id);
+    }
   } else {
-    flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+    if (isPreview) {
+      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? LIMIT 1').get(req.clientId);
+    } else {
+      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+    }
   }
   
   if (!flow) return res.json({ flow: null });

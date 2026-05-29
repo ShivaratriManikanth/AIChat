@@ -995,6 +995,38 @@
       color: #334155 !important;
       background: #f8fafc !important;
     }
+
+    /* ============ CLEAR ALL KNOWLEDGE BUTTON REDESIGN ============ */
+    .btn-clear-kb {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+    .btn-clear-kb:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ffffff;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    body.light-theme .btn-clear-kb {
+      background: #fef2f2 !important;
+      border: 1px solid #fca5a5 !important;
+      color: #dc2626 !important;
+    }
+    body.light-theme .btn-clear-kb:hover {
+      background: #fee2e2 !important;
+      color: #b91c1c !important;
+      border-color: #f87171 !important;
+    }
   </style>
 </head>
 <body>
@@ -1378,7 +1410,10 @@
                     <div style="font-size:11px; color:#64748b; margin-top:2px;" id="dbot-faq-count">Loading...</div>
                   </div>
                 </div>
-                <button class="btn btn-danger" style="font-size:12px; padding:6px 12px; border-radius:8px; font-weight:600;" onclick="clearAllDemoKnowledge()">🗑 Clear All Knowledge</button>
+                <button class="btn-clear-kb" onclick="clearAllDemoKnowledge()">
+                  <svg style="width:13px; height:13px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+                  Clear All Knowledge
+                </button>
               </div>
               <div class="card-body" style="padding:20px;">
                 <!-- 3 Tabs Navigation -->

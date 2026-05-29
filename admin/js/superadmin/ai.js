@@ -59,7 +59,15 @@ async function loadDemoKnowledge() {
     if (urlChunks.length === 0) {
       listUrl.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>`;
     } else {
-      listUrl.innerHTML = urlChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearDemoKnowledgeByType('url')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear Website URLs
+          </button>
+        </div>
+      `;
+      listUrl.innerHTML = clearBtnHtml + urlChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
         const answerText = faq.answer || '';
@@ -94,7 +102,15 @@ async function loadDemoKnowledge() {
     if (pdfChunks.length === 0) {
       listPdf.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>`;
     } else {
-      listPdf.innerHTML = pdfChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearDemoKnowledgeByType('pdf')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear PDF Uploads
+          </button>
+        </div>
+      `;
+      listPdf.innerHTML = clearBtnHtml + pdfChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
         const answerText = faq.answer || '';
@@ -129,7 +145,15 @@ async function loadDemoKnowledge() {
     if (textChunks.length === 0) {
       listText.innerHTML = `<div style="padding:24px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>`;
     } else {
-      listText.innerHTML = textChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearDemoKnowledgeByType('text')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear Paste Text
+          </button>
+        </div>
+      `;
+      listText.innerHTML = clearBtnHtml + textChunks.map(item => {
         const faq = item.faq;
         const idx = item.originalIndex;
         const cleanedQuestion = (faq.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', '');
@@ -192,6 +216,37 @@ function toggleDemoKbAccordion(headerEl) {
       content.style.maxHeight = null;
     }
   }
+}
+
+async function clearDemoKnowledgeByType(type) {
+  let typeName = '';
+  if (type === 'url') typeName = 'Website URL';
+  if (type === 'pdf') typeName = 'PDF Document';
+  if (type === 'text') typeName = 'Pasted Text';
+
+  if (!confirm(`Delete all trained ${typeName} knowledge chunks? This cannot be undone.`)) return;
+  
+  cancelDemoEdit();
+  
+  if (type === 'url') {
+    demoFaqs = demoFaqs.filter(faq => {
+      const q = faq.question || '';
+      return !(q.startsWith('[From ') && !q.toLowerCase().includes('.pdf') && !q.toLowerCase().includes('pdf]'));
+    });
+  } else if (type === 'pdf') {
+    demoFaqs = demoFaqs.filter(faq => {
+      const q = faq.question || '';
+      return !(q.startsWith('[From ') && (q.toLowerCase().includes('.pdf') || q.toLowerCase().includes('pdf]')));
+    });
+  } else if (type === 'text') {
+    demoFaqs = demoFaqs.filter(faq => {
+      const q = faq.question || '';
+      return q.startsWith('[From ');
+    });
+  }
+
+  await saveDemoFaqsArray();
+  loadDemoKnowledge();
 }
 
 let editingFaqIndex = null;

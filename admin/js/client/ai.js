@@ -54,26 +54,40 @@ function renderFaqs() {
   const listUrl = document.getElementById('faq-list-url');
   if (listUrl) {
     if (urlChunks.length === 0) {
-      listUrl.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>';
+      listUrl.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;">🌐 No website URL knowledge trained yet. Enter a URL above to scrape.</div>';
     } else {
-      listUrl.innerHTML = urlChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearKnowledgeByType('url')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear Website URLs
+          </button>
+        </div>
+      `;
+      listUrl.innerHTML = clearBtnHtml + urlChunks.map(item => {
         const f = item.faq;
         const i = item.originalIndex;
+        const answerText = f.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="border-bottom:1px solid #f1f5f9; background:#faf5ff;">
-            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
-              <div style="flex:1;min-width:0;">
-                <span style="font-size:10px; background:#f3e8ff; color:#6b21a8; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">WEBSITE</span>
-                <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml(f.question)}</span>
+          <div class="kb-accordion-item" id="faq-accordion-${i}">
+            <div class="kb-accordion-header" onclick="toggleFaqItem(${i})">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge website">Website</span>
+                <span class="kb-accordion-title" title="${escapeHtml(f.question)}">${escapeHtml(f.question)}</span>
               </div>
-              <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-                <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
-                <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
-                <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation();deleteFaq(${i})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
               </div>
             </div>
-            <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
-              <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+            <div class="kb-accordion-content" id="faq-body-${i}">
+              <div class="kb-accordion-body">${escapeHtml(f.answer)}</div>
             </div>
           </div>
         `;
@@ -85,26 +99,40 @@ function renderFaqs() {
   const listPdf = document.getElementById('faq-list-pdf');
   if (listPdf) {
     if (pdfChunks.length === 0) {
-      listPdf.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>';
+      listPdf.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;">📄 No PDF document knowledge trained yet. Upload a PDF file above.</div>';
     } else {
-      listPdf.innerHTML = pdfChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearKnowledgeByType('pdf')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear PDF Uploads
+          </button>
+        </div>
+      `;
+      listPdf.innerHTML = clearBtnHtml + pdfChunks.map(item => {
         const f = item.faq;
         const i = item.originalIndex;
+        const answerText = f.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="border-bottom:1px solid #f1f5f9; background:#f0f9ff;">
-            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
-              <div style="flex:1;min-width:0;">
-                <span style="font-size:10px; background:#e0f2fe; color:#0369a1; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">PDF</span>
-                <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml(f.question)}</span>
+          <div class="kb-accordion-item" id="faq-accordion-${i}">
+            <div class="kb-accordion-header" onclick="toggleFaqItem(${i})">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge pdf">PDF</span>
+                <span class="kb-accordion-title" title="${escapeHtml(f.question)}">${escapeHtml(f.question)}</span>
               </div>
-              <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-                <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
-                <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
-                <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation();deleteFaq(${i})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
               </div>
             </div>
-            <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
-              <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+            <div class="kb-accordion-content" id="faq-body-${i}">
+              <div class="kb-accordion-body">${escapeHtml(f.answer)}</div>
             </div>
           </div>
         `;
@@ -116,26 +144,41 @@ function renderFaqs() {
   const listText = document.getElementById('faq-list-text');
   if (listText) {
     if (textChunks.length === 0) {
-      listText.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:#fafafa;border-radius:8px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>';
+      listText.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;">📝 No pasted text knowledge trained yet. Paste raw text above.</div>';
     } else {
-      listText.innerHTML = textChunks.map(item => {
+      const clearBtnHtml = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button class="btn-clear-kb" onclick="clearKnowledgeByType('text')">
+            <svg style="width:12px; height:12px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12z"/></svg>
+            Clear Paste Text
+          </button>
+        </div>
+      `;
+      listText.innerHTML = clearBtnHtml + textChunks.map(item => {
         const f = item.faq;
         const i = item.originalIndex;
+        const cleanedQuestion = (f.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', '');
+        const answerText = f.answer || '';
+        const charCount = answerText.length;
+        const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length;
         return `
-          <div style="border-bottom:1px solid #f1f5f9; background:#f0fdf4;">
-            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;" onclick="toggleFaqItem(${i})">
-              <div style="flex:1;min-width:0;">
-                <span style="font-size:10px; background:#dcfce7; color:#15803d; font-weight:700; padding:2px 6px; border-radius:4px; margin-right:6px; vertical-align:middle;">PASTED TEXT</span>
-                <span style="font-size:13px;font-weight:600;color:#1e293b;vertical-align:middle;">${escapeHtml((f.question || '').replace('[Manual Entry] ', '').replace('[Manual Entry]', '').replace('[Text Training] ', '').replace('[Text Training]', ''))}</span>
+          <div class="kb-accordion-item" id="faq-accordion-${i}">
+            <div class="kb-accordion-header" onclick="toggleFaqItem(${i})">
+              <div class="kb-accordion-title-area">
+                <span class="kb-accordion-badge text">Pasted Text</span>
+                <span class="kb-accordion-title" title="${escapeHtml(cleanedQuestion)}">${escapeHtml(cleanedQuestion)}</span>
               </div>
-              <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-                <button class="btn-sm btn-sm-view" style="padding:4px 10px;font-size:11px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
-                <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;border-radius:6px;" onclick="event.stopPropagation();deleteFaq(${i})">Delete</button>
-                <span id="faq-chevron-${i}" style="color:#94a3b8;font-size:12px;transition:transform 0.2s;">▼</span>
+              <div class="kb-accordion-actions-area">
+                <span class="kb-accordion-meta">${wordCount} words • ${charCount} chars</span>
+                <div class="kb-accordion-buttons">
+                  <button class="btn-sm btn-sm-view" onclick="event.stopPropagation();editKnowledgeChunk(${i})">✏️ Edit</button>
+                  <button class="flow-node-btn delete" onclick="event.stopPropagation();deleteFaq(${i})">🗑️</button>
+                </div>
+                <div class="kb-accordion-chevron">▼</div>
               </div>
             </div>
-            <div id="faq-body-${i}" style="display:none;padding:0 16px 14px 16px;">
-              <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(f.answer)}</div>
+            <div class="kb-accordion-content" id="faq-body-${i}">
+              <div class="kb-accordion-body">${escapeHtml(f.answer)}</div>
             </div>
           </div>
         `;
@@ -145,12 +188,33 @@ function renderFaqs() {
 }
 
 function toggleFaqItem(i) {
-  const body = document.getElementById('faq-body-' + i);
-  const chevron = document.getElementById('faq-chevron-' + i);
-  if (!body) return;
-  const open = body.style.display === 'block';
-  body.style.display = open ? 'none' : 'block';
-  if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+  const item = document.getElementById(`faq-accordion-${i}`);
+  if (!item) return;
+
+  const isExpanded = item.classList.contains('expanded');
+
+  // Collapse other expanded ones in the same tab to be super clean
+  const tabContent = item.closest('.client-kb-tab-content');
+  if (tabContent) {
+    tabContent.querySelectorAll('.kb-accordion-item.expanded').forEach(el => {
+      if (el !== item) {
+        el.classList.remove('expanded');
+        const content = el.querySelector('.kb-accordion-content');
+        if (content) content.style.maxHeight = null;
+      }
+    });
+  }
+
+  // Toggle current item
+  item.classList.toggle('expanded');
+  const content = item.querySelector('.kb-accordion-content');
+  if (content) {
+    if (item.classList.contains('expanded')) {
+      content.style.maxHeight = content.scrollHeight + 'px';
+    } else {
+      content.style.maxHeight = null;
+    }
+  }
 }
 
 function editKnowledgeChunk(index) {
@@ -199,6 +263,45 @@ async function clearAllKnowledge() {
     body: JSON.stringify({ faqs: [], botId: selectedBotId })
   });
   showToast('All knowledge cleared');
+  loadConfig();
+}
+
+async function clearKnowledgeByType(type) {
+  let typeName = '';
+  if (type === 'url') typeName = 'Website URL';
+  if (type === 'pdf') typeName = 'PDF Document';
+  if (type === 'text') typeName = 'Pasted Text';
+
+  if (!confirm(`Delete all trained ${typeName} knowledge chunks? This cannot be undone.`)) return;
+  
+  cancelKnowledgeEdit();
+  
+  config.faqs = config.faqs || [];
+  
+  if (type === 'url') {
+    config.faqs = config.faqs.filter(faq => {
+      const q = faq.question || '';
+      return !(q.startsWith('[From ') && !q.toLowerCase().includes('.pdf') && !q.toLowerCase().includes('pdf]'));
+    });
+  } else if (type === 'pdf') {
+    config.faqs = config.faqs.filter(faq => {
+      const q = faq.question || '';
+      return !(q.startsWith('[From ') && (q.toLowerCase().includes('.pdf') || q.toLowerCase().includes('pdf]')));
+    });
+  } else if (type === 'text') {
+    config.faqs = config.faqs.filter(faq => {
+      const q = faq.question || '';
+      return q.startsWith('[From ');
+    });
+  }
+
+  await fetchAuth(`${API}/api/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ faqs: config.faqs, botId: selectedBotId })
+  });
+  
+  showToast(`${typeName} knowledge cleared`);
   loadConfig();
 }
 

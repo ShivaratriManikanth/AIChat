@@ -1304,7 +1304,10 @@
       <div class="nav-item" data-page="broadcast" style="display: none;">
         <span class="icon">📣</span> Email Broadcast
       </div>
-      <div class="nav-section">Bot Setup</div>
+      <div class="nav-section" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <span>Bot Setup</span>
+        <div class="toggle-switch" id="sidebar-chatbot-mode-toggle" onclick="toggleSidebarChatbotMode(event)" style="transform: scale(0.65); margin-right: -12px;" title="Toggle Chatbot Mode (AI Chatbot vs Flow Builder)"></div>
+      </div>
       <div class="nav-item" data-page="knowledge">
         <span class="icon">🧠</span> 1. AI Chatbot
       </div>
@@ -2057,37 +2060,7 @@
               <textarea id="cfg-suggestedQuestions" rows="4"></textarea>
             </div>
 
-            <div class="form-group"
-              style="background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
-              <label style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">🤖 Chatbot Primary
-                Mode</label>
-              <p style="color: #64748b; font-size: 12px; margin-bottom: 12px;">Choose how the chatbot should engage with
-                website visitors initially.</p>
-              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <label
-                  style="flex: 1 1 200px; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;"
-                  class="chat-mode-option" id="client-mode-opt-ai">
-                  <input type="radio" name="cfg-primary-mode" value="aichat"
-                    onchange="updateClientChatbotModeSelection('aichat')" style="cursor: pointer;">
-                  <div>
-                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🧠 AI Chatbot Mode</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Use the AI Knowledge Base to answer
-                      visitor questions dynamically.</div>
-                  </div>
-                </label>
-                <label
-                  style="flex: 1 1 200px; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;"
-                  class="chat-mode-option" id="client-mode-opt-flow">
-                  <input type="radio" name="cfg-primary-mode" value="flowbuilder"
-                    onchange="updateClientChatbotModeSelection('flowbuilder')" style="cursor: pointer;">
-                  <div>
-                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🔀 Flow Builder Mode</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Guide visitors step-by-step through a
-                      visual forms flow first.</div>
-                  </div>
-                </label>
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -3195,11 +3168,10 @@
 
       // Chatbot Mode Selection
       const mode = config.chatbotMode || 'aichat';
-      const radios = document.getElementsByName('cfg-primary-mode');
-      radios.forEach(r => {
-        r.checked = r.value === mode;
-      });
-      updateClientChatbotModeUI(mode);
+      const sidebarToggle = document.getElementById('sidebar-chatbot-mode-toggle');
+      if (sidebarToggle) {
+        sidebarToggle.classList.toggle('on', mode === 'aichat');
+      }
 
       // Email & intro fields
       document.getElementById('cfg-emailCaptureTitle').value = config.emailCaptureTitle || '';
@@ -3258,23 +3230,35 @@
       renderFaqs();
     }
 
-    function updateClientChatbotModeSelection(mode) {
-      updateClientChatbotModeUI(mode);
-    }
-    function updateClientChatbotModeUI(mode) {
-      const aiOpt = document.getElementById('client-mode-opt-ai');
-      const flowOpt = document.getElementById('client-mode-opt-flow');
-      if (!aiOpt || !flowOpt) return;
-      if (mode === 'aichat') {
-        aiOpt.style.borderColor = 'var(--primary)';
-        aiOpt.style.background = 'rgba(79, 70, 229, 0.08)';
-        flowOpt.style.borderColor = '#e2e8f0';
-        flowOpt.style.background = 'transparent';
-      } else {
-        flowOpt.style.borderColor = 'var(--primary)';
-        flowOpt.style.background = 'rgba(79, 70, 229, 0.08)';
-        aiOpt.style.borderColor = '#e2e8f0';
-        aiOpt.style.background = 'transparent';
+    async function toggleSidebarChatbotMode(e) {
+      if (e) e.stopPropagation();
+      if (!selectedBotId) return;
+      const toggle = document.getElementById('sidebar-chatbot-mode-toggle');
+      if (!toggle) return;
+      
+      const isCurrentlyAi = toggle.classList.contains('on');
+      const newMode = isCurrentlyAi ? 'flowbuilder' : 'aichat';
+      
+      // Instantly toggle class
+      toggle.classList.toggle('on', !isCurrentlyAi);
+      
+      try {
+        const res = await fetchAuth(`${API}/api/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatbotMode: newMode, botId: selectedBotId })
+        });
+        if (res.ok) {
+          config.chatbotMode = newMode;
+          showToast(`Mode switched to ${newMode === 'aichat' ? 'AI Chatbot' : 'Flow Builder'}`);
+          loadConfig();
+        } else {
+          toggle.classList.toggle('on', isCurrentlyAi);
+          showToast('❌ Failed to update chatbot mode');
+        }
+      } catch (err) {
+        toggle.classList.toggle('on', isCurrentlyAi);
+        showToast('❌ Error updating chatbot mode');
       }
     }
 
@@ -3292,7 +3276,7 @@
 
       try {
         const updated = {
-          chatbotMode: document.querySelector('input[name="cfg-primary-mode"]:checked')?.value || 'aichat',
+          chatbotMode: document.getElementById('sidebar-chatbot-mode-toggle')?.classList.contains('on') ? 'aichat' : 'flowbuilder',
           botName: document.getElementById('cfg-botName').value,
           companyName: document.getElementById('cfg-companyName').value,
           welcomeMessage: document.getElementById('cfg-welcomeMessage').value,

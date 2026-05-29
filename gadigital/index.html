@@ -673,6 +673,10 @@
             <input type="email" id="clientEmail" placeholder="you@example.com" required>
           </div>
           <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" id="clientPhone" placeholder="+91 99999 99999" required>
+          </div>
+          <div class="form-group">
             <label>Choose a Password</label>
             <div style="position: relative; display: flex; align-items: center;">
               <input type="password" id="clientPassword" placeholder="Minimum 8 characters" style="padding-right: 46px;" required>
@@ -804,6 +808,7 @@
       
       const company_name = document.getElementById('companyName').value;
       const email = document.getElementById('clientEmail').value;
+      const phone = document.getElementById('clientPhone').value;
       const password = document.getElementById('clientPassword').value;
       const plan_id = document.getElementById('selectedPlanId').value;
 
@@ -861,7 +866,8 @@
           order_id: orderData.order_id,
           prefill: {
             name: company_name,
-            email: email
+            email: email,
+            contact: phone
           },
           theme: {
             color: '#4F46E5'

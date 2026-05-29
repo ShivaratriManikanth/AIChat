@@ -16,7 +16,8 @@ async function loadDemoFlow() {
       demoFlowNodes = [];
       isDemoFlowActive = false;
     }
-    document.getElementById('dbot-toggle-flow-active').className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
+    const tFlow = document.getElementById('dbot-sidebar-toggle-flow');
+    if (tFlow) tFlow.className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
     renderDemoFlowNodes();
   } catch (err) {
     console.error('Failed to load demo flow', err);
@@ -25,7 +26,8 @@ async function loadDemoFlow() {
 
 function toggleDemoFlowActive() {
   isDemoFlowActive = !isDemoFlowActive;
-  document.getElementById('dbot-toggle-flow-active').className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
+  const tFlow = document.getElementById('dbot-sidebar-toggle-flow');
+  if (tFlow) tFlow.className = 'toggle-switch' + (isDemoFlowActive ? ' on' : '');
   saveDemoFlow();
 }
 

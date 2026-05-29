@@ -832,11 +832,17 @@
       <div class="nav-item" data-page="dbot-settings" onclick="switchDemoSubTab('settings')">
         <span class="icon">⚙️</span> Bot Settings
       </div>
-      <div class="nav-item" data-page="dbot-aichat" onclick="switchDemoSubTab('aichat')">
-        <span class="icon">🧠</span> AI Chatbot
+      <div class="nav-item" data-page="dbot-aichat" onclick="switchDemoSubTab('aichat')" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="icon">🧠</span> AI Chatbot
+        </div>
+        <div class="toggle-switch" id="dbot-sidebar-toggle-ai" onclick="event.stopPropagation(); toggleDemoAiActive();" style="transform: scale(0.65); margin-right: -12px;"></div>
       </div>
-      <div class="nav-item" data-page="dbot-flow" onclick="switchDemoSubTab('flow')">
-        <span class="icon">🔀</span> Flow Builder
+      <div class="nav-item" data-page="dbot-flow" onclick="switchDemoSubTab('flow')" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="icon">🔀</span> Flow Builder
+        </div>
+        <div class="toggle-switch" id="dbot-sidebar-toggle-flow" onclick="event.stopPropagation(); toggleDemoFlowActive();" style="transform: scale(0.65); margin-right: -12px;"></div>
       </div>
       <div class="nav-item" data-page="dbot-chats" onclick="switchDemoSubTab('chats')">
         <span class="icon">💬</span> Chat History
@@ -1024,39 +1030,11 @@
                     <textarea id="dbot-suggestedQuestions" rows="3" style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fafafa; resize:vertical;" placeholder="What features do you offer?&#10;How much does it cost?"></textarea>
                   </div>
                   <div class="form-group">
-                    <label>Enable AI Responses</label>
-                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-                      <div class="toggle-switch" id="dbot-toggle-ai-active" onclick="toggleDemoAiActive()"></div>
-                      <span style="font-size:12px; color:#555; font-weight: 500;" id="dbot-ai-status-label">Active</span>
-                    </div>
-                  </div>
-                  <div class="form-group">
                     <label>Enable FAQ Searching</label>
                     <select id="dbot-enableFaq">
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
-                  </div>
-                  
-                  <div class="form-group" style="grid-column: 1 / -1; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
-                    <label style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">🤖 Chatbot Primary Mode</label>
-                    <p style="color: #64748b; font-size: 12px; margin-bottom: 12px;">Choose how the chatbot should engage with website visitors initially.</p>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                      <label style="flex: 1; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="super-mode-opt-ai">
-                        <input type="radio" name="dbot-primary-mode" value="aichat" onchange="updateSuperChatbotModeSelection('aichat')" style="cursor: pointer;">
-                        <div>
-                          <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🧠 AI Chatbot Mode</div>
-                          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Use the AI Knowledge Base to answer visitor questions dynamically.</div>
-                        </div>
-                      </label>
-                      <label style="flex: 1; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;" class="chat-mode-option" id="super-mode-opt-flow">
-                        <input type="radio" name="dbot-primary-mode" value="flowbuilder" onchange="updateSuperChatbotModeSelection('flowbuilder')" style="cursor: pointer;">
-                        <div>
-                          <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">🔀 Flow Builder Mode</div>
-                          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Guide visitors step-by-step through a visual forms flow first.</div>
-                        </div>
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1109,10 +1087,6 @@
               <div>
                 <h2 class="theme-text-main" style="font-size:18px; font-weight:700;">🧠 AI Chatbot Knowledge Base</h2>
                 <p class="theme-text-muted" style="font-size:13px;margin-top:4px;">Train your landing page chatbot on your custom domain, texts, and PDF documents.</p>
-              </div>
-              <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:10px 16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <span style="font-size:13px; font-weight:700; color:#1e293b;">AI Responses</span>
-                <div class="toggle-switch" id="dbot-toggle-ai-kb-active" onclick="toggleDemoAiActive()"></div>
               </div>
             </div>
 
@@ -1249,8 +1223,6 @@
                   <div style="font-size:13px; font-weight:600; color:#1e293b;">Flow Sequence</div>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadDemoFlow()">Revert</button>
-                    <div class="toggle-switch" id="dbot-toggle-flow-active" onclick="toggleDemoFlowActive()"></div>
-                    <span style="font-size:12px; color:#555; font-weight: 500;">Active</span>
                   </div>
                 </div>
                 <div id="dbot-flow-nodes-list" class="flow-nodes-list">
@@ -1475,6 +1447,7 @@
       loadClients();
       loadTrashClients();
       loadDemoBotConfig();
+      loadDemoFlow();
     });
   </script>
 </body>

@@ -60,22 +60,8 @@ async function loadDemoBotConfig() {
     document.getElementById('dbot-aiModel').value = config.aiModel || 'gpt-3.5-turbo';
     document.getElementById('dbot-systemPrompt').value = config.systemPrompt || '';
     isDemoAiActive = config.enableAiChatbot !== false;
-    const t1 = document.getElementById('dbot-toggle-ai-active');
+    const t1 = document.getElementById('dbot-sidebar-toggle-ai');
     if (t1) t1.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
-    const t2 = document.getElementById('dbot-toggle-ai-kb-active');
-    if (t2) t2.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
-    const aiLabel = document.getElementById('dbot-ai-status-label');
-    if (aiLabel) aiLabel.textContent = isDemoAiActive ? 'Active' : 'Inactive';
-
-    document.getElementById('dbot-enableFaq').value = config.enableFaq !== false ? 'true' : 'false';
-
-    // Chatbot Mode Selection
-    const mode = config.chatbotMode || 'aichat';
-    const radios = document.getElementsByName('dbot-primary-mode');
-    radios.forEach(r => {
-      r.checked = r.value === mode;
-    });
-    updateSuperChatbotModeUI(mode);
     
     // Custom keys
     document.getElementById('dbot-fallbackMessage').value = config.fallbackMessage || '';
@@ -144,7 +130,7 @@ async function saveDemoBotConfig() {
     saveBtn.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid #fff; border-radius:50%; border-top-color:transparent; animation:dbotSpin 0.6s linear infinite; margin-right:8px; vertical-align:middle;"></span> Saving Settings...`;
   }
 
-  const chatbotMode = document.querySelector('input[name="dbot-primary-mode"]:checked')?.value || 'aichat';
+  const chatbotMode = isDemoAiActive ? 'aichat' : 'flowbuilder';
   const botName = document.getElementById('dbot-botName').value.trim();
   const companyName = document.getElementById('dbot-companyName').value.trim();
   const welcomeMessage = document.getElementById('dbot-welcomeMessage').value.trim();
@@ -214,11 +200,7 @@ async function saveDemoBotConfig() {
 let isDemoAiActive = true;
 function toggleDemoAiActive() {
   isDemoAiActive = !isDemoAiActive;
-  const t1 = document.getElementById('dbot-toggle-ai-active');
+  const t1 = document.getElementById('dbot-sidebar-toggle-ai');
   if (t1) t1.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
-  const t2 = document.getElementById('dbot-toggle-ai-kb-active');
-  if (t2) t2.className = 'toggle-switch' + (isDemoAiActive ? ' on' : '');
-  const label = document.getElementById('dbot-ai-status-label');
-  if (label) label.textContent = isDemoAiActive ? 'Active' : 'Inactive';
   saveDemoBotConfig();
 }

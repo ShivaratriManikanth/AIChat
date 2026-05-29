@@ -361,13 +361,12 @@
               aria-label="Toggle password visibility">👁️</button>
           </div>
           <div class="password-requirements" id="loginPwRequirements" style="display: none; margin-top: 10px;">
-            <p>Password Must Contain:</p>
             <ul>
-              <li id="login-req-len" class="invalid"><span class="indicator">✗</span> Min 8 characters</li>
-              <li id="login-req-upper" class="invalid"><span class="indicator">✗</span> At least 1 uppercase letter</li>
-              <li id="login-req-lower" class="invalid"><span class="indicator">✗</span> At least 1 lowercase letter</li>
-              <li id="login-req-number" class="invalid"><span class="indicator">✗</span> At least 1 number</li>
-              <li id="login-req-special" class="invalid"><span class="indicator">✗</span> At least 1 special character
+              <li id="login-req-len" class="invalid" style="display: none;"><span class="indicator">✗</span> Min 8 characters</li>
+              <li id="login-req-upper" class="invalid" style="display: none;"><span class="indicator">✗</span> At least 1 uppercase letter</li>
+              <li id="login-req-lower" class="invalid" style="display: none;"><span class="indicator">✗</span> At least 1 lowercase letter</li>
+              <li id="login-req-number" class="invalid" style="display: none;"><span class="indicator">✗</span> At least 1 number</li>
+              <li id="login-req-special" class="invalid" style="display: none;"><span class="indicator">✗</span> At least 1 special character
               </li>
             </ul>
           </div>
@@ -487,20 +486,24 @@
         special: /[^a-zA-Z0-9]/.test(password)
       };
 
+      let anyFailed = false;
       for (const [key, met] of Object.entries(criteria)) {
         const el = reqElements[key];
         if (el) {
           if (met) {
             el.className = 'valid';
             el.querySelector('.indicator').textContent = '✓';
+            el.style.display = 'none';
           } else {
             el.className = 'invalid';
             el.querySelector('.indicator').textContent = '✗';
+            el.style.display = 'flex';
+            anyFailed = true;
           }
         }
       }
 
-      return Object.values(criteria).every(Boolean);
+      return anyFailed;
     }
 
     function updateRequirementsVisibility() {
@@ -514,8 +517,8 @@
       }
 
       if (pwVal.length > 0) {
-        reqBox.style.display = 'block';
-        checkPasswordStrength(pwVal, loginReqElements);
+        const anyFailed = checkPasswordStrength(pwVal, loginReqElements);
+        reqBox.style.display = anyFailed ? 'block' : 'none';
       } else {
         reqBox.style.display = 'none';
       }

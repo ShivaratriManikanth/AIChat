@@ -44,10 +44,11 @@
   const LS_SESSION_TS = `chatbot_session_ts_${BOT_ID}`;
   const LS_NAME    = `chatbot_user_name_${BOT_ID}`;
 
-  // Clear previous chat history and session on startup to ensure a completely fresh chat session upon page refresh
+  // Clear previous chat history, session, and name on startup to ensure a completely fresh chat session upon page refresh
   localStorage.removeItem(LS_HISTORY);
   localStorage.removeItem(LS_SESSION);
   localStorage.removeItem(LS_SESSION_TS);
+  localStorage.removeItem(LS_NAME);
 
   let isDarkMode = localStorage.getItem(LS_DARK) === 'true';
   let currentLang = localStorage.getItem(LS_LANG) || 'en';

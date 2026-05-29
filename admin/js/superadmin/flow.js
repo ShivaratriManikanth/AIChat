@@ -85,6 +85,27 @@ function updateDemoNodeConfig(index, key, value) {
   saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
 }
 
+function addDemoNodeOption(nodeIndex) {
+  if (!demoFlowNodes[nodeIndex].config) demoFlowNodes[nodeIndex].config = {};
+  if (!demoFlowNodes[nodeIndex].config.options) demoFlowNodes[nodeIndex].config.options = [];
+  demoFlowNodes[nodeIndex].config.options.push('New Option');
+  renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
+}
+
+function deleteDemoNodeOption(nodeIndex, optIndex) {
+  if (!demoFlowNodes[nodeIndex].config || !demoFlowNodes[nodeIndex].config.options) return;
+  demoFlowNodes[nodeIndex].config.options.splice(optIndex, 1);
+  renderDemoFlowNodes();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
+}
+
+function updateDemoNodeOption(nodeIndex, optIndex, value) {
+  if (!demoFlowNodes[nodeIndex].config || !demoFlowNodes[nodeIndex].config.options) return;
+  demoFlowNodes[nodeIndex].config.options[optIndex] = value.trim();
+  saveDemoFlow(false).then(() => { openDemoFlowPreview(); });
+}
+
 function renderDemoFlowNodes() {
   const container = document.getElementById('dbot-flow-nodes-list');
   if (demoFlowNodes.length === 0) {
@@ -101,7 +122,21 @@ function renderDemoFlowNodes() {
   demoFlowNodes.forEach((node, i) => {
     let configHtml = '';
     if (node.type === 'single_choice' || node.type === 'multiple_choice') {
-      configHtml = `<input type="text" class="flow-node-input" placeholder="Options (comma separated)" value="${(node.config.options||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'options', this.value.split(',').map(s=>s.trim()))">`;
+      const opts = node.config.options || [];
+      configHtml = `
+        <div style="margin-top: 8px;">
+          <label style="font-size:10px; font-weight:600; color:#888; display:block; margin-bottom:4px;">Choices / Options</label>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            ${opts.map((opt, optIndex) => `
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="text" class="flow-node-input" style="margin-top:0;" value="${opt}" onchange="updateDemoNodeOption(${i}, ${optIndex}, this.value)" placeholder="Option #${optIndex + 1}">
+                <button class="flow-node-btn delete" onclick="deleteDemoNodeOption(${i}, ${optIndex})" style="padding: 7px 10px; flex-shrink: 0; background:rgba(239, 68, 68, 0.1); color:#f87171; border:none; border-radius:6px; cursor:pointer;" title="Delete Option" type="button">🗑️</button>
+              </div>
+            `).join('')}
+            <button class="flow-node-btn" onclick="addDemoNodeOption(${i})" style="padding:6px 12px; font-size:11px; align-self:flex-start; margin-top:2px; border:1px solid #6366f1; color:#a5b4fc; background:transparent; font-weight:600;" type="button">➕ Add Option</button>
+          </div>
+        </div>
+      `;
     } else if (node.type === 'website' || node.type === 'link') {
       configHtml = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">

@@ -543,37 +543,37 @@
       }
 
       /* Quick Reply Buttons */
-      /* Quick Reply Buttons */
       .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; width: 100%; max-width: 100%; }
       .quick-reply-btn {
-        background: #ffffff;
-        border: 1.5px solid ${theme};
-        color: ${theme};
-        border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 12.5px;
-        font-weight: 600;
-        cursor: pointer;
-        text-align: center;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-        display: inline-block;
+        background: #ffffff !important;
+        border: 1.5px solid ${theme} !important;
+        color: ${theme} !important;
+        border-radius: 20px !important;
+        padding: 8px 16px !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        text-align: center !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important;
+        display: inline-block !important;
+        line-height: normal !important;
       }
       .quick-reply-btn:hover {
-        background: ${theme};
+        background: ${theme} !important;
         color: #ffffff !important;
-        border-color: ${theme};
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        border-color: ${theme} !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
       }
       .dark .quick-reply-btn {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: ${theme};
-        color: #ffffff;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-color: ${theme} !important;
+        color: #ffffff !important;
       }
       .dark .quick-reply-btn:hover {
-        background: ${theme};
-        border-color: ${theme};
+        background: ${theme} !important;
+        border-color: ${theme} !important;
         color: #ffffff !important;
       }
 

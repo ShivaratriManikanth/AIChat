@@ -1,16 +1,3 @@
-// Page reload/refresh detection
-const isReload = (window.performance && window.performance.navigation && window.performance.navigation.type === 1) || 
-  (window.performance && window.performance.getEntriesByType && window.performance.getEntriesByType('navigation')[0] && window.performance.getEntriesByType('navigation')[0].type === 'reload');
-
-if (isReload) {
-  sessionStorage.clear();
-  localStorage.removeItem('saas_token');
-  localStorage.removeItem('saas_role');
-  localStorage.removeItem('saas_client_id');
-  localStorage.removeItem('token');
-  localStorage.removeItem('impersonate_client_id');
-  window.location.replace('login.html');
-}
 
 const token = sessionStorage.getItem('saas_token');
 const role  = sessionStorage.getItem('saas_role');

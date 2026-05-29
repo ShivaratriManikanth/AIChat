@@ -1304,15 +1304,18 @@
       <div class="nav-item" data-page="broadcast" style="display: none;">
         <span class="icon">📣</span> Email Broadcast
       </div>
-      <div class="nav-section" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <span>Bot Setup</span>
-        <div class="toggle-switch" id="sidebar-chatbot-mode-toggle" onclick="toggleSidebarChatbotMode(event)" style="transform: scale(0.65); margin-right: -12px;" title="Toggle Chatbot Mode (AI Chatbot vs Flow Builder)"></div>
+      <div class="nav-section">Bot Setup</div>
+      <div class="nav-item" data-page="knowledge" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="icon">🧠</span> 1. AI Chatbot
+        </div>
+        <div class="toggle-switch" id="sidebar-toggle-ai" onclick="event.stopPropagation(); toggleAiFeatures();" style="transform: scale(0.65); margin-right: -12px;" title="Enable/Disable AI Chatbot"></div>
       </div>
-      <div class="nav-item" data-page="knowledge">
-        <span class="icon">🧠</span> 1. AI Chatbot
-      </div>
-      <div class="nav-item" data-page="flows">
-        <span class="icon">🔀</span> 2. Flow Builder
+      <div class="nav-item" data-page="flows" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="icon">🔀</span> 2. Flow Builder
+        </div>
+        <div class="toggle-switch" id="sidebar-toggle-flow" onclick="event.stopPropagation(); toggleSidebarFlowActive(event);" style="transform: scale(0.65); margin-right: -12px;" title="Enable/Disable Flow Builder"></div>
       </div>
 
       <div class="nav-section">Configuration</div>
@@ -3153,10 +3156,10 @@
       document.getElementById('cfg-suggestedQuestions').value = (config.suggestedQuestions || []).join('\n');
 
       // Chatbot Mode Selection
-      const mode = config.chatbotMode || 'aichat';
-      const sidebarToggle = document.getElementById('sidebar-chatbot-mode-toggle');
-      if (sidebarToggle) {
-        sidebarToggle.classList.toggle('on', mode === 'aichat');
+      const isAiEnabled = config.enableAiChatbot !== false;
+      const sidebarAiToggle = document.getElementById('sidebar-toggle-ai');
+      if (sidebarAiToggle) {
+        sidebarAiToggle.classList.toggle('on', isAiEnabled);
       }
 
       // Email & intro fields
@@ -3999,11 +4002,15 @@
       showToast('Semantic search ' + (enabled ? 'enabled' : 'disabled'));
     }
 
-    // ---- AI Features toggle save ----------------------------
     async function toggleAiFeatures() {
       const toggle = document.getElementById('toggle-enableAi');
-      const isEnabled = !toggle.classList.contains('on');
-      toggle.classList.toggle('on', isEnabled);
+      const sidebarToggle = document.getElementById('sidebar-toggle-ai');
+      
+      const isCurrentlyEnabled = sidebarToggle ? sidebarToggle.classList.contains('on') : (toggle ? toggle.classList.contains('on') : false);
+      const isEnabled = !isCurrentlyEnabled;
+
+      if (toggle) toggle.classList.toggle('on', isEnabled);
+      if (sidebarToggle) sidebarToggle.classList.toggle('on', isEnabled);
 
       try {
         const res = await fetchAuth(`${API}/api/config`, {
@@ -4012,13 +4019,16 @@
           body: JSON.stringify({ enableAiChatbot: isEnabled, botId: selectedBotId })
         });
         if (!res.ok) {
-          toggle.classList.toggle('on', !isEnabled);
+          if (toggle) toggle.classList.toggle('on', !isEnabled);
+          if (sidebarToggle) sidebarToggle.classList.toggle('on', !isEnabled);
           alert('Failed to save settings.');
         } else {
+          config.enableAiChatbot = isEnabled;
           showToast(isEnabled ? 'AI Features Enabled!' : 'AI Features Disabled!');
         }
       } catch (err) {
-        toggle.classList.toggle('on', !isEnabled);
+        if (toggle) toggle.classList.toggle('on', !isEnabled);
+        if (sidebarToggle) sidebarToggle.classList.toggle('on', !isEnabled);
         alert('Error saving settings.');
       }
     }
@@ -4200,7 +4210,10 @@
           flowNodes = [];
           isFlowActive = false;
         }
-        document.getElementById('toggle-flow-active').className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+        const t1 = document.getElementById('toggle-flow-active');
+        if (t1) t1.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+        const sidebarFlowToggle = document.getElementById('sidebar-toggle-flow');
+        if (sidebarFlowToggle) sidebarFlowToggle.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
         renderFlowNodes();
       } catch (err) {
         console.error('Failed to load flow', err);
@@ -4209,8 +4222,18 @@
 
     function toggleFlowActive() {
       isFlowActive = !isFlowActive;
-      document.getElementById('toggle-flow-active').className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+      const t1 = document.getElementById('toggle-flow-active');
+      if (t1) t1.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+      
+      const t2 = document.getElementById('sidebar-toggle-flow');
+      if (t2) t2.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
+      
       saveFlow();
+    }
+
+    function toggleSidebarFlowActive(e) {
+      if (e) e.stopPropagation();
+      toggleFlowActive();
     }
 
     function addFlowNode(type, label) {

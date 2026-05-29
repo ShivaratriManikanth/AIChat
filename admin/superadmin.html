@@ -1090,77 +1090,90 @@
               </div>
             </div>
 
-            <!-- Training Methods Grid -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-              <!-- Website URL Card -->
-              <div class="card" style="margin-bottom:0;">
-                <div style="background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%); padding:20px; border-radius:12px 12px 0 0;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">🌐</div>
-                    <div>
-                      <div style="font-size:14px; font-weight:700; color:white;">Website URL</div>
-                      <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px;">Scrape custom URL</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="card-body" style="padding: 20px;">
-                  <p style="color:#64748b; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Train the demo chatbot by scraping a public web page's text contents.</p>
-                  <div style="display:flex; gap:8px;">
-                    <input type="url" id="dbot-kb-url" placeholder="https://example.com/about" style="flex:1; padding:9px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none;">
-                    <button class="btn btn-primary" id="dbot-btn-train-url" onclick="trainDemoUrl()" style="padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600;">Train</button>
-                  </div>
-                  <div id="dbot-url-status" style="margin-top:10px; font-size:12px; font-weight:500;"></div>
-                </div>
-              </div>
+            <!-- Interactive Sources Nav Tab -->
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 12px;">
+              <button class="kb-source-tab-btn active" id="dbot-btn-source-url" onclick="switchDemoKbSource('url')" style="padding: 10px 20px; border-radius: 10px; border: 1px solid #4f46e5; background: rgba(79, 70, 229, 0.15); color: #a5b4fc; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+                <span>🌐</span> Website Scraper
+              </button>
+              <button class="kb-source-tab-btn" id="dbot-btn-source-pdf" onclick="switchDemoKbSource('pdf')" style="padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); background: rgba(255, 255, 255, 0.02); color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+                <span>📄</span> PDF Document
+              </button>
+              <button class="kb-source-tab-btn" id="dbot-btn-source-text" onclick="switchDemoKbSource('text')" style="padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); background: rgba(255, 255, 255, 0.02); color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+                <span>📝</span> Raw Text Context
+              </button>
+            </div>
 
-              <!-- PDF Upload Card -->
-              <div class="card" style="margin-bottom:0;">
-                <div style="background:linear-gradient(135deg,#0ea5e9 0%,#38bdf8 100%); padding:20px; border-radius:12px 12px 0 0;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">📄</div>
-                    <div>
-                      <div style="font-size:14px; font-weight:700; color:white;">PDF Upload</div>
-                      <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px;">Import PDF documents</div>
-                    </div>
+            <!-- Unified Training Card -->
+            <div class="card" style="background: rgba(13, 13, 31, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(99, 102, 241, 0.1); margin-bottom: 20px;">
+              <div class="card-body" style="padding: 24px;">
+                
+                <!-- SOURCE: Website URL -->
+                <div id="dbot-kb-source-url" style="display: block;">
+                  <h3 style="font-size: 15px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">🌐 Website Scraper</h3>
+                  <p style="color:#94a3b8; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Train the demo chatbot by scraping a public web page's text contents.</p>
+                  <div style="display:flex; gap:10px;">
+                    <input type="url" id="dbot-kb-url" placeholder="https://example.com/about" style="flex:1; padding:11px 14px; border:1.5px solid rgba(255,255,255,0.08); border-radius:10px; font-size:13.5px; outline:none; background: rgba(255,255,255,0.02); color: #ffffff;">
+                    <button class="btn btn-primary" id="dbot-btn-train-url" onclick="trainDemoUrl()" style="padding:11px 24px; border-radius:10px; font-size:13.5px; font-weight:600;">Train</button>
                   </div>
+                  <div id="dbot-url-status" style="margin-top:12px; font-size:12.5px; font-weight:500;"></div>
                 </div>
-                <div class="card-body" style="padding: 20px;">
-                  <p style="color:#64748b; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Upload a PDF file (max 10MB) to teach the bot details and facts.</p>
+
+                <!-- SOURCE: PDF Upload -->
+                <div id="dbot-kb-source-pdf" style="display: none;">
+                  <h3 style="font-size: 15px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">📄 PDF Document</h3>
+                  <p style="color:#94a3b8; font-size:12.5px; margin-bottom:16px; line-height:1.5;">Upload a PDF file (max 10MB) to teach the bot details and facts.</p>
                   <input type="file" id="dbot-pdf-file-input" accept="application/pdf" style="display:none">
-                  <div id="dbot-pdf-dropzone" onclick="document.getElementById('dbot-pdf-file-input').click()" style="border:2px dashed #e2e8f0; border-radius:10px; padding:20px; text-align:center; cursor:pointer;" onmouseenter="this.style.borderColor='#4f46e5'" onmouseleave="this.style.borderColor='#e2e8f0'">
-                    <div style="font-size:24px; margin-bottom:6px;">📁</div>
-                    <div style="font-size:13px; font-weight:600; color:#475569;">Click to choose PDF</div>
+                  <div id="dbot-pdf-dropzone" onclick="document.getElementById('dbot-pdf-file-input').click()" style="border:2px dashed rgba(99, 102, 241, 0.25); background: rgba(99, 102, 241, 0.02); border-radius:12px; padding:32px 20px; text-align:center; cursor:pointer; transition: all 0.2s;" onmouseenter="this.style.borderColor='#6366f1'; this.style.background='rgba(99,102,241,0.05)';" onmouseleave="this.style.borderColor='rgba(99, 102, 241, 0.25)'; this.style.background='rgba(99,102,241,0.02)';">
+                    <div style="font-size:32px; margin-bottom:8px;">📁</div>
+                    <div style="font-size:13.5px; font-weight:700; color:#cbd5e1;">Click to choose PDF</div>
+                    <p style="font-size: 11.5px; color: #64748b; margin-top: 4px;">Supports standard vector or text PDFs</p>
                   </div>
-                  <div id="dbot-pdf-status" style="margin-top:10px; font-size:12px; font-weight:500;"></div>
+                  <div id="dbot-pdf-status" style="margin-top:12px; font-size:12.5px; font-weight:500;"></div>
                 </div>
+
+                <!-- SOURCE: Raw Text Context -->
+                <div id="dbot-kb-source-text" style="display: none;">
+                  <h3 style="font-size: 15px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">📝 Raw Text Context</h3>
+                  <p style="color:#94a3b8; font-size:12.5px; margin-bottom:12px; line-height:1.5;">Enter any raw text context, instructions, or FAQs you want the AI to remember.</p>
+                  <div id="dbot-kb-title-group" style="display:none; margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700; color:#cbd5e1; display:block; margin-bottom:6px;">Title / Label</label>
+                    <input type="text" id="dbot-kb-title" placeholder="Title for this context chunk" style="width:100%; padding:11px 14px; border:1.5px solid rgba(255,255,255,0.08); border-radius:10px; font-size:13.5px; outline:none; background: rgba(255,255,255,0.02); color: #ffffff;">
+                  </div>
+                  <textarea id="dbot-kb-text" rows="5" placeholder="Paste details, policies, FAQs, or support information here..." style="width:100%; padding:12px; border:1.5px solid rgba(255,255,255,0.08); border-radius:10px; font-size:13.5px; outline:none; font-family:inherit; margin-bottom:14px; resize:vertical; background: rgba(255,255,255,0.02); color: #ffffff;"></textarea>
+                  <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-primary" id="dbot-btn-train" onclick="trainDemoText()" style="padding:11px 24px; font-size:13.5px; font-weight:600; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">➕ Train with Text</button>
+                    <button class="btn btn-outline" id="dbot-btn-cancel-edit" onclick="cancelDemoEdit()" style="display:none; padding:11px 24px; font-size:13.5px; font-weight:600; border:1.5px solid rgba(255,255,255,0.1); color:#cbd5e1; background:transparent;">Cancel Edit</button>
+                  </div>
+                  <div id="dbot-text-status" style="margin-top:12px; font-size:12.5px; font-weight:500;"></div>
+                </div>
+
               </div>
             </div>
 
-            <!-- Paste Text Content -->
-            <div class="card" style="margin-bottom:20px;">
-              <div style="background:linear-gradient(135deg,#10b981 0%,#34d399 100%); padding:20px; border-radius:12px 12px 0 0;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                  <div style="width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">📝</div>
-                  <div>
-                    <div style="font-size:14px; font-weight:700; color:white;">Paste Text Content</div>
-                    <div style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px;">Paste raw context information directly</div>
-                  </div>
-                </div>
-              </div>
-              <div class="card-body" style="padding: 20px;">
-                <p style="color:#64748b; font-size:12.5px; margin-bottom:12px; line-height:1.5;">Enter any raw text context, instructions, or FAQs you want the AI to remember.</p>
-                <div id="dbot-kb-title-group" style="display:none; margin-bottom:12px;">
-                  <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Title / Label</label>
-                  <input type="text" id="dbot-kb-title" placeholder="Title for this context chunk" style="width:100%; padding:9px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; background:#fafafa;">
-                </div>
-                <textarea id="dbot-kb-text" rows="4" placeholder="Paste details, policies, FAQs, or support information here..." style="width:100%; padding:10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; font-family:inherit; margin-bottom:12px; resize:vertical;"></textarea>
-                <div style="display:flex; gap:10px; align-items:center;">
-                  <button class="btn btn-success" id="dbot-btn-train" onclick="trainDemoText()" style="padding:10px 20px; font-size:13px; font-weight:600;">➕ Train with Text</button>
-                  <button class="btn btn-outline" id="dbot-btn-cancel-edit" onclick="cancelDemoEdit()" style="display:none; padding:10px 20px; font-size:13px; font-weight:600; border:1.5px solid #d1d5db; color:#4b5563; background:white;">Cancel Edit</button>
-                </div>
-                <div id="dbot-text-status" style="margin-top:10px; font-size:12px; font-weight:500;"></div>
-              </div>
-            </div>
+            <script>
+              function switchDemoKbSource(source) {
+                document.getElementById('dbot-kb-source-url').style.display = 'none';
+                document.getElementById('dbot-kb-source-pdf').style.display = 'none';
+                document.getElementById('dbot-kb-source-text').style.display = 'none';
+                
+                document.getElementById('dbot-kb-source-' + source).style.display = 'block';
+                
+                document.querySelectorAll('.kb-source-tab-btn').forEach(btn => {
+                  btn.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+                  btn.style.background = 'rgba(255, 255, 255, 0.02)';
+                  btn.style.color = '#94a3b8';
+                  btn.style.fontWeight = '600';
+                });
+                
+                const activeBtn = document.getElementById('dbot-btn-source-' + source);
+                if (activeBtn) {
+                  activeBtn.style.border = '1px solid #4f46e5';
+                  activeBtn.style.background = 'rgba(79, 70, 229, 0.15)';
+                  activeBtn.style.color = '#a5b4fc';
+                  activeBtn.style.fontWeight = '700';
+                }
+              }
+            </script>
 
             <!-- Trained Knowledge List -->
             <div class="card" style="margin-bottom:0;">

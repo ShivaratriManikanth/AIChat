@@ -1700,6 +1700,37 @@
     }
   }
 
+  function personalizeQuestion(questionText) {
+    if (!userName) return questionText;
+    
+    // 1. Replace explicit placeholders
+    let personalized = questionText
+      .replace(/\{\{name\}\}/gi, userName)
+      .replace(/\{name\}/gi, userName)
+      .replace(/\{\{username\}\}/gi, userName)
+      .replace(/\{username\}/gi, userName);
+      
+    if (personalized !== questionText) {
+      return personalized;
+    }
+    
+    // 2. Smart auto-personalization of common transitional prompts
+    const lower = questionText.toLowerCase();
+    
+    if (questionText.match(/Great choice!/i)) {
+      return questionText.replace(/Great choice!/i, `Great choice ${userName}!`);
+    }
+    if (questionText.match(/Great choice/i)) {
+      return questionText.replace(/Great choice/i, `Great choice ${userName}`);
+    }
+    
+    if (lower.startsWith('could you') || lower.startsWith('can you') || lower.startsWith('please') || lower.startsWith('what is') || lower.startsWith('where')) {
+      return `${userName}, ${questionText.charAt(0).toLowerCase() + questionText.slice(1)}`;
+    }
+    
+    return questionText;
+  }
+
   function renderNextFlowNode() {
     if (currentFlowNodeIndex >= activeFlow.length) {
       // Flow ended
@@ -1724,14 +1755,16 @@
     // Appointment type — render a custom calendar + time slot picker
     if (node.type === 'appointment') {
       setTimeout(() => {
-        addMessage(node.config.question || '📅 Please pick a date and time for your appointment:', 'bot', {});
+        const qText = personalizeQuestion(node.config.question || '📅 Please pick a date and time for your appointment:');
+        addMessage(qText, 'bot', {});
         setTimeout(() => renderAppointmentPicker(node), 400);
       }, 500);
       return;
     }
     
     setTimeout(() => {
-      addMessage(node.config.question || node.label, 'bot', { quickReplies: qr, linkButton: linkBtn });
+      const qText = personalizeQuestion(node.config.question || node.label);
+      addMessage(qText, 'bot', { quickReplies: qr, linkButton: linkBtn });
     }, 500);
   }
 

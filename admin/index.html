@@ -4307,7 +4307,7 @@
       flowNodes.forEach((node, i) => {
         let configHtml = '';
         if (node.type === 'single_choice' || node.type === 'multiple_choice') {
-          configHtml = `<input type="text" class="flow-node-input" placeholder="Options (comma separated)" value="${(node.config.options || []).join(', ')}" onchange="updateNodeConfig(${i}, 'options', this.value.split(',').map(s=>s.trim()))">`;
+          configHtml = `<input type="text" class="flow-node-input" placeholder="Options (separated by comma, semicolon, or |)" value="${(node.config.options || []).join(', ')}" onchange="updateNodeConfig(${i}, 'options', this.value.split(/[,;|]/).map(s=>s.trim()).filter(Boolean))">`;
         } else if (node.type === 'website' || node.type === 'link') {
           configHtml = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">

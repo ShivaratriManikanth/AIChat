@@ -1755,9 +1755,16 @@
       } else if (node.type === 'time_picker') {
         inputEl.type = 'time';
         inputEl.placeholder = 'Select time...';
+      } else if (node.type === 'age') {
+        inputEl.type = 'text';
+        inputEl.placeholder = 'Select using slider...';
+        inputEl.disabled = true;
+        inputEl.style.opacity = '0.5';
       } else {
         inputEl.type = 'text';
         inputEl.placeholder = t('placeholder');
+        inputEl.disabled = false;
+        inputEl.style.opacity = '1';
       }
     }
     
@@ -1780,6 +1787,16 @@
         const qText = personalizeQuestion(node.config.question || '📅 Please pick a date and time for your appointment:');
         addMessage(qText, 'bot', {});
         setTimeout(() => renderAppointmentPicker(node), 400);
+      }, 500);
+      return;
+    }
+
+    // Age type — render a custom age range slider picker card
+    if (node.type === 'age') {
+      setTimeout(() => {
+        const qText = personalizeQuestion(node.config.question || '🎂 Please select your age:');
+        addMessage(qText, 'bot', {});
+        setTimeout(() => renderAgePicker(node), 400);
       }, 500);
       return;
     }
@@ -1940,11 +1957,82 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
+  // ---- Age Slider Picker Widget ----
+  function renderAgePicker(node) {
+    const messages = document.getElementById('chatbot-messages');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chatbot-msg-wrapper bot';
+    
+    const card = document.createElement('div');
+    card.className = 'chatbot-age-card';
+    card.style.cssText = `
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 8px;
+      max-width: 85%;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      font-family: sans-serif;
+      text-align: center;
+    `;
+
+    const min = node.config && node.config.min !== undefined ? parseInt(node.config.min) : 0;
+    const max = node.config && node.config.max !== undefined ? parseInt(node.config.max) : 100;
+    const initialVal = Math.round((min + max) / 2);
+
+    card.innerHTML = `
+      <div style="font-size: 13px; color: #475569; margin-bottom: 12px; font-weight: 500;">
+        Please select the value from the slider below.
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
+        <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">${min}</span>
+        <input type="range" class="chatbot-age-slider" min="${min}" max="${max}" value="${initialVal}" style="flex: 1; accent-color: #4F46E5; cursor: pointer; height: 6px; border-radius: 3px;">
+        <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">${max}</span>
+      </div>
+      <div class="chatbot-age-value" style="font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 15px;">${initialVal}</div>
+      <button class="chatbot-age-confirm-btn" style="background: #4F46E5; color: #ffffff; border: none; border-radius: 8px; padding: 10px 30px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);">Confirm</button>
+    `;
+
+    wrapper.appendChild(card);
+    messages.appendChild(wrapper);
+    scrollToBottom();
+
+    // Event Listeners
+    const slider = card.querySelector('.chatbot-age-slider');
+    const valueDisplay = card.querySelector('.chatbot-age-value');
+    const confirmBtn = card.querySelector('.chatbot-age-confirm-btn');
+
+    slider.addEventListener('input', (e) => {
+      valueDisplay.textContent = e.target.value;
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      const finalValue = slider.value;
+      
+      // Disable inputs on card
+      slider.disabled = true;
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = '0.5';
+      confirmBtn.style.cursor = 'default';
+
+      // Send the selected value as user message
+      sendMessage(finalValue);
+    });
+  }
+
   // ---- Send Message -----------------------------------------
   let pendingFile = null;
 
   async function sendMessage(text) {
     if (!text.trim() && !pendingFile) return;
+
+    // Restore inputs if they were disabled for Age slider picker
+    const inputEl = document.getElementById('chatbot-input');
+    if (inputEl) {
+      inputEl.disabled = false;
+      inputEl.style.opacity = '1';
+    }
 
     // Extract user's name if they reply with it
     if (text) {

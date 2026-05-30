@@ -167,6 +167,19 @@ function renderDemoFlowNodes() {
           <input type="text" class="flow-node-input" placeholder="e.g. Sunday, Saturday" value="${(node.config.blockedDays||[]).join(', ')}" onchange="updateDemoNodeConfig(${i}, 'blockedDays', this.value.split(',').map(s=>s.trim()))" style="margin-top:2px;">
         </div>
       `;
+    } else if (node.type === 'age') {
+      configHtml = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div>
+            <label style="font-size:10px; font-weight:600; color:#888;">Min Value</label>
+            <input type="number" class="flow-node-input" placeholder="e.g. 0" value="${node.config.min !== undefined ? node.config.min : 0}" onchange="updateDemoNodeConfig(${i}, 'min', parseInt(this.value)||0)" style="margin-top:2px;">
+          </div>
+          <div>
+            <label style="font-size:10px; font-weight:600; color:#888;">Max Value</label>
+            <input type="number" class="flow-node-input" placeholder="e.g. 100" value="${node.config.max !== undefined ? node.config.max : 100}" onchange="updateDemoNodeConfig(${i}, 'max', parseInt(this.value)||100)" style="margin-top:2px;">
+          </div>
+        </div>
+      `;
     }
     
     html += `

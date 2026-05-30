@@ -44,9 +44,15 @@ function renderSessions(sessions) {
   `).join('');
 }
 
+let currentActiveSessionMessages = [];
+let currentActiveSessionEmail = '';
+
 async function viewSession(sessionId, email) {
   const res = await fetchAuth(`${API}/api/session/${sessionId}`);
   const messages = await res.json();
+
+  currentActiveSessionMessages = messages;
+  currentActiveSessionEmail = email;
 
   document.getElementById('chat-modal-overlay').style.display = 'flex';
   document.getElementById('viewer-info').textContent = `— ${email}`;
@@ -72,4 +78,34 @@ async function viewSession(sessionId, email) {
     }).join('');
   }
   viewer.scrollTop = viewer.scrollHeight;
+}
+
+function downloadCurrentChat() {
+  if (!currentActiveSessionMessages || currentActiveSessionMessages.length === 0) {
+    alert("No messages to download.");
+    return;
+  }
+  
+  let transcript = `Chat Conversation with ${currentActiveSessionEmail}\n`;
+  transcript += `Generated on: ${new Date().toLocaleString()}\n`;
+  transcript += `--------------------------------------------------\n\n`;
+  
+  currentActiveSessionMessages.forEach(m => {
+    const roleName = m.role === 'bot' || m.role === 'assistant' ? 'Bot' : 'User';
+    transcript += `${roleName}: ${m.content || ''}\n`;
+    if (m.file_name) {
+      transcript += `[Attachment: ${m.file_name}]\n`;
+    }
+    transcript += `\n`;
+  });
+  
+  const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chat_transcript_${currentActiveSessionEmail.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

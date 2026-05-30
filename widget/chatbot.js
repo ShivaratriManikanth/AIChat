@@ -1997,7 +1997,7 @@
 
     wrapper.appendChild(card);
     messages.appendChild(wrapper);
-    scrollToBottom();
+    messages.scrollTop = messages.scrollHeight;
 
     const inputField = card.querySelector('.chatbot-age-input');
     const confirmBtn = card.querySelector('.chatbot-age-confirm-btn');

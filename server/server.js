@@ -797,7 +797,10 @@ app.get('/api/users', requireAuth, async (req, res) => {
       SELECT u.email, u.session_id, u.created_at,
              COUNT(c.id) as message_count,
              MAX(c.timestamp) as last_message,
-             b.domain as bot_domain
+             b.domain as bot_domain,
+             MAX(CASE WHEN c.file_name IS NOT NULL AND c.file_name != '' THEN c.file_name ELSE NULL END) as file_name,
+             MAX(CASE WHEN c.file_name IS NOT NULL AND c.file_name != '' THEN c.file_data ELSE NULL END) as file_data,
+             MAX(CASE WHEN c.file_name IS NOT NULL AND c.file_name != '' THEN c.file_type ELSE NULL END) as file_type
       FROM users u
       LEFT JOIN chat_history c ON u.session_id = c.session_id
       LEFT JOIN sessions s ON u.session_id = s.session_id

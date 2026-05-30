@@ -57,264 +57,329 @@ function saveConfig(config) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
-// ---- SQLite Database for Chat History ----------------------
-let db;
-try {
-  const Database = require('better-sqlite3');
-  // Use DB_PATH from environment if provided, otherwise default to local file
-  const dbPath = process.env.DB_PATH || path.join(__dirname, 'chatbot.db');
-  db = new Database(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS chat_history (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      role       TEXT NOT NULL,
-      content    TEXT NOT NULL,
-      timestamp  DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_data TEXT DEFAULT ''`); } catch (e) {}
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_name TEXT DEFAULT ''`); } catch (e) {}
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN file_type TEXT DEFAULT ''`); } catch (e) {}
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN source TEXT DEFAULT ''`); } catch (e) {}
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN response_ms INTEGER DEFAULT 0`); } catch (e) {}
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN user_email TEXT DEFAULT ''`); } catch (e) {}
+// ---- libSQL Database for Chat History (Turso Cloud) --------
+const { createClient } = require('@libsql/client');
 
-  // Leads table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS leads (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      name       TEXT DEFAULT '',
-      email      TEXT DEFAULT '',
-      phone      TEXT DEFAULT '',
-      page_url   TEXT DEFAULT '',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      session_id TEXT PRIMARY KEY,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      metadata   TEXT DEFAULT '{}'
-    )
-  `);
-  // Users table for email capture
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      email      TEXT NOT NULL,
-      session_id TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(email, session_id)
-    )
-  `);
-  // Ensure multi-tenancy columns exist in all tables
-  try { db.exec(`ALTER TABLE chat_history ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE leads ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+const dbUrl = process.env.TURSO_DATABASE_URL;
+const dbToken = process.env.TURSO_AUTH_TOKEN;
 
-  // Add email column to sessions if not exists
-  try {
-    db.exec(`ALTER TABLE sessions ADD COLUMN email TEXT DEFAULT ''`);
-  } catch (e) { /* column already exists */ }
-  try {
-    db.exec(`ALTER TABLE sessions ADD COLUMN bot_id TEXT DEFAULT 'default'`);
-    db.exec(`ALTER TABLE sessions ADD COLUMN widget_version TEXT DEFAULT ''`);
-    db.exec(`ALTER TABLE sessions ADD COLUMN last_user_msg_at DATETIME`);
-    db.exec(`ALTER TABLE sessions ADD COLUMN abandoned INTEGER DEFAULT 0`);
-  } catch (e) {}
-
-  // Bots table for multi-tenant
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS bots (
-      bot_id     TEXT PRIMARY KEY,
-      name       TEXT NOT NULL,
-      api_key    TEXT NOT NULL,
-      config     TEXT DEFAULT '{}',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Complaints table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS complaints (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      email      TEXT DEFAULT '',
-      name       TEXT DEFAULT '',
-      category   TEXT DEFAULT 'other',
-      subject    TEXT DEFAULT '',
-      message    TEXT NOT NULL,
-      status     TEXT DEFAULT 'open',
-      page_url   TEXT DEFAULT '',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  try { db.exec(`ALTER TABLE complaints ADD COLUMN phone TEXT DEFAULT ''`); } catch (e) {}
-
-  // SaaS Multi-tenant extensions
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS super_admins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE,
-      password TEXT
-    )
-  `);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS plans (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      price INTEGER DEFAULT 0,
-      duration TEXT DEFAULT '1 Month',
-      features TEXT
-    )
-  `);
-  try { db.exec(`ALTER TABLE plans ADD COLUMN price INTEGER DEFAULT 0`); } catch(e){}
-  try { db.exec(`ALTER TABLE plans ADD COLUMN duration TEXT DEFAULT '1 Month'`); } catch(e){}
-  // Seed default plans if empty
-  const planCount = db.prepare('SELECT COUNT(*) as c FROM plans').get();
-  if (planCount.c === 0) {
-    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Basic', 1000, '1 Month', '')").run();
-    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Standard', 2000, '1 Month', '')").run();
-    db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Premium', 3000, '1 Month', '')").run();
-  }
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS clients (
-      id TEXT PRIMARY KEY,
-      email TEXT UNIQUE,
-      password TEXT,
-      company_name TEXT,
-      plan_id INTEGER,
-      payment_status TEXT DEFAULT 'COD_PENDING',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS bot_configs (
-      client_id TEXT PRIMARY KEY,
-      bot_name TEXT DEFAULT 'AI Assistant',
-      theme_color TEXT DEFAULT '#4F46E5',
-      logo_url TEXT,
-      position TEXT DEFAULT 'bottom-right'
-    )
-  `);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS knowledge_links (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id TEXT NOT NULL,
-      url TEXT NOT NULL
-    )
-  `);
-
-  // Alter existing tables for multi-tenancy
-  try { db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
-  try { db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
-  try { db.exec(`ALTER TABLE bots ADD COLUMN domain TEXT`); } catch(e){}
-  try { db.exec(`ALTER TABLE clients ADD COLUMN is_deleted INTEGER DEFAULT 0`); } catch(e){}
-
-  // Data Migration: Fix chat history messages that have 'default_client' but belong to a specific client's session
-  try {
-    const fixResult = db.prepare(`
-      UPDATE chat_history 
-      SET client_id = (SELECT client_id FROM sessions WHERE sessions.session_id = chat_history.session_id)
-      WHERE client_id = 'default_client' 
-      AND EXISTS (SELECT 1 FROM sessions WHERE sessions.session_id = chat_history.session_id AND client_id != 'default_client')
-    `).run();
-    if (fixResult.changes > 0) console.log(`Fixed ${fixResult.changes} chat_history client_id mismatches`);
-  } catch(e){}
-
-  // Default super admin & client if empty
-  const hasSuperAdmin = db.prepare("SELECT COUNT(*) as count FROM super_admins").get();
-  if (hasSuperAdmin.count === 0) {
-    db.prepare("INSERT INTO super_admins (email, password) VALUES ('superadmin@example.com', 'super123')").run();
-  }
-  const hasClient = db.prepare("SELECT COUNT(*) as count FROM clients").get();
-  if (hasClient.count === 0) {
-    const hashedDefaultPw = bcrypt.hashSync('client123', 10);
-    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('default_client', 'client@example.com', ?, 'Default Company')").run(hashedDefaultPw);
-    db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
-  }
-
-  // Seed landing page demo bot & client if not exists
-  const hasDemoClient = db.prepare("SELECT COUNT(*) as count FROM clients WHERE id = 'system_demo_client'").get();
-  if (hasDemoClient.count === 0) {
-    const hashedDemoPw = bcrypt.hashSync('demo123', 10);
-    db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('system_demo_client', 'demo@gadigital.com', ?, 'GAdigital Demo')").run(hashedDemoPw);
-  }
-  const hasDemoBot = db.prepare("SELECT COUNT(*) as count FROM bots WHERE bot_id = 'bot_demo_landing'").get();
-  if (hasDemoBot.count === 0) {
-    const defaultDemoConfig = JSON.stringify({
-      botName: "GAdigital Assistant",
-      companyName: "GAdigital Solution",
-      welcomeMessage: "Hello! Welcome to GAdigital Solution. How can I assist you today?",
-      themeColor: "#4F46E5",
-      aiModel: "gpt-3.5-turbo",
-      systemPrompt: "You are a helpful customer support assistant for GAdigital Solution, an innovative IT services and SaaS provider.",
-      suggestedQuestions: ["What services do you offer?", "How can I contact sales?", "Tell me about subscription plans."],
-      enableAiChatbot: true,
-      enableFaq: true
-    });
-    db.prepare("INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES ('bot_demo_landing', 'GAdigital Assistant', 'key_gadigital_demo_bot', ?, 'system_demo_client')").run(defaultDemoConfig);
-  }
-
-  // Auto-sanitize all bots configurations: Remove "pramod" from welcome messages
-  try {
-    const allBots = db.prepare("SELECT bot_id, config FROM bots").all();
-    for (const b of allBots) {
-      if (b.config) {
-        let cfg = JSON.parse(b.config);
-        if (cfg.welcomeMessage && cfg.welcomeMessage.toLowerCase().includes('pramod')) {
-          // Remove "I am pramod" or "pramod" from welcomeMessage
-          cfg.welcomeMessage = cfg.welcomeMessage
-            .replace(/[\s.,?!]*i am pramod[\s.,?!]*/gi, ' ')
-            .replace(/[\s.,?!]*pramod[\s.,?!]*/gi, ' ')
-            .trim();
-          // If message got cleared or empty, set standard fallback
-          if (!cfg.welcomeMessage || cfg.welcomeMessage.length < 5) {
-            cfg.welcomeMessage = "Hello! Welcome to GAdigital Solution. How can I assist you today?";
-          }
-          db.prepare("UPDATE bots SET config = ? WHERE bot_id = ?").run(JSON.stringify(cfg), b.bot_id);
-          console.log(`Successfully removed 'pramod' from bot ${b.bot_id} welcomeMessage configuration.`);
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Error sanitizing chatbot configs from 'pramod':", e);
-  }
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS flows (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      flow_data TEXT DEFAULT '[]',
-      is_active INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  try { db.exec(`ALTER TABLE flows ADD COLUMN bot_id TEXT`); } catch(e) {}
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS flow_responses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id TEXT NOT NULL,
-      session_id TEXT NOT NULL,
-      flow_id INTEGER NOT NULL,
-      node_id TEXT NOT NULL,
-      response_data TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  console.log('SQLite database connected and SaaS schema initialized');
-} catch (err) {
-  console.error('CRITICAL DATABASE ERROR:', err);
+if (!dbUrl || !dbToken) {
+  console.error("CRITICAL: TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables must be set!");
 }
 
+const client = createClient({
+  url: dbUrl || "libsql://dummy.turso.io",
+  authToken: dbToken || "dummy"
+});
+
+// Async db wrapper to maintain compatibility with synchronous better-sqlite3 calls
+const db = {
+  prepare(sql) {
+    return {
+      async run(...args) {
+        try {
+          const res = await client.execute({ sql, args });
+          return {
+            changes: res.rowsAffected,
+            lastInsertRowid: res.lastInsertRowid ? Number(res.lastInsertRowid) : null
+          };
+        } catch (err) {
+          console.error(`DB run error for SQL: ${sql}`, err);
+          throw err;
+        }
+      },
+      async get(...args) {
+        try {
+          const res = await client.execute({ sql, args });
+          return res.rows[0] ? { ...res.rows[0] } : undefined;
+        } catch (err) {
+          console.error(`DB get error for SQL: ${sql}`, err);
+          throw err;
+        }
+      },
+      async all(...args) {
+        try {
+          const res = await client.execute({ sql, args });
+          return res.rows.map(row => ({ ...row }));
+        } catch (err) {
+          console.error(`DB all error for SQL: ${sql}`, err);
+          throw err;
+        }
+      }
+    };
+  },
+  async exec(sql) {
+    try {
+      const statements = sql
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      for (const stmt of statements) {
+        await client.execute(stmt);
+      }
+    } catch (err) {
+      console.error(`DB exec error:`, err);
+      throw err;
+    }
+  }
+};
+
+// Initialize DB schema asynchronously
+async function initDb() {
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS chat_history (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        role       TEXT NOT NULL,
+        content    TEXT NOT NULL,
+        timestamp  DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN file_data TEXT DEFAULT ''`); } catch (e) {}
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN file_name TEXT DEFAULT ''`); } catch (e) {}
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN file_type TEXT DEFAULT ''`); } catch (e) {}
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN source TEXT DEFAULT ''`); } catch (e) {}
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN response_ms INTEGER DEFAULT 0`); } catch (e) {}
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN user_email TEXT DEFAULT ''`); } catch (e) {}
+
+    // Leads table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        name       TEXT DEFAULT '',
+        email      TEXT DEFAULT '',
+        phone      TEXT DEFAULT '',
+        page_url   TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        session_id TEXT PRIMARY KEY,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        metadata   TEXT DEFAULT '{}'
+      )
+    `);
+    // Users table for email capture
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        email      TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(email, session_id)
+      )
+    `);
+    // Ensure multi-tenancy columns exist in all tables
+    try { await db.exec(`ALTER TABLE chat_history ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+    try { await db.exec(`ALTER TABLE leads ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+    try { await db.exec(`ALTER TABLE sessions ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+    try { await db.exec(`ALTER TABLE users ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+
+    // Add email column to sessions if not exists
+    try {
+      await db.exec(`ALTER TABLE sessions ADD COLUMN email TEXT DEFAULT ''`);
+    } catch (e) { /* column already exists */ }
+    try {
+      await db.exec(`ALTER TABLE sessions ADD COLUMN bot_id TEXT DEFAULT 'default'`);
+      await db.exec(`ALTER TABLE sessions ADD COLUMN widget_version TEXT DEFAULT ''`);
+      await db.exec(`ALTER TABLE sessions ADD COLUMN last_user_msg_at DATETIME`);
+      await db.exec(`ALTER TABLE sessions ADD COLUMN abandoned INTEGER DEFAULT 0`);
+    } catch (e) {}
+
+    // Bots table for multi-tenant
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS bots (
+        bot_id     TEXT PRIMARY KEY,
+        name       TEXT NOT NULL,
+        api_key    TEXT NOT NULL,
+        config     TEXT DEFAULT '{}',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Complaints table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS complaints (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        email      TEXT DEFAULT '',
+        name       TEXT DEFAULT '',
+        category   TEXT DEFAULT 'other',
+        subject    TEXT DEFAULT '',
+        message    TEXT NOT NULL,
+        status     TEXT DEFAULT 'open',
+        page_url   TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    try { await db.exec(`ALTER TABLE complaints ADD COLUMN phone TEXT DEFAULT ''`); } catch (e) {}
+
+    // SaaS Multi-tenant extensions
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS super_admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password TEXT
+      )
+    `);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        price INTEGER DEFAULT 0,
+        duration TEXT DEFAULT '1 Month',
+        features TEXT
+      )
+    `);
+    try { await db.exec(`ALTER TABLE plans ADD COLUMN price INTEGER DEFAULT 0`); } catch(e){}
+    try { await db.exec(`ALTER TABLE plans ADD COLUMN duration TEXT DEFAULT '1 Month'`); } catch(e){}
+    
+    // Seed default plans if empty
+    const planCount = await db.prepare('SELECT COUNT(*) as c FROM plans').get();
+    if (planCount.c === 0) {
+      await db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Basic', 1000, '1 Month', '')").run();
+      await db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Standard', 2000, '1 Month', '')").run();
+      await db.prepare("INSERT INTO plans (name, price, duration, features) VALUES ('Premium', 3000, '1 Month', '')").run();
+    }
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE,
+        password TEXT,
+        company_name TEXT,
+        plan_id INTEGER,
+        payment_status TEXT DEFAULT 'COD_PENDING',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS bot_configs (
+        client_id TEXT PRIMARY KEY,
+        bot_name TEXT DEFAULT 'AI Assistant',
+        theme_color TEXT DEFAULT '#4F46E5',
+        logo_url TEXT,
+        position TEXT DEFAULT 'bottom-right'
+      )
+    `);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS knowledge_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id TEXT NOT NULL,
+        url TEXT NOT NULL
+      )
+    `);
+
+    // Alter existing tables for multi-tenancy
+    try { await db.exec(`ALTER TABLE bots ADD COLUMN client_id TEXT DEFAULT 'default_client'`); } catch(e){}
+    try { await db.exec(`ALTER TABLE bots ADD COLUMN api_key TEXT DEFAULT ''`); } catch(e){}
+    try { await db.exec(`ALTER TABLE bots ADD COLUMN domain TEXT`); } catch(e){}
+    try { await db.exec(`ALTER TABLE clients ADD COLUMN is_deleted INTEGER DEFAULT 0`); } catch(e){}
+
+    // Data Migration: Fix chat history messages that have 'default_client' but belong to a specific client's session
+    try {
+      const fixResult = await db.prepare(`
+        UPDATE chat_history 
+        SET client_id = (SELECT client_id FROM sessions WHERE sessions.session_id = chat_history.session_id)
+        WHERE client_id = 'default_client' 
+        AND EXISTS (SELECT 1 FROM sessions WHERE sessions.session_id = chat_history.session_id AND client_id != 'default_client')
+      `).run();
+      if (fixResult.changes > 0) console.log(`Fixed ${fixResult.changes} chat_history client_id mismatches`);
+    } catch(e){}
+
+    // Default super admin & client if empty
+    const hasSuperAdmin = await db.prepare("SELECT COUNT(*) as count FROM super_admins").get();
+    if (hasSuperAdmin.count === 0) {
+      await db.prepare("INSERT INTO super_admins (email, password) VALUES ('superadmin@example.com', 'super123')").run();
+    }
+    const hasClient = await db.prepare("SELECT COUNT(*) as count FROM clients").get();
+    if (hasClient.count === 0) {
+      const hashedDefaultPw = bcrypt.hashSync('client123', 10);
+      await db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('default_client', 'client@example.com', ?, 'Default Company')").run(hashedDefaultPw);
+      await db.prepare("INSERT INTO bot_configs (client_id) VALUES ('default_client')").run();
+    }
+
+    // Seed landing page demo bot & client if not exists
+    const hasDemoClient = await db.prepare("SELECT COUNT(*) as count FROM clients WHERE id = 'system_demo_client'").get();
+    if (hasDemoClient.count === 0) {
+      const hashedDemoPw = bcrypt.hashSync('demo123', 10);
+      await db.prepare("INSERT INTO clients (id, email, password, company_name) VALUES ('system_demo_client', 'demo@gadigital.com', ?, 'GAdigital Demo')").run(hashedDemoPw);
+    }
+    const hasDemoBot = await db.prepare("SELECT COUNT(*) as count FROM bots WHERE bot_id = 'bot_demo_landing'").get();
+    if (hasDemoBot.count === 0) {
+      const defaultDemoConfig = JSON.stringify({
+        botName: "GAdigital Assistant",
+        companyName: "GAdigital Solution",
+        welcomeMessage: "Hello! Welcome to GAdigital Solution. How can I assist you today?",
+        themeColor: "#4F46E5",
+        aiModel: "gpt-3.5-turbo",
+        systemPrompt: "You are a helpful customer support assistant for GAdigital Solution, an innovative IT services and SaaS provider.",
+        suggestedQuestions: ["What services do you offer?", "How can I contact sales?", "Tell me about subscription plans."],
+        enableAiChatbot: true,
+        enableFaq: true
+      });
+      await db.prepare("INSERT INTO bots (bot_id, name, api_key, config, client_id) VALUES ('bot_demo_landing', 'GAdigital Assistant', 'key_gadigital_demo_bot', ?, 'system_demo_client')").run(defaultDemoConfig);
+    }
+
+    // Auto-sanitize all bots configurations: Remove "pramod" from welcome messages
+    try {
+      const allBots = await db.prepare("SELECT bot_id, config FROM bots").all();
+      for (const b of allBots) {
+        if (b.config) {
+          let cfg = JSON.parse(b.config);
+          if (cfg.welcomeMessage && cfg.welcomeMessage.toLowerCase().includes('pramod')) {
+            cfg.welcomeMessage = cfg.welcomeMessage
+              .replace(/[\s.,?!]*i am pramod[\s.,?!]*/gi, ' ')
+              .replace(/[\s.,?!]*pramod[\s.,?!]*/gi, ' ')
+              .trim();
+            if (!cfg.welcomeMessage || cfg.welcomeMessage.length < 5) {
+              cfg.welcomeMessage = "Hello! Welcome to GAdigital Solution. How can I assist you today?";
+            }
+            await db.prepare("UPDATE bots SET config = ? WHERE bot_id = ?").run(JSON.stringify(cfg), b.bot_id);
+            console.log(`Successfully removed 'pramod' from bot ${b.bot_id} welcomeMessage configuration.`);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error sanitizing chatbot configs from 'pramod':", e);
+    }
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS flows (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        flow_data TEXT DEFAULT '[]',
+        is_active INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    try { await db.exec(`ALTER TABLE flows ADD COLUMN bot_id TEXT`); } catch(e) {}
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS flow_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        flow_id INTEGER NOT NULL,
+        node_id TEXT NOT NULL,
+        response_data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log('Turso libSQL database connected and SaaS schema initialized');
+  } catch (err) {
+    console.error('CRITICAL DATABASE ERROR:', err);
+  }
+}
+
+initDb(); // Initialize database immediately on startup
 // ---- Plan Limits & Features ---------------------------------
 const PLAN_LIMITS = {
   1: { // Basic
@@ -343,23 +408,23 @@ const PLAN_LIMITS = {
   }
 };
 
-function getClientPlan(clientId) {
+async function getClientPlan(clientId) {
   if (!db) return PLAN_LIMITS[1];
-  const client = db.prepare('SELECT plan_id FROM clients WHERE id = ?').get(clientId);
+  const client = await db.prepare('SELECT plan_id FROM clients WHERE id = ?').get(clientId);
   const planId = client?.plan_id || 1;
   return PLAN_LIMITS[planId] || PLAN_LIMITS[1];
 }
 
 async function checkMessageLimit(clientId) {
   if (!db) return true;
-  const plan = getClientPlan(clientId);
+  const plan = await getClientPlan(clientId);
   
   // Count messages in current month
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0,0,0,0);
   
-  const result = db.prepare(`
+  const result = await db.prepare(`
     SELECT COUNT(*) as count 
     FROM chat_history 
     WHERE client_id = ? 
@@ -370,29 +435,29 @@ async function checkMessageLimit(clientId) {
   return result.count < plan.monthlyMessages;
 }
 
-function checkBotLimit(clientId) {
+async function checkBotLimit(clientId) {
   if (!db) return true;
-  const plan = getClientPlan(clientId);
-  const result = db.prepare('SELECT COUNT(*) as count FROM bots WHERE client_id = ?').get(clientId);
+  const plan = await getClientPlan(clientId);
+  const result = await db.prepare('SELECT COUNT(*) as count FROM bots WHERE client_id = ?').get(clientId);
   return result.count < plan.maxBots;
 }
 
 // In-memory fallback
 const memoryStore = {};
 
-function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEmail = null) {
+async function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEmail = null) {
   const safeMeta = meta || {};
   if (db) {
     try {
-      db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
-      db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
-      db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      await db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id, email) VALUES (?, ?, ?)').run(sessionId, clientId || 'default_client', userEmail);
+      await db.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP, email = COALESCE(?, email) WHERE session_id = ?').run(userEmail, sessionId);
+      await db.prepare('INSERT INTO chat_history (client_id, session_id, role, content, file_data, file_name, file_type, source, response_ms, user_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
         clientId || 'default_client', sessionId, role, content,
         file?.dataUrl || '', file?.name || '', file?.type || '',
         safeMeta.source || '', safeMeta.responseMs || 0, userEmail
       );
     } catch (err) {
-      console.error('Database error in saveMessage:', err.message);
+      console.error('Database error in await saveMessage:', err.message);
     }
   } else {
     if (!memoryStore[sessionId]) memoryStore[sessionId] = [];
@@ -400,18 +465,18 @@ function saveMessage(clientId, sessionId, role, content, file, meta = {}, userEm
   }
 }
 
-function getHistory(sessionId, clientId, limit = 20) {
+async function getHistory(sessionId, clientId, limit = 20) {
   if (db) {
-    return db.prepare(
+    return await db.prepare(
       'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? AND client_id = ? ORDER BY id DESC LIMIT ?'
     ).all(sessionId, clientId || 'default_client', limit).reverse();
   }
   return (memoryStore[sessionId] || []).slice(-limit);
 }
 
-function getAllSessions(clientId) {
+async function getAllSessions(clientId) {
   if (db) {
-    return db.prepare(`
+    return await db.prepare(`
       SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
              COUNT(c.id) as message_count
       FROM sessions s
@@ -539,12 +604,12 @@ async function sendLeadEmail(lead, clientEmailCfg) {
 })();
 
 // API key middleware
-function checkApiKey(req, res, next) {
+async function checkApiKey(req, res, next) {
   const provided = req.headers['x-bot-key'] || req.body?.apiKey || req.query?.apiKey;
   if (!provided) return res.status(401).json({ error: 'Missing API key' });
 
   if (db) {
-    const bot = db.prepare('SELECT * FROM bots WHERE api_key = ?').get(provided);
+    const bot = await db.prepare('SELECT * FROM bots WHERE api_key = ?').get(provided);
     if (!bot) return res.status(401).json({ error: 'Invalid API key' });
     req.bot = bot;
     req.clientId = bot.client_id;
@@ -637,13 +702,13 @@ async function scrapeUrl(url) {
 }
 
 // ---- Helper functions for Multi-tenancy Config ----
-function loadClientBotConfig(clientId, botId = null) {
+async function loadClientBotConfig(clientId, botId = null) {
   if (!db) return loadConfig();
   let bot;
   if (botId) {
-    bot = db.prepare('SELECT config FROM bots WHERE client_id = ? AND bot_id = ?').get(clientId, botId);
+    bot = await db.prepare('SELECT config FROM bots WHERE client_id = ? AND bot_id = ?').get(clientId, botId);
   } else {
-    bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
+    bot = await db.prepare('SELECT config FROM bots WHERE client_id = ?').get(clientId);
   }
   
   if (!bot) return loadConfig();
@@ -656,25 +721,25 @@ function loadClientBotConfig(clientId, botId = null) {
   }
 }
 
-function saveClientBotConfig(clientId, config, botId = null) {
+async function saveClientBotConfig(clientId, config, botId = null) {
   if (!db) return saveConfig(config);
   if (botId) {
-    db.prepare('UPDATE bots SET config = ? WHERE client_id = ? AND bot_id = ?').run(JSON.stringify(config), clientId, botId);
+    await db.prepare('UPDATE bots SET config = ? WHERE client_id = ? AND bot_id = ?').run(JSON.stringify(config), clientId, botId);
   } else {
-    db.prepare('UPDATE bots SET config = ? WHERE client_id = ?').run(JSON.stringify(config), clientId);
+    await db.prepare('UPDATE bots SET config = ? WHERE client_id = ?').run(JSON.stringify(config), clientId);
   }
 }
 
 // ---- API Routes --------------------------------------------
 
 // GET /api/config — Widget loads config on init
-app.get('/api/config', (req, res) => {
+app.get('/api/config', async (req, res) => {
   const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
   let config;
   let clientId = 'default_client';
 
   if (apiKey && db) {
-    const bot = db.prepare('SELECT client_id, config, domain FROM bots WHERE api_key = ?').get(apiKey);
+    const bot = await db.prepare('SELECT client_id, config, domain FROM bots WHERE api_key = ?').get(apiKey);
     if (bot) {
       config = JSON.parse(bot.config);
       clientId = bot.client_id;
@@ -687,7 +752,7 @@ app.get('/api/config', (req, res) => {
   }
 
   // Add branding info based on plan
-  const plan = getClientPlan(clientId);
+  const plan = await getClientPlan(clientId);
   
   // Don't expose sensitive data to widget
   config.emailCapture = true; // Force mandatory
@@ -700,7 +765,7 @@ app.get('/api/config', (req, res) => {
 });
 
 // POST /api/register — Register user email with session
-app.post('/api/register', checkApiKey, (req, res) => {
+app.post('/api/register', checkApiKey, async (req, res) => {
   const { email, sessionId } = req.body;
   if (!email || !sessionId) {
     return res.status(400).json({ error: 'email and sessionId are required' });
@@ -712,9 +777,9 @@ app.post('/api/register', checkApiKey, (req, res) => {
   }
 
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO users (email, session_id, client_id) VALUES (?, ?, ?)').run(email, sessionId, req.clientId);
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, email, client_id) VALUES (?, ?, ?)').run(sessionId, email, req.clientId);
-    db.prepare('UPDATE sessions SET email = ? WHERE session_id = ? AND client_id = ?').run(email, sessionId, req.clientId);
+    await db.prepare('INSERT OR IGNORE INTO users (email, session_id, client_id) VALUES (?, ?, ?)').run(email, sessionId, req.clientId);
+    await db.prepare('INSERT OR IGNORE INTO sessions (session_id, email, client_id) VALUES (?, ?, ?)').run(sessionId, email, req.clientId);
+    await db.prepare('UPDATE sessions SET email = ? WHERE session_id = ? AND client_id = ?').run(email, sessionId, req.clientId);
   } else {
     if (!memoryStore._users) memoryStore._users = {};
     memoryStore._users[sessionId] = email;
@@ -723,7 +788,7 @@ app.post('/api/register', checkApiKey, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/users', requireAuth, (req, res) => {
+app.get('/api/users', requireAuth, async (req, res) => {
   const domainFilter = req.query.domain;
   const botId = req.query.botId;
 
@@ -754,7 +819,7 @@ app.get('/api/users', requireAuth, (req, res) => {
       ORDER BY u.created_at DESC
     `;
 
-    const users = db.prepare(query).all(...params);
+    const users = await db.prepare(query).all(...params);
     return res.json(users);
   }
   const users = Object.entries(memoryStore._users || {}).map(([sid, email]) => ({
@@ -765,37 +830,37 @@ app.get('/api/users', requireAuth, (req, res) => {
 });
 
 // GET /api/stats - Admin: dashboard stats (optionally filtered by botId)
-app.get('/api/stats', requireAuth, (req, res) => {
+app.get('/api/stats', requireAuth, async (req, res) => {
   if (db) {
     const botId = req.query.botId;
 
     let totalUsers, totalChats, totalSessions, activeSessions;
     if (botId) {
-      totalUsers = db.prepare(`
+      totalUsers = await db.prepare(`
         SELECT COUNT(DISTINCT u.email) as count FROM users u
         INNER JOIN sessions s ON u.session_id = s.session_id
         WHERE u.client_id = ? AND s.bot_id = ?
       `).get(req.clientId, botId).count;
-      totalChats = db.prepare(`
+      totalChats = await db.prepare(`
         SELECT COUNT(*) as count FROM chat_history c
         INNER JOIN sessions s ON c.session_id = s.session_id
         WHERE c.client_id = ? AND s.bot_id = ?
       `).get(req.clientId, botId).count;
-      totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
-      activeSessions = db.prepare(
+      totalSessions = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+      activeSessions = await db.prepare(
         "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ? AND updated_at > datetime('now', '-30 minutes')"
       ).get(req.clientId, botId).count;
     } else {
-      totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
-      totalChats = db.prepare('SELECT COUNT(*) as count FROM chat_history WHERE client_id = ?').get(req.clientId).count;
-      totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
-      activeSessions = db.prepare(
+      totalUsers = await db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+      totalChats = await db.prepare('SELECT COUNT(*) as count FROM chat_history WHERE client_id = ?').get(req.clientId).count;
+      totalSessions = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
+      activeSessions = await db.prepare(
         "SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND updated_at > datetime('now', '-30 minutes')"
       ).get(req.clientId).count;
     }
     
     // Get plan info
-    const client = db.prepare(`
+    const client = await db.prepare(`
       SELECT c.created_at, c.plan_id, p.name as plan_name, p.duration
       FROM clients c
       LEFT JOIN plans p ON c.plan_id = p.id
@@ -822,50 +887,50 @@ app.get('/api/stats', requireAuth, (req, res) => {
 });
 
 // GET /api/flows - Get all flows for the logged-in client (optionally filtered by botId)
-app.get('/api/flows', requireAuth, (req, res) => {
+app.get('/api/flows', requireAuth, async (req, res) => {
   const botId = req.query.botId;
   if (!db) return res.json([]);
   let flows;
   if (botId) {
-    flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all(req.clientId, botId);
+    flows = await db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all(req.clientId, botId);
   } else {
-    flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
+    flows = await db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ?').all(req.clientId);
   }
   res.json(flows);
 });
 
 // GET /api/flows/:id — Get a specific flow
-app.get('/api/flows/:id', requireAuth, (req, res) => {
+app.get('/api/flows/:id', requireAuth, async (req, res) => {
   if (!db) return res.status(404).json({ error: 'DB not available' });
-  const flow = db.prepare('SELECT * FROM flows WHERE id = ? AND client_id = ?').get(req.params.id, req.clientId);
+  const flow = await db.prepare('SELECT * FROM flows WHERE id = ? AND client_id = ?').get(req.params.id, req.clientId);
   if (!flow) return res.status(404).json({ error: 'Flow not found' });
   res.json(flow);
 });
 
 // POST /api/flows - Create or update a flow
-app.post('/api/flows', requireAuth, (req, res) => {
+app.post('/api/flows', requireAuth, async (req, res) => {
   const { id, name, flow_data, is_active, botId } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });
   
   if (id) {
-    db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ?')
+    await db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ?')
       .run(name, JSON.stringify(flow_data || []), is_active ? 1 : 0, id, req.clientId);
     if (is_active) {
       if (botId) {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, req.clientId, botId);
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, req.clientId, botId);
       } else {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(id, req.clientId);
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(id, req.clientId);
       }
     }
     return res.json({ success: true, id });
   } else {
-    const result = db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
+    const result = await db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
       .run(req.clientId, botId || null, name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
     if (is_active) {
       if (botId) {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, req.clientId, botId);
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, req.clientId, botId);
       } else {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(result.lastInsertRowid, req.clientId);
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ?').run(result.lastInsertRowid, req.clientId);
       }
     }
     return res.json({ success: true, id: result.lastInsertRowid });
@@ -873,32 +938,32 @@ app.post('/api/flows', requireAuth, (req, res) => {
 });
 
 // DELETE /api/flows/:id — Delete a flow
-app.delete('/api/flows/:id', requireAuth, (req, res) => {
+app.delete('/api/flows/:id', requireAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ?').run(req.params.id, req.clientId);
+  await db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ?').run(req.params.id, req.clientId);
   res.json({ success: true });
 });
 
 // GET /api/active-flow - Get the active flow for a widget (uses bot key)
-app.get('/api/active-flow', checkApiKey, (req, res) => {
+app.get('/api/active-flow', checkApiKey, async (req, res) => {
   if (!db) return res.json({ flow: null });
   // Find bot by api_key to get bot_id
   const apiKey = req.headers['x-bot-key'] || req.query?.apiKey;
   const isPreview = req.query?.preview === 'true';
-  const bot = db.prepare('SELECT bot_id FROM bots WHERE api_key = ?').get(apiKey);
+  const bot = await db.prepare('SELECT bot_id FROM bots WHERE api_key = ?').get(apiKey);
   
   let flow;
   if (bot && bot.bot_id) {
     if (isPreview) {
-      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? LIMIT 1').get(req.clientId, bot.bot_id);
+      flow = await db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? LIMIT 1').get(req.clientId, bot.bot_id);
     } else {
-      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? AND is_active = 1 LIMIT 1').get(req.clientId, bot.bot_id);
+      flow = await db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND bot_id = ? AND is_active = 1 LIMIT 1').get(req.clientId, bot.bot_id);
     }
   } else {
     if (isPreview) {
-      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? LIMIT 1').get(req.clientId);
+      flow = await db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? LIMIT 1').get(req.clientId);
     } else {
-      flow = db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
+      flow = await db.prepare('SELECT id, name, flow_data FROM flows WHERE client_id = ? AND is_active = 1 LIMIT 1').get(req.clientId);
     }
   }
   
@@ -959,16 +1024,16 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
   // Handle flow responses
   if (flowNodeId && flowId) {
     if (db) {
-      db.prepare('INSERT INTO flow_responses (client_id, session_id, flow_id, node_id, response_data) VALUES (?, ?, ?, ?, ?)')
+      await db.prepare('INSERT INTO flow_responses (client_id, session_id, flow_id, node_id, response_data) VALUES (?, ?, ?, ?, ?)')
         .run(req.clientId, sessionId, flowId, flowNodeId, JSON.stringify(message || file));
     }
     // Track bot_id and last_user_msg_at
     if (db) {
-      db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
-      db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
+      await db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
+      await db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
         .run(botId || 'default', widgetVersion || '', req.clientId, sessionId);
     }
-    saveMessage(req.clientId, sessionId, 'user', typeof message === 'string' ? message : JSON.stringify(message), file, { source: 'flow_response' }, email);
+    await saveMessage(req.clientId, sessionId, 'user', typeof message === 'string' ? message : JSON.stringify(message), file, { source: 'flow_response' }, email);
     
     return res.json({ success: true, source: 'flow' });
   }
@@ -979,18 +1044,18 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     return res.status(400).json({ error: 'Empty message' });
   }
 
-  const config = loadClientBotConfig(req.clientId, req.bot?.bot_id);
+  const config = await loadClientBotConfig(req.clientId, req.bot?.bot_id);
   const startTime = Date.now();
 
   // Track bot_id, widget version, last user msg time
   if (db) {
-    db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
-    db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
+    await db.prepare('INSERT OR IGNORE INTO sessions (session_id, client_id) VALUES (?, ?)').run(sessionId, req.clientId);
+    await db.prepare('UPDATE sessions SET bot_id = ?, widget_version = ?, last_user_msg_at = CURRENT_TIMESTAMP, client_id = ? WHERE session_id = ?')
       .run(botId || 'default', widgetVersion || '', req.clientId, sessionId);
   }
 
   // Save user message with optional file
-  saveMessage(req.clientId, sessionId, 'user', message, file, null, email);
+  await saveMessage(req.clientId, sessionId, 'user', message, file, null, email);
 
   // Try FAQ matching if enabled
   let faqMatch = null;
@@ -1054,7 +1119,7 @@ app.post('/api/chat', restrictDomain, checkApiKey, rateLimit, async (req, res) =
     if (faqMatch && (!faqMatch.question || !faqMatch.question.startsWith('[From '))) {
       const responseMs = Date.now() - startTime;
       const cleanReply = cleanFaqReply(faqMatch.answer);
-      saveMessage(req.clientId, sessionId, 'assistant', cleanReply, null, { source: 'faq', responseMs }, email);
+      await saveMessage(req.clientId, sessionId, 'assistant', cleanReply, null, { source: 'faq', responseMs }, email);
       return res.json({ reply: cleanReply, source: 'faq' });
     }
   }
@@ -1123,13 +1188,13 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
   let openaiLowConfidence = false;
   if (enableAi && openai) {
     try {
-      const history = getHistory(sessionId, req.clientId, 10);
+      const history = await getHistory(sessionId, req.clientId, 10);
       const messages = [
         { role: 'system', content: (systemPromptToUse) + knowledgeContext + contextHint },
         ...history.map(h => ({ role: h.role, content: h.content })),
       ];
 
-      const plan = getClientPlan(req.clientId);
+      const plan = await getClientPlan(req.clientId);
       let selectedModel = config.aiModel || 'gpt-3.5-turbo';
       if (!plan.models.includes(selectedModel)) {
         selectedModel = plan.models[0];
@@ -1160,7 +1225,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
       // Low confidence fallback - if reply contains uncertainty markers
       openaiLowConfidence = /i'?m not sure|i don'?t know|i cannot|i can'?t help/i.test(replyText);
       if (!openaiLowConfidence) {
-        saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'ai', responseMs, sentiment }, email);
+        await saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'ai', responseMs, sentiment }, email);
         return res.json({ reply: replyText, source: 'ai', suggestions, sentiment });
       }
       openaiReply = replyText;
@@ -1229,7 +1294,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
         }
       } catch (e) {}
 
-      saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'gemini', responseMs, sentiment }, email);
+      await saveMessage(req.clientId, sessionId, 'assistant', replyText, null, { source: 'gemini', responseMs, sentiment }, email);
       return res.json({ reply: replyText, source: 'gemini', suggestions, sentiment });
     } catch (err) {
       console.error('Gemini error:', err.message);
@@ -1240,7 +1305,7 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
   if (openaiReply && openaiLowConfidence) {
     const finalReply = config.fallbackMessage || openaiReply;
     const responseMs = Date.now() - startTime;
-    saveMessage(req.clientId, sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
+    await saveMessage(req.clientId, sessionId, 'assistant', finalReply, null, { source: 'ai', responseMs });
     return res.json({ reply: finalReply, source: 'ai', lowConfidence: true });
   }
 
@@ -1254,12 +1319,12 @@ Do NOT wrap in markdown \`\`\`json. Only output the raw JSON object.`;
     reply = generateFallbackReply(message, config);
   }
   const responseMs = Date.now() - startTime;
-  saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source, responseMs }, email);
+  await saveMessage(req.clientId, sessionId, 'assistant', reply, null, { source, responseMs }, email);
   return res.json({ reply, source });
 });
 
 // POST /api/lead — Capture lead (name, phone, email)
-app.post('/api/lead', checkApiKey, (req, res) => {
+app.post('/api/lead', checkApiKey, async (req, res) => {
   const { sessionId, name, email, phone, pageUrl } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
 
@@ -1275,12 +1340,12 @@ app.post('/api/lead', checkApiKey, (req, res) => {
   }
 
   if (db) {
-    db.prepare('INSERT INTO leads (session_id, name, email, phone, page_url, client_id) VALUES (?, ?, ?, ?, ?, ?)')
+    await db.prepare('INSERT INTO leads (session_id, name, email, phone, page_url, client_id) VALUES (?, ?, ?, ?, ?, ?)')
       .run(sessionId, safeName, safeEmail, safePhone, safeUrl, req.clientId);
   }
 
   // Send email notification to admin (async, non-blocking)
-  const _leadCfg = loadClientBotConfig(req.clientId, req.bot?.bot_id);
+  const _leadCfg = await loadClientBotConfig(req.clientId, req.bot?.bot_id);
   sendLeadEmail(
     { name: safeName, email: safeEmail, phone: safePhone, pageUrl: safeUrl },
     { ...(_leadCfg.emailNotifications || {}), companyName: _leadCfg.companyName || _leadCfg.botName }
@@ -1304,7 +1369,7 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
 
     // Split into Q&A chunks — simple heuristic: split by double newlines
     const botId = req.body.botId;
-    const config = loadClientBotConfig(req.clientId, botId);
+    const config = await loadClientBotConfig(req.clientId, botId);
     const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
     const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
       question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
@@ -1312,7 +1377,7 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig(req.clientId, config, botId);
+    await saveClientBotConfig(req.clientId, config, botId);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length });
   } catch (err) {
@@ -1322,12 +1387,12 @@ app.post('/api/knowledge/pdf', requireAuth, async (req, res) => {
 });
 
 // POST /api/logo - Upload logo (base64 image)
-app.post('/api/logo', requireAuth, (req, res) => {
+app.post('/api/logo', requireAuth, async (req, res) => {
   const { logo, botId } = req.body;
   if (logo === undefined) return res.status(400).json({ error: 'logo required' });
-  const config = loadClientBotConfig(req.clientId, botId);
+  const config = await loadClientBotConfig(req.clientId, botId);
   config.logo = logo;
-  saveClientBotConfig(req.clientId, config, botId);
+  await saveClientBotConfig(req.clientId, config, botId);
   res.json({ success: true });
 });
 
@@ -1335,7 +1400,7 @@ app.post('/api/logo', requireAuth, (req, res) => {
 app.post('/api/test-email', requireAuth, async (req, res) => {
   try {
     const botId = req.query.botId || req.body?.botId;
-    const cfg = loadClientBotConfig(req.clientId, botId);
+    const cfg = await loadClientBotConfig(req.clientId, botId);
     const emailCfg = { ...(cfg.emailNotifications || {}), companyName: cfg.companyName || cfg.botName };
     await sendLeadEmail({ name: 'Test User', email: 'test@example.com', phone: '1234567890', pageUrl: 'http://test.com' }, emailCfg);
     res.json({ success: true, message: 'Test email sent' });
@@ -1345,11 +1410,11 @@ app.post('/api/test-email', requireAuth, async (req, res) => {
 });
 
 // GET /api/leads — Admin: list all leads (optionally filtered by botId/session bot)
-app.get('/api/leads', requireAuth, (req, res) => {
+app.get('/api/leads', requireAuth, async (req, res) => {
   if (db) {
     const botId = req.query.botId;
     if (botId) {
-      const leads = db.prepare(`
+      const leads = await db.prepare(`
         SELECT l.* FROM leads l
         INNER JOIN sessions s ON l.session_id = s.session_id
         WHERE l.client_id = ? AND s.bot_id = ?
@@ -1357,15 +1422,15 @@ app.get('/api/leads', requireAuth, (req, res) => {
       `).all(req.clientId, botId);
       return res.json(leads);
     }
-    return res.json(db.prepare('SELECT * FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
+    return res.json(await db.prepare('SELECT * FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
   }
   res.json([]);
 });
 
 // GET /api/leads/csv — Admin: download leads as CSV
-app.get('/api/leads/csv', requireAuth, (req, res) => {
+app.get('/api/leads/csv', requireAuth, async (req, res) => {
   if (!db) return res.status(500).send('DB not available');
-  const leads = db.prepare('SELECT name, email, phone, page_url, created_at FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  const leads = await db.prepare('SELECT name, email, phone, page_url, created_at FROM leads WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
   const csvRows = [
     ['Name', 'Email', 'Phone', 'Page URL', 'Captured At'],
     ...leads.map(l => [l.name, l.email, l.phone, l.page_url, l.created_at])
@@ -1377,21 +1442,21 @@ app.get('/api/leads/csv', requireAuth, (req, res) => {
 });
 
 // GET /api/analytics — advanced analytics
-app.get('/api/analytics', requireAuth, (req, res) => {
+app.get('/api/analytics', requireAuth, async (req, res) => {
   if (!db) return res.json({});
   const botId = req.query.botId;
 
   let avgResponse, sourceBreakdown, totalLeads, totalUsers;
 
   if (botId) {
-    avgResponse = db.prepare(`
+    avgResponse = await db.prepare(`
       SELECT AVG(c.response_ms) as avg 
       FROM chat_history c
       INNER JOIN sessions s ON c.session_id = s.session_id
       WHERE c.role = 'assistant' AND c.response_ms > 0 AND c.client_id = ? AND s.bot_id = ?
     `).get(req.clientId, botId).avg || 0;
 
-    sourceBreakdown = db.prepare(`
+    sourceBreakdown = await db.prepare(`
       SELECT c.source, COUNT(*) as count 
       FROM chat_history c
       INNER JOIN sessions s ON c.session_id = s.session_id
@@ -1399,24 +1464,24 @@ app.get('/api/analytics', requireAuth, (req, res) => {
       GROUP BY c.source
     `).all(req.clientId, botId);
 
-    totalLeads = db.prepare(`
+    totalLeads = await db.prepare(`
       SELECT COUNT(*) as count 
       FROM leads l
       INNER JOIN sessions s ON l.session_id = s.session_id
       WHERE l.client_id = ? AND s.bot_id = ?
     `).get(req.clientId, botId).count;
 
-    totalUsers = db.prepare(`
+    totalUsers = await db.prepare(`
       SELECT COUNT(DISTINCT u.email) as count 
       FROM users u
       INNER JOIN sessions s ON u.session_id = s.session_id
       WHERE u.client_id = ? AND s.bot_id = ?
     `).get(req.clientId, botId).count;
   } else {
-    avgResponse = db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0 AND client_id = ?").get(req.clientId).avg || 0;
-    sourceBreakdown = db.prepare("SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' AND client_id = ? GROUP BY source").all(req.clientId);
-    totalLeads = db.prepare('SELECT COUNT(*) as count FROM leads WHERE client_id = ?').get(req.clientId).count;
-    totalUsers = db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
+    avgResponse = await db.prepare("SELECT AVG(response_ms) as avg FROM chat_history WHERE role = 'assistant' AND response_ms > 0 AND client_id = ?").get(req.clientId).avg || 0;
+    sourceBreakdown = await db.prepare("SELECT source, COUNT(*) as count FROM chat_history WHERE role = 'assistant' AND source != '' AND client_id = ? GROUP BY source").all(req.clientId);
+    totalLeads = await db.prepare('SELECT COUNT(*) as count FROM leads WHERE client_id = ?').get(req.clientId).count;
+    totalUsers = await db.prepare('SELECT COUNT(DISTINCT email) as count FROM users WHERE client_id = ?').get(req.clientId).count;
   }
 
   const conversionRate = totalUsers > 0 ? ((totalLeads / totalUsers) * 100).toFixed(1) : 0;
@@ -1454,17 +1519,17 @@ function generateFallbackReply(message, config) {
 }
 
 // GET /api/history — Get chat history for a session (used by widget)
-app.get('/api/history/:sessionId', (req, res) => {
+app.get('/api/history/:sessionId', async (req, res) => {
   if (!db) return res.json([]);
   // Look up client for this session to ensure we get the right history
-  const session = db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
+  const session = await db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
   const clientId = session ? session.client_id : 'default_client';
-  const history = getHistory(req.params.sessionId, clientId, 50);
+  const history = await getHistory(req.params.sessionId, clientId, 50);
   res.json(history);
 });
 
 // GET /api/sessions — Admin: list all sessions (optionally filtered by botId)
-app.get('/api/sessions', requireAuth, (req, res) => {
+app.get('/api/sessions', requireAuth, async (req, res) => {
   if (db) {
     const botId = req.query.botId;
     const search = req.query.search ? req.query.search.trim() : '';
@@ -1490,23 +1555,23 @@ app.get('/api/sessions', requireAuth, (req, res) => {
     }
 
     query += ` ORDER BY s.updated_at DESC`;
-    const sessions = db.prepare(query).all(...params);
+    const sessions = await db.prepare(query).all(...params);
     return res.json(sessions);
   }
   res.json([]);
 });
 
 // GET /api/session/:id — Admin: get session messages
-app.get('/api/session/:sessionId', requireAuth, (req, res) => {
+app.get('/api/session/:sessionId', requireAuth, async (req, res) => {
   if (db) {
     // 1. Verify session ownership first
-    const session = db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
+    const session = await db.prepare('SELECT client_id FROM sessions WHERE session_id = ?').get(req.params.sessionId);
     if (!session || (req.userRole !== 'super' && session.client_id !== req.clientId)) {
       return res.status(403).json({ error: 'Access denied or session not found' });
     }
     
     // 2. Get history (now we can trust the sessionId)
-    const history = db.prepare(
+    const history = await db.prepare(
       'SELECT role, content, file_data, file_name, file_type FROM chat_history WHERE session_id = ? ORDER BY id ASC LIMIT 150'
     ).all(req.params.sessionId);
     return res.json(history);
@@ -1515,17 +1580,17 @@ app.get('/api/session/:sessionId', requireAuth, (req, res) => {
 });
 
 // PUT /api/config - Admin: update config
-app.put('/api/config', requireAuth, (req, res) => {
+app.put('/api/config', requireAuth, async (req, res) => {
   const { botId, ...configData } = req.body;
   try {
-    const current = loadClientBotConfig(req.clientId, botId);
+    const current = await loadClientBotConfig(req.clientId, botId);
     const updated = { ...current, ...configData };
-    saveClientBotConfig(req.clientId, updated, botId);
+    await saveClientBotConfig(req.clientId, updated, botId);
 
     // Sync domain column for restriction check
     if (botId && configData.allowedDomains) {
       const primaryDomain = configData.allowedDomains[0] || null;
-      db.prepare('UPDATE bots SET domain = ? WHERE client_id = ? AND bot_id = ?').run(primaryDomain, req.clientId, botId);
+      await db.prepare('UPDATE bots SET domain = ? WHERE client_id = ? AND bot_id = ?').run(primaryDomain, req.clientId, botId);
     }
 
     res.json({ success: true, config: updated });
@@ -1536,9 +1601,9 @@ app.put('/api/config', requireAuth, (req, res) => {
 });
 
 // GET /api/config/full - Admin: full config including sensitive fields
-app.get('/api/config/full', requireAuth, (req, res) => {
+app.get('/api/config/full', requireAuth, async (req, res) => {
   const botId = req.query.botId;
-  res.json(loadClientBotConfig(req.clientId, botId));
+  res.json(await loadClientBotConfig(req.clientId, botId));
 });
 
 // POST /api/knowledge/url — Auto-train from website URL
@@ -1556,7 +1621,7 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
 
     // Split text into chunks and add as FAQs
     const botId = req.body.botId;
-    const config = loadClientBotConfig(req.clientId, botId);
+    const config = await loadClientBotConfig(req.clientId, botId);
     const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
     const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
 
@@ -1567,7 +1632,7 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig(req.clientId, config, botId);
+    await saveClientBotConfig(req.clientId, config, botId);
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
   } catch (err) {
@@ -1576,28 +1641,28 @@ app.post('/api/knowledge/url', requireAuth, async (req, res) => {
 });
 
 // GET /api/bots - List all bots (multi-tenant)
-app.get('/api/bots', requireAuth, (req, res) => {
+app.get('/api/bots', requireAuth, async (req, res) => {
   if (!db) return res.json([]);
-  const botsRows = db.prepare('SELECT bot_id, name, domain, api_key, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
+  const botsRows = await db.prepare('SELECT bot_id, name, domain, api_key, created_at FROM bots WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId);
   res.json(botsRows);
 });
 
 // POST /api/bots - Create a new bot
-app.post('/api/bots', requireAuth, (req, res) => {
+app.post('/api/bots', requireAuth, async (req, res) => {
   const { name, domain } = req.body;
   if (!name) return res.status(400).json({ error: 'Bot name required' });
   if (!domain) return res.status(400).json({ error: 'Domain name required' });
 
   // Domain uniqueness check
   if (db) {
-    const existing = db.prepare('SELECT bot_id FROM bots WHERE domain = ?').get(domain);
+    const existing = await db.prepare('SELECT bot_id FROM bots WHERE domain = ?').get(domain);
     if (existing) {
       return res.status(400).json({ error: 'This domain is already in use by another bot.' });
     }
   }
 
   // ---- Bot Limit Check ----
-  const canCreateBot = checkBotLimit(req.clientId);
+  const canCreateBot = await checkBotLimit(req.clientId);
   if (!canCreateBot) {
     return res.status(403).json({ error: 'Not eligible as your plan has reached its limit. Please upgrade to create more bots.' });
   }
@@ -1612,31 +1677,31 @@ app.post('/api/bots', requireAuth, (req, res) => {
     emailCaptureSubtitle: 'Please enter your email to start.'
   });
   if (db) {
-    db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id, domain) VALUES (?, ?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId, domain);
+    await db.prepare('INSERT INTO bots (bot_id, name, api_key, config, client_id, domain) VALUES (?, ?, ?, ?, ?, ?)').run(bot_id, name, api_key, defaultConfig, req.clientId, domain);
   }
   res.json({ success: true, bot_id, api_key, name, domain });
 });
 
 // DELETE /api/bots/:id
-app.delete('/api/bots/:id', requireAuth, (req, res) => {
-  if (db) db.prepare('DELETE FROM bots WHERE bot_id = ? AND client_id = ?').run(req.params.id, req.clientId);
+app.delete('/api/bots/:id', requireAuth, async (req, res) => {
+  if (db) await db.prepare('DELETE FROM bots WHERE bot_id = ? AND client_id = ?').run(req.params.id, req.clientId);
   res.json({ success: true });
 });
 
 // POST /api/apikey/regenerate — Regenerate default API key
-app.post('/api/apikey/regenerate', requireAuth, (req, res) => {
+app.post('/api/apikey/regenerate', requireAuth, async (req, res) => {
   const botId = req.query.botId || req.body?.botId;
-  const config = loadClientBotConfig(req.clientId, botId);
+  const config = await loadClientBotConfig(req.clientId, botId);
   const newApiKey = 'key_' + require('crypto').randomBytes(20).toString('hex');
   config.apiKey = newApiKey;
   
   // Update both the specific field and the JSON config in DB
   if (db) {
     if (botId) {
-      db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ? AND bot_id = ?')
+      await db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ? AND bot_id = ?')
         .run(newApiKey, JSON.stringify(config), req.clientId, botId);
     } else {
-      db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ?')
+      await db.prepare('UPDATE bots SET api_key = ?, config = ? WHERE client_id = ?')
         .run(newApiKey, JSON.stringify(config), req.clientId);
     }
   } else {
@@ -1647,12 +1712,12 @@ app.post('/api/apikey/regenerate', requireAuth, (req, res) => {
 });
 
 // GET /api/dropoff — Drop-off analytics
-app.get('/api/dropoff', requireAuth, (req, res) => {
+app.get('/api/dropoff', requireAuth, async (req, res) => {
   if (!db) return res.json({});
   const botId = req.query.botId;
 
   // Mark sessions as abandoned if last user msg was > 30 min ago
-  db.prepare(`
+  await db.prepare(`
     UPDATE sessions SET abandoned = 1
     WHERE last_user_msg_at IS NOT NULL
       AND last_user_msg_at < datetime('now', '-30 minutes')
@@ -1662,7 +1727,7 @@ app.get('/api/dropoff', requireAuth, (req, res) => {
   let buckets, abandonedCount, totalSessions, versions;
 
   if (botId) {
-    buckets = db.prepare(`
+    buckets = await db.prepare(`
       SELECT
         CASE
           WHEN msg_count = 0 THEN '0 messages'
@@ -1681,17 +1746,17 @@ app.get('/api/dropoff', requireAuth, (req, res) => {
       GROUP BY bucket
     `).all(req.clientId, botId);
 
-    abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
-    totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+    abandonedCount = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
+    totalSessions = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ? AND bot_id = ?').get(req.clientId, botId).count;
     
-    versions = db.prepare(`
+    versions = await db.prepare(`
       SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
       FROM sessions
       WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ? AND bot_id = ?
       GROUP BY widget_version
     `).all(req.clientId, botId);
   } else {
-    buckets = db.prepare(`
+    buckets = await db.prepare(`
       SELECT
         CASE
           WHEN msg_count = 0 THEN '0 messages'
@@ -1710,10 +1775,10 @@ app.get('/api/dropoff', requireAuth, (req, res) => {
       GROUP BY bucket
     `).all(req.clientId);
 
-    abandonedCount = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ?').get(req.clientId).count;
-    totalSessions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
+    abandonedCount = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE abandoned = 1 AND client_id = ?').get(req.clientId).count;
+    totalSessions = await db.prepare('SELECT COUNT(*) as count FROM sessions WHERE client_id = ?').get(req.clientId).count;
     
-    versions = db.prepare(`
+    versions = await db.prepare(`
       SELECT COALESCE(widget_version, 'unknown') as version, COUNT(*) as count
       FROM sessions
       WHERE widget_version IS NOT NULL AND widget_version != '' AND client_id = ?
@@ -1731,7 +1796,7 @@ app.get('/api/dropoff', requireAuth, (req, res) => {
 // ==============================================
 
 // POST /api/complaint — Submit a complaint
-app.post('/api/complaint', checkApiKey, (req, res) => {
+app.post('/api/complaint', checkApiKey, async (req, res) => {
   const { sessionId, email, name, phone, category, subject, message, pageUrl } = req.body;
   if (!sessionId || !message) {
     return res.status(400).json({ error: 'sessionId and message required' });
@@ -1745,14 +1810,14 @@ app.post('/api/complaint', checkApiKey, (req, res) => {
   const safeUrl      = sanitize(pageUrl || '');
 
   if (db) {
-    db.prepare(
+    await db.prepare(
       'INSERT INTO complaints (session_id, email, name, phone, category, subject, message, page_url, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(sessionId, safeEmail, safeName, safePhone, safeCategory, safeSubject, safeMessage, safeUrl, req.clientId);
   }
 
   // Send notification email via global SMTP
   try {
-    const _cCfg = loadClientBotConfig(req.clientId, req.bot?.bot_id);
+    const _cCfg = await loadClientBotConfig(req.clientId, req.bot?.bot_id);
     const emailCfg = _cCfg.emailNotifications || {};
     if (emailCfg.enabled && emailCfg.adminEmail) {
       const transporter = createGlobalTransporter();
@@ -1782,18 +1847,18 @@ app.post('/api/complaint', checkApiKey, (req, res) => {
 });
 
 // GET /api/complaints — Admin: list all
-app.get('/api/complaints', requireAuth, (req, res) => {
+app.get('/api/complaints', requireAuth, async (req, res) => {
   if (!db) return res.json([]);
-  res.json(db.prepare('SELECT * FROM complaints WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
+  res.json(await db.prepare('SELECT * FROM complaints WHERE client_id = ? ORDER BY created_at DESC').all(req.clientId));
 });
 
 // PUT /api/complaint/:id/status — Admin: update status
-app.put('/api/complaint/:id/status', requireAuth, (req, res) => {
+app.put('/api/complaint/:id/status', requireAuth, async (req, res) => {
   const { status } = req.body;
   if (!['open', 'in_progress', 'resolved'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
-  if (db) db.prepare('UPDATE complaints SET status = ? WHERE id = ? AND client_id = ?').run(status, req.params.id, req.clientId);
+  if (db) await db.prepare('UPDATE complaints SET status = ? WHERE id = ? AND client_id = ?').run(status, req.params.id, req.clientId);
   res.json({ success: true });
 });
 
@@ -1851,12 +1916,12 @@ app.post('/api/purchase', async (req, res) => {
   
   try {
     // Check if user already exists
-    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    const existing = await db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
       clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
@@ -1877,7 +1942,7 @@ app.post('/api/purchase', async (req, res) => {
 // ==========================================
 
 // GET RAZORPAY CONFIG (Return public key)
-app.get('/api/payment/config', (req, res) => {
+app.get('/api/payment/config', async (req, res) => {
   res.json({
     key_id: process.env.RAZORPAY_KEY_ID || ''
   });
@@ -1898,7 +1963,7 @@ app.post('/api/payment/create-order', async (req, res) => {
 
   try {
     // Check if user already exists
-    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    const existing = await db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     // Verify Razorpay setup
@@ -1907,7 +1972,7 @@ app.post('/api/payment/create-order', async (req, res) => {
     }
 
     // Get price of the plan
-    let plan = db.prepare('SELECT price FROM plans WHERE id = ?').get(plan_id);
+    let plan = await db.prepare('SELECT price FROM plans WHERE id = ?').get(plan_id);
     let price = 1000;
     if (plan) {
       price = plan.price;
@@ -1964,7 +2029,7 @@ app.post('/api/payment/verify', async (req, res) => {
 
   try {
     // Check if user already exists
-    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
+    const existing = await db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     // Verify payment signature
@@ -1982,7 +2047,7 @@ app.post('/api/payment/verify', async (req, res) => {
     
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
       clientId, email, hashedPassword, company_name, plan_id, 'PAID'
     );
 
@@ -2157,12 +2222,12 @@ async function sendWelcomeEmail({ company_name, email, password, plan_id, paymen
 // ---- ONE-TIME: Migrate plain-text passwords to bcrypt hashes ----
 app.post('/api/super/migrate-passwords', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  const clients = db.prepare('SELECT id, email, password FROM clients').all();
+  const clients = await db.prepare('SELECT id, email, password FROM clients').all();
   let migrated = 0;
   for (const client of clients) {
     if (client.password && client.password.startsWith('$2')) continue; // already hashed
     const hashed = await bcrypt.hash(client.password || 'changeme123', 10);
-    db.prepare('UPDATE clients SET password = ? WHERE id = ?').run(hashed, client.id);
+    await db.prepare('UPDATE clients SET password = ? WHERE id = ?').run(hashed, client.id);
     migrated++;
     console.log(`🔒 Hashed password for: ${client.email}`);
   }
@@ -2185,9 +2250,9 @@ app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
     if (password && password.trim()) {
       // Store new password securely using bcrypt hashing
       const hashedPassword = await bcrypt.hash(password.trim(), 10);
-      db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, hashedPassword, company_name || null, plan_id || null, clientId);
+      await db.prepare('UPDATE clients SET email = ?, password = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, hashedPassword, company_name || null, plan_id || null, clientId);
     } else {
-      db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, company_name || null, plan_id || null, clientId);
+      await db.prepare('UPDATE clients SET email = ?, company_name = COALESCE(?, company_name), plan_id = COALESCE(?, plan_id) WHERE id = ?').run(email, company_name || null, plan_id || null, clientId);
     }
     res.json({ success: true });
   } catch (err) {
@@ -2195,11 +2260,11 @@ app.put('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/super/clients/:id', requireSuperAuth, (req, res) => {
+app.delete('/api/super/clients/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   try {
-    db.prepare('UPDATE clients SET is_deleted = 1 WHERE id = ?').run(clientId);
+    await db.prepare('UPDATE clients SET is_deleted = 1 WHERE id = ?').run(clientId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Soft-deletion failed' });
@@ -2216,7 +2281,7 @@ app.post('/api/login', async (req, res) => {
     return res.json({ success: true, token, role: 'super' });
   }
 
-  const client = db.prepare('SELECT * FROM clients WHERE email = ? AND is_deleted = 0').get(email);
+  const client = await db.prepare('SELECT * FROM clients WHERE email = ? AND is_deleted = 0').get(email);
   if (client) {
     // Support both plain text (legacy) and hashed passwords
     let passwordMatch = false;
@@ -2280,23 +2345,23 @@ function requireSuperAuth(req, res, next) {
 // ==========================================
 
 // ---- Landing Page Demo Bot Config ----
-app.get('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
+app.get('/api/super/demo-bot/config', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+  const config = await loadClientBotConfig('system_demo_client', 'bot_demo_landing');
   res.json(config);
 });
 
-app.put('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
+app.put('/api/super/demo-bot/config', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { botName, ...configData } = req.body;
   try {
-    const current = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const current = await loadClientBotConfig('system_demo_client', 'bot_demo_landing');
     const updated = { ...current, ...configData, botName };
-    saveClientBotConfig('system_demo_client', updated, 'bot_demo_landing');
+    await saveClientBotConfig('system_demo_client', updated, 'bot_demo_landing');
     
     // Sync bot name column in bots table
     if (botName) {
-      db.prepare('UPDATE bots SET name = ? WHERE client_id = ? AND bot_id = ?').run(botName, 'system_demo_client', 'bot_demo_landing');
+      await db.prepare('UPDATE bots SET name = ? WHERE client_id = ? AND bot_id = ?').run(botName, 'system_demo_client', 'bot_demo_landing');
     }
     
     res.json({ success: true, config: updated });
@@ -2307,12 +2372,12 @@ app.put('/api/super/demo-bot/config', requireSuperAuth, (req, res) => {
 });
 
 // ---- Super Admin Demo Bot Logo upload ----
-app.post('/api/super/demo-bot/logo', requireSuperAuth, (req, res) => {
+app.post('/api/super/demo-bot/logo', requireSuperAuth, async (req, res) => {
   const { logo } = req.body;
   try {
-    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const config = await loadClientBotConfig('system_demo_client', 'bot_demo_landing');
     config.logo = logo;
-    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+    await saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2333,7 +2398,7 @@ app.post('/api/super/demo-bot/knowledge/pdf', requireSuperAuth, async (req, res)
 
     if (!text) return res.status(400).json({ error: 'No text extracted from PDF' });
 
-    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const config = await loadClientBotConfig('system_demo_client', 'bot_demo_landing');
     const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
     const newFaqs = chunks.slice(0, 20).map((chunk, i) => ({
       question: `[From ${fileName || 'PDF'}] Topic ${i + 1}`,
@@ -2341,7 +2406,7 @@ app.post('/api/super/demo-bot/knowledge/pdf', requireSuperAuth, async (req, res)
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+    await saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length });
   } catch (err) {
@@ -2362,7 +2427,7 @@ app.post('/api/super/demo-bot/knowledge/url', requireSuperAuth, async (req, res)
       return res.status(400).json({ error: 'No usable text found at URL' });
     }
 
-    const config = loadClientBotConfig('system_demo_client', 'bot_demo_landing');
+    const config = await loadClientBotConfig('system_demo_client', 'bot_demo_landing');
     const chunks = text.match(/.{1,500}(?:\s|$)/g) || [];
     const usefulChunks = chunks.filter(c => c.trim().length > 80).slice(0, 15);
 
@@ -2373,7 +2438,7 @@ app.post('/api/super/demo-bot/knowledge/url', requireSuperAuth, async (req, res)
     }));
 
     config.faqs = [...(config.faqs || []), ...newFaqs];
-    saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
+    await saveClientBotConfig('system_demo_client', config, 'bot_demo_landing');
 
     res.json({ success: true, added: newFaqs.length, totalChars: text.length, url });
   } catch (err) {
@@ -2382,32 +2447,32 @@ app.post('/api/super/demo-bot/knowledge/url', requireSuperAuth, async (req, res)
 });
 
 // ---- Super Admin Demo Bot Flow Endpoints ----
-app.get('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
+app.get('/api/super/demo-bot/flows', requireSuperAuth, async (req, res) => {
   if (!db) return res.json([]);
   try {
-    const flows = db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all('system_demo_client', 'bot_demo_landing');
+    const flows = await db.prepare('SELECT id, name, flow_data, is_active, created_at, updated_at FROM flows WHERE client_id = ? AND bot_id = ?').all('system_demo_client', 'bot_demo_landing');
     res.json(flows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
+app.post('/api/super/demo-bot/flows', requireSuperAuth, async (req, res) => {
   const { id, name, flow_data, is_active } = req.body;
   if (!db) return res.status(500).json({ error: 'DB not available' });
   try {
     if (id) {
-      db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ? AND bot_id = ?')
+      await db.prepare('UPDATE flows SET name = ?, flow_data = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND client_id = ? AND bot_id = ?')
         .run(name, JSON.stringify(flow_data || []), is_active ? 1 : 0, id, 'system_demo_client', 'bot_demo_landing');
       if (is_active) {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, 'system_demo_client', 'bot_demo_landing');
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(id, 'system_demo_client', 'bot_demo_landing');
       }
       return res.json({ success: true, id });
     } else {
-      const result = db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
+      const result = await db.prepare('INSERT INTO flows (client_id, bot_id, name, flow_data, is_active) VALUES (?, ?, ?, ?, ?)')
         .run('system_demo_client', 'bot_demo_landing', name || 'New Flow', JSON.stringify(flow_data || []), is_active ? 1 : 0);
       if (is_active) {
-        db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, 'system_demo_client', 'bot_demo_landing');
+        await db.prepare('UPDATE flows SET is_active = 0 WHERE id != ? AND client_id = ? AND bot_id = ?').run(result.lastInsertRowid, 'system_demo_client', 'bot_demo_landing');
       }
       return res.json({ success: true, id: result.lastInsertRowid });
     }
@@ -2416,10 +2481,10 @@ app.post('/api/super/demo-bot/flows', requireSuperAuth, (req, res) => {
   }
 });
 
-app.delete('/api/super/demo-bot/flows/:id', requireSuperAuth, (req, res) => {
+app.delete('/api/super/demo-bot/flows/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   try {
-    db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ? AND bot_id = ?').run(req.params.id, 'system_demo_client', 'bot_demo_landing');
+    await db.prepare('DELETE FROM flows WHERE id = ? AND client_id = ? AND bot_id = ?').run(req.params.id, 'system_demo_client', 'bot_demo_landing');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2427,10 +2492,10 @@ app.delete('/api/super/demo-bot/flows/:id', requireSuperAuth, (req, res) => {
 });
 
 // ---- Super Admin Demo Bot Session Endpoints ----
-app.get('/api/super/demo-bot/sessions', requireSuperAuth, (req, res) => {
+app.get('/api/super/demo-bot/sessions', requireSuperAuth, async (req, res) => {
   if (!db) return res.json([]);
   try {
-    const sessions = db.prepare(`
+    const sessions = await db.prepare(`
       SELECT s.session_id, s.created_at, s.updated_at, s.metadata, s.email,
              COUNT(c.id) as message_count
       FROM sessions s
@@ -2446,10 +2511,10 @@ app.get('/api/super/demo-bot/sessions', requireSuperAuth, (req, res) => {
 });
 
 // ---- Super Admin Demo Bot Captured Users ----
-app.get('/api/super/demo-bot/users', requireSuperAuth, (req, res) => {
+app.get('/api/super/demo-bot/users', requireSuperAuth, async (req, res) => {
   if (!db) return res.json([]);
   try {
-    const users = db.prepare(`
+    const users = await db.prepare(`
       SELECT u.email, u.session_id, u.created_at,
              COUNT(c.id) as message_count,
              MAX(c.timestamp) as last_message,
@@ -2469,45 +2534,45 @@ app.get('/api/super/demo-bot/users', requireSuperAuth, (req, res) => {
 });
 
 // ---- Plans CRUD ----
-app.get('/api/super/plans', requireSuperAuth, (req, res) => {
+app.get('/api/super/plans', requireSuperAuth, async (req, res) => {
   if (!db) return res.json([]);
-  res.json(db.prepare('SELECT * FROM plans ORDER BY id').all());
+  res.json(await db.prepare('SELECT * FROM plans ORDER BY id').all());
 });
-app.post('/api/super/plans', requireSuperAuth, (req, res) => {
+app.post('/api/super/plans', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { name, price, duration } = req.body;
   if (!name) return res.status(400).json({ error: 'Plan name required' });
-  const result = db.prepare('INSERT INTO plans (name, price, duration, features) VALUES (?, ?, ?, ?)').run(
+  const result = await db.prepare('INSERT INTO plans (name, price, duration, features) VALUES (?, ?, ?, ?)').run(
     name, price || 0, duration || '1 Month', ''
   );
   res.json({ success: true, id: result.lastInsertRowid });
 });
-app.put('/api/super/plans/:id', requireSuperAuth, (req, res) => {
+app.put('/api/super/plans/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const { name, price, duration } = req.body;
-  db.prepare('UPDATE plans SET name = ?, price = ?, duration = ? WHERE id = ?').run(
+  await db.prepare('UPDATE plans SET name = ?, price = ?, duration = ? WHERE id = ?').run(
     name, price || 0, duration || '1 Month', req.params.id
   );
   res.json({ success: true });
 });
-app.delete('/api/super/plans/:id', requireSuperAuth, (req, res) => {
+app.delete('/api/super/plans/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
-  db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
 // ---- Clients ----
-app.get('/api/super/clients', requireSuperAuth, (req, res) => {
+app.get('/api/super/clients', requireSuperAuth, async (req, res) => {
   if (!db) return res.json([]);
-  const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 0').all();
+  const clients = await db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 0').all();
   res.json(clients);
 });
 
 // GET /api/super/trash/clients — Get all soft-deleted clients
-app.get('/api/super/trash/clients', requireSuperAuth, (req, res) => {
+app.get('/api/super/trash/clients', requireSuperAuth, async (req, res) => {
   if (!db) return res.json({ clients: [] });
   try {
-    const clients = db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 1').all();
+    const clients = await db.prepare('SELECT id, email, password, company_name, plan_id, payment_status, created_at FROM clients WHERE is_deleted = 1').all();
     res.json({ clients });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch trash' });
@@ -2515,11 +2580,11 @@ app.get('/api/super/trash/clients', requireSuperAuth, (req, res) => {
 });
 
 // POST /api/super/trash/restore/:id — Restore a soft-deleted client
-app.post('/api/super/trash/restore/:id', requireSuperAuth, (req, res) => {
+app.post('/api/super/trash/restore/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   try {
-    db.prepare('UPDATE clients SET is_deleted = 0 WHERE id = ?').run(clientId);
+    await db.prepare('UPDATE clients SET is_deleted = 0 WHERE id = ?').run(clientId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Restore failed' });
@@ -2527,20 +2592,20 @@ app.post('/api/super/trash/restore/:id', requireSuperAuth, (req, res) => {
 });
 
 // DELETE /api/super/trash/permanent/:id — Permanently delete a client and all their data
-app.delete('/api/super/trash/permanent/:id', requireSuperAuth, (req, res) => {
+app.delete('/api/super/trash/permanent/:id', requireSuperAuth, async (req, res) => {
   if (!db) return res.status(500).json({ error: 'DB not available' });
   const clientId = req.params.id;
   try {
-    db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
-    db.prepare('DELETE FROM bots WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM users WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM leads WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM flows WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM flow_responses WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM bot_configs WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM knowledge_links WHERE client_id = ?').run(clientId);
-    db.prepare('DELETE FROM sessions WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
+    await db.prepare('DELETE FROM bots WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM users WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM leads WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM chat_history WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM flows WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM flow_responses WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM bot_configs WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM knowledge_links WHERE client_id = ?').run(clientId);
+    await db.prepare('DELETE FROM sessions WHERE client_id = ?').run(clientId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Permanent deletion failed' });
@@ -2560,7 +2625,7 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
   
   try {
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
-    db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO clients (id, email, password, company_name, plan_id, payment_status) VALUES (?, ?, ?, ?, ?, ?)').run(
       clientId, email, hashedPassword, company_name, plan_id || 1, 'COD_PENDING'
     );
     
@@ -2576,7 +2641,7 @@ app.post('/api/super/clients', requireSuperAuth, async (req, res) => {
       emailCaptureSubtitle: 'Please enter your email to start the conversation.'
     });
     
-    db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO bots (bot_id, name, client_id, api_key, config) VALUES (?, ?, ?, ?, ?)').run(
       botId, company_name + ' Bot', clientId, apiKey, defaultConfig
     );
     
@@ -2597,7 +2662,7 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
   if (!subject || !body) return res.status(400).json({ error: 'Subject and body are required' });
 
   // Get client company name and email config
-  const bot = db.prepare('SELECT config FROM bots WHERE client_id = ?').get(req.clientId);
+  const bot = await db.prepare('SELECT config FROM bots WHERE client_id = ?').get(req.clientId);
   let companyName = 'AI Chatbot';
   let emailCfg = {};
   try {
@@ -2619,12 +2684,12 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     // Pull from users table — exact same pattern as /api/users endpoint
     let userEmails = [];
     try {
-      userEmails = db.prepare(
+      userEmails = await db.prepare(
         'SELECT DISTINCT email FROM users WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
       ).all(clientId).map(r => r.email);
       // If none found, try default_client (pre-migration data)
       if (!userEmails.length) {
-        userEmails = db.prepare(
+        userEmails = await db.prepare(
           'SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email != \'\''
         ).all().map(r => r.email);
       }
@@ -2633,11 +2698,11 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     // Pull from sessions table (emails stored during chat registration)
     let sessionEmails = [];
     try {
-      sessionEmails = db.prepare(
+      sessionEmails = await db.prepare(
         'SELECT DISTINCT email FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
       ).all(clientId).map(r => r.email);
       if (!sessionEmails.length) {
-        sessionEmails = db.prepare(
+        sessionEmails = await db.prepare(
           'SELECT DISTINCT email FROM sessions WHERE email IS NOT NULL AND email != \'\''
         ).all().map(r => r.email);
       }
@@ -2646,11 +2711,11 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     // Pull from leads table
     let leadsEmails = [];
     try {
-      leadsEmails = db.prepare(
+      leadsEmails = await db.prepare(
         'SELECT DISTINCT email FROM leads WHERE client_id = ? AND email IS NOT NULL AND email != \'\''
       ).all(clientId).map(r => r.email);
       if (!leadsEmails.length) {
-        leadsEmails = db.prepare(
+        leadsEmails = await db.prepare(
           'SELECT DISTINCT email FROM leads WHERE email IS NOT NULL AND email != \'\''
         ).all().map(r => r.email);
       }
@@ -2678,9 +2743,9 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     // Get counts for debug info
     let debugCounts = {};
     try {
-      debugCounts.users = db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE client_id = ?').get(req.clientId)?.c || 0;
-      debugCounts.sessions = db.prepare('SELECT COUNT(DISTINCT email) as c FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != \'\'').get(req.clientId)?.c || 0;
-      debugCounts.allUsers = db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE email IS NOT NULL AND email != \'\'').get()?.c || 0;
+      debugCounts.users = await db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE client_id = ?').get(req.clientId)?.c || 0;
+      debugCounts.sessions = await db.prepare('SELECT COUNT(DISTINCT email) as c FROM sessions WHERE client_id = ? AND email IS NOT NULL AND email != \'\'').get(req.clientId)?.c || 0;
+      debugCounts.allUsers = await db.prepare('SELECT COUNT(DISTINCT email) as c FROM users WHERE email IS NOT NULL AND email != \'\'').get()?.c || 0;
     } catch(e) {}
     return res.status(400).json({
       error: `No recipients found for audience "${audience}". Debug: ${JSON.stringify(debugCounts)}`

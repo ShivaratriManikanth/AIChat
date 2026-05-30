@@ -1737,9 +1737,29 @@
     if (currentFlowNodeIndex >= activeFlow.length) {
       // Flow ended
       currentFlowNodeIndex = -1;
+      const inputEl = document.getElementById('chatbot-input');
+      if (inputEl) {
+        inputEl.type = 'text';
+        inputEl.placeholder = t('placeholder');
+      }
       return;
     }
     const node = activeFlow[currentFlowNodeIndex];
+    
+    // Update input type dynamically for date/time pickers
+    const inputEl = document.getElementById('chatbot-input');
+    if (inputEl) {
+      if (node.type === 'date_picker') {
+        inputEl.type = 'date';
+        inputEl.placeholder = 'Select date...';
+      } else if (node.type === 'time_picker') {
+        inputEl.type = 'time';
+        inputEl.placeholder = 'Select time...';
+      } else {
+        inputEl.type = 'text';
+        inputEl.placeholder = t('placeholder');
+      }
+    }
     
     // Convert node to quick replies if it's a choice
     let qr = null;
@@ -2024,6 +2044,26 @@
           hideTyping();
           setTimeout(() => {
             addMessage("⚠️ Please enter a valid number.", "bot", {});
+          }, 300);
+          return;
+        }
+      }
+
+      if (node.type === 'date_picker') {
+        if (!sendText.trim()) {
+          hideTyping();
+          setTimeout(() => {
+            addMessage("⚠️ Please select a valid date.", "bot", {});
+          }, 300);
+          return;
+        }
+      }
+
+      if (node.type === 'time_picker') {
+        if (!sendText.trim()) {
+          hideTyping();
+          setTimeout(() => {
+            addMessage("⚠️ Please select a valid time.", "bot", {});
           }, 300);
           return;
         }

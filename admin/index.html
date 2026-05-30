@@ -2556,9 +2556,8 @@
           
           <!-- Flow Preview Column -->
           <div class="flow-preview-pane" style="width: 380px; background: rgba(0,0,0,0.15); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; position: relative;">
-            <div class="flow-workspace-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink:0; display:flex; justify-content:space-between; align-items:center; padding:12px 20px;">
+            <div class="flow-workspace-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink:0; display:flex; align-items:center; padding:12px 20px;">
               <div style="font-size:13px; font-weight:600; color:#cbd5e1;">Live Preview</div>
-              <button class="btn btn-outline" onclick="openFlowPreview()" style="font-size:11px; padding: 4px 10px; border-color:#4F46E5; color:#4F46E5; background:transparent;">🔄 Refresh Preview</button>
             </div>
             <div style="flex:1; position:relative; background:rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:center; padding:10px; overflow:hidden;">
               <iframe id="flow-side-preview" style="width:100%; height:100%; border:none; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.3); background:#ffffff;" src="about:blank"></iframe>
@@ -4212,6 +4211,7 @@
         const sidebarFlowToggle = document.getElementById('sidebar-toggle-flow');
         if (sidebarFlowToggle) sidebarFlowToggle.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
         renderFlowNodes();
+        setTimeout(openFlowPreview, 200);
       } catch (err) {
         console.error('Failed to load flow', err);
       }
@@ -4225,7 +4225,7 @@
       const t2 = document.getElementById('sidebar-toggle-flow');
       if (t2) t2.className = 'toggle-switch' + (isFlowActive ? ' on' : '');
       
-      saveFlow();
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function toggleSidebarFlowActive(e) {
@@ -4242,12 +4242,14 @@
         config: { question: 'Please provide your ' + label.replace(/[^a-zA-Z ]/g, '').trim() + '?', options: [] }
       });
       renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function deleteFlowNode(index) {
       if (confirm('Delete this component?')) {
         flowNodes.splice(index, 1);
         renderFlowNodes();
+        saveFlow(false).then(() => { openFlowPreview(); });
       }
     }
 
@@ -4257,6 +4259,7 @@
       newNode.id = 'node_' + Math.random().toString(36).substr(2, 9);
       flowNodes.splice(index + 1, 0, newNode);
       renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function moveNodeUp(index) {
@@ -4265,6 +4268,7 @@
       flowNodes[index] = flowNodes[index - 1];
       flowNodes[index - 1] = temp;
       renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function moveNodeDown(index) {
@@ -4273,11 +4277,13 @@
       flowNodes[index] = flowNodes[index + 1];
       flowNodes[index + 1] = temp;
       renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function updateNodeConfig(index, key, value) {
       if (!flowNodes[index].config) flowNodes[index].config = {};
       flowNodes[index].config[key] = value;
+      saveFlow(false).then(() => { openFlowPreview(); });
     }
 
     function renderFlowNodes() {
@@ -4354,16 +4360,15 @@
 
     async function openFlowPreview() {
       // Auto-save flow before previewing to ensure it's up to date
-      await saveFlow();
+      await saveFlow(false);
 
-      const overlay = document.getElementById('flow-preview-overlay');
-      const iframe = document.getElementById('flow-preview-iframe');
+      const iframe = document.getElementById('flow-side-preview');
+      if (!iframe) return;
 
       const botsRes = await fetchAuth(`${API}/api/bots`);
       const bots = await botsRes.json();
 
       if (!bots || bots.length === 0) {
-        alert('Please create at least one bot in the "Bots" section first.');
         return;
       }
 
@@ -4375,18 +4380,18 @@
         testBot = bots[0];
       }
 
-      // Load a special preview URL that has the chatbot script
-      iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}`;
-      overlay.style.display = 'flex';
+      // Load a special preview URL that has the chatbot script into the side-by-side preview panel
+      iframe.src = `preview-test.html?bot_id=${testBot.bot_id}&api_key=${testBot.api_key}&server=${encodeURIComponent(API)}&preview=true`;
     }
 
     function closeFlowPreview(e) {
-      if (e.target.id === 'flow-preview-overlay') {
+      if (e && e.target.id === 'flow-preview-overlay') {
         document.getElementById('flow-preview-overlay').style.display = 'none';
         document.getElementById('flow-preview-iframe').src = 'about:blank';
       }
     }
-    async function saveFlow() {
+
+    async function saveFlow(showNotification = true) {
       try {
         const payload = {
           id: currentFlowId,
@@ -4403,11 +4408,18 @@
         const data = await res.json();
         if (data.success) {
           currentFlowId = data.id;
-          showToast('Flow saved successfully!');
+          if (showNotification) {
+            showToast('Flow saved successfully!');
+          }
+          return true;
         }
+        return false;
       } catch (err) {
         console.error('Failed to save flow', err);
-        showToast('Error saving flow');
+        if (showNotification) {
+          showToast('Error saving flow');
+        }
+        return false;
       }
     }
 

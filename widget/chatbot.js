@@ -2916,7 +2916,7 @@
       const currentHost = window.location.hostname;
       const allowedHost = CONFIG.authorizedDomain.toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
       
-      if (currentHost !== allowedHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.includes('railway.app')) {
+      if (currentHost !== allowedHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.includes('railway.app') && !currentHost.includes('onrender.com')) {
         console.error(`Chatbot Error: Domain "${currentHost}" is not authorized. Expected "${allowedHost}".`);
         return; 
       }

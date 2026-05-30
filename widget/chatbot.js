@@ -1741,6 +1741,7 @@
       if (inputEl) {
         inputEl.type = 'text';
         inputEl.placeholder = t('placeholder');
+        inputEl.removeAttribute('max');
       }
       return;
     }
@@ -1752,19 +1753,23 @@
       if (node.type === 'date_picker') {
         inputEl.type = 'date';
         inputEl.placeholder = 'Select date...';
+        inputEl.max = '9999-12-31';
       } else if (node.type === 'time_picker') {
         inputEl.type = 'time';
         inputEl.placeholder = 'Select time...';
+        inputEl.removeAttribute('max');
       } else if (node.type === 'age') {
         inputEl.type = 'text';
         inputEl.placeholder = 'Select using slider...';
         inputEl.disabled = true;
         inputEl.style.opacity = '0.5';
+        inputEl.removeAttribute('max');
       } else {
         inputEl.type = 'text';
         inputEl.placeholder = t('placeholder');
         inputEl.disabled = false;
         inputEl.style.opacity = '1';
+        inputEl.removeAttribute('max');
       }
     }
     

@@ -24,7 +24,7 @@
 
         if (botId && apiKey && server) {
             const script = document.createElement('script');
-            script.src = `${server}/widget/chatbot.js`;
+            script.src = `${server}/widget/chatbot.js?t=${Date.now()}`;
             script.dataset.server = server;
             script.dataset.botId = botId;
             script.dataset.apiKey = apiKey;

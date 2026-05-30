@@ -2007,12 +2007,15 @@
 
     inputField.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
+        e.preventDefault();
         confirmBtn.click();
       }
     });
 
-    confirmBtn.onclick = function() {
+    confirmBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       const finalValue = inputField.value;
+      console.log("[AgePicker] Confirm clicked. Value:", finalValue);
       if (!finalValue) {
         inputField.style.borderColor = '#ef4444';
         return;
@@ -2031,8 +2034,12 @@
       confirmBtn.style.opacity = '0.5';
       confirmBtn.style.cursor = 'default';
 
-      sendMessage(finalValue);
-    };
+      try {
+        sendMessage(finalValue);
+      } catch (err) {
+        console.error("[AgePicker] Error sending message:", err);
+      }
+    });
   }
 
   // ---- Send Message -----------------------------------------
@@ -2175,6 +2182,11 @@
         const headers = { 'Content-Type': 'application/json' };
         if (API_KEY) headers['X-Bot-Key'] = API_KEY;
         
+        console.log("[FlowInterception] Submitting flow response to /api/chat:", {
+          message: sendText, sessionId: SESSION_ID, clientId: CLIENT_ID, flowNodeId: node.id, flowId: currentFlowId,
+          botId: BOT_ID
+        });
+
         const res = await fetch(`${SERVER_URL}/api/chat`, {
           method: 'POST',
           headers,
@@ -2186,10 +2198,17 @@
         
         hideTyping();
         if (res.ok) {
+          console.log("[FlowInterception] Response successful.");
           currentFlowNodeIndex++;
           renderNextFlowNode();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.error("[FlowInterception] Response failed:", res.status, errData);
         }
-      } catch (err) { hideTyping(); }
+      } catch (err) { 
+        hideTyping(); 
+        console.error("[FlowInterception] Fetch exception:", err);
+      }
       return;
     }
 

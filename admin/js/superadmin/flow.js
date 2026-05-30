@@ -194,8 +194,8 @@ function renderDemoFlowNodes() {
           </div>
         </div>
         <div class="flow-node-body">
-          <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Bot Asks:</label>
-          <input type="text" class="flow-node-input" placeholder="Enter bot prompt..." value="${node.config.question || ''}" onchange="updateDemoNodeConfig(${i}, 'question', this.value)">
+          <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">${node.type === 'statement' ? 'Statement' : 'Bot Asks'}:</label>
+          <input type="text" class="flow-node-input" placeholder="${node.type === 'statement' ? 'Enter statement...' : 'Enter bot prompt...'}" value="${node.config.question || ''}" onchange="updateDemoNodeConfig(${i}, 'question', this.value)">
           ${configHtml}
         </div>
       </div>
@@ -212,7 +212,7 @@ async function saveDemoFlow(showNotification = true) {
     
     // 1. Bot Asks prompt validation
     if (!node.config.question || !node.config.question.trim()) {
-      if (showNotification) alert(`⚠️ Validation Error: "Bot Asks" prompt is required for component #${i + 1} (${label}).`);
+      if (showNotification) alert(`⚠️ Validation Error: "${node.type === 'statement' ? 'Statement' : 'Bot Asks'}" prompt is required for component #${i + 1} (${label}).`);
       return false;
     }
 

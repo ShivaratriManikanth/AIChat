@@ -1760,7 +1760,7 @@
         inputEl.removeAttribute('max');
       } else if (node.type === 'age') {
         inputEl.type = 'text';
-        inputEl.placeholder = 'Select using slider...';
+        inputEl.placeholder = 'Enter value above...';
         inputEl.disabled = true;
         inputEl.style.opacity = '0.5';
         inputEl.removeAttribute('max');
@@ -1962,7 +1962,7 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // ---- Age Slider Picker Widget ----
+  // ---- Age Number Picker Widget ----
   function renderAgePicker(node) {
     const messages = document.getElementById('chatbot-messages');
     const wrapper = document.createElement('div');
@@ -1984,18 +1984,14 @@
 
     const min = node.config && node.config.min !== undefined ? parseInt(node.config.min) : 0;
     const max = node.config && node.config.max !== undefined ? parseInt(node.config.max) : 100;
-    const initialVal = Math.round((min + max) / 2);
 
     card.innerHTML = `
       <div style="font-size: 13px; color: #475569; margin-bottom: 12px; font-weight: 500;">
-        Please select the value from the slider below.
+        Please enter a value below.
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
-        <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">${min}</span>
-        <input type="range" class="chatbot-age-slider" min="${min}" max="${max}" value="${initialVal}" style="flex: 1; accent-color: #4F46E5; cursor: pointer; height: 6px; border-radius: 3px;">
-        <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">${max}</span>
+      <div style="margin-bottom: 15px;">
+        <input type="number" class="chatbot-age-input" min="${min}" max="${max}" placeholder="Enter number..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; text-align: center; box-sizing: border-box; outline: none;">
       </div>
-      <div class="chatbot-age-value" style="font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 15px;">${initialVal}</div>
       <button class="chatbot-age-confirm-btn" style="background: #4F46E5; color: #ffffff; border: none; border-radius: 8px; padding: 10px 30px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);">Confirm</button>
     `;
 
@@ -2003,27 +1999,40 @@
     messages.appendChild(wrapper);
     scrollToBottom();
 
-    // Event Listeners
-    const slider = card.querySelector('.chatbot-age-slider');
-    const valueDisplay = card.querySelector('.chatbot-age-value');
+    const inputField = card.querySelector('.chatbot-age-input');
     const confirmBtn = card.querySelector('.chatbot-age-confirm-btn');
 
-    slider.addEventListener('input', (e) => {
-      valueDisplay.textContent = e.target.value;
+    // Focus the input automatically
+    setTimeout(() => inputField.focus(), 50);
+
+    inputField.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        confirmBtn.click();
+      }
     });
 
-    confirmBtn.addEventListener('click', () => {
-      const finalValue = slider.value;
+    confirmBtn.onclick = function() {
+      const finalValue = inputField.value;
+      if (!finalValue) {
+        inputField.style.borderColor = '#ef4444';
+        return;
+      }
       
+      // Re-enable the bottom text input field first to prevent any blockages in input submission
+      const inputEl = document.getElementById('chatbot-input');
+      if (inputEl) {
+        inputEl.disabled = false;
+        inputEl.style.opacity = '1';
+      }
+
       // Disable inputs on card
-      slider.disabled = true;
+      inputField.disabled = true;
       confirmBtn.disabled = true;
       confirmBtn.style.opacity = '0.5';
       confirmBtn.style.cursor = 'default';
 
-      // Send the selected value as user message
       sendMessage(finalValue);
-    });
+    };
   }
 
   // ---- Send Message -----------------------------------------

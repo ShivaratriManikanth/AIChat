@@ -2980,7 +2980,6 @@
       btn.textContent = '📣 Send Broadcast';
     }
 
-    // ---- Load Stats -----------------------------------------
     async function loadStats() {
       try {
         const url = selectedBotId
@@ -2994,8 +2993,6 @@
         document.getElementById('stat-active').textContent = data.activeSessions || 0;
         document.getElementById('stat-plan-name').textContent = data.planName || 'Free';
         document.getElementById('stat-plan-days').textContent = `${data.daysRemaining || 0} days remaining`;
-        // Update nav badge
-        document.getElementById('nav-user-count').textContent = data.totalUsers || 0;
       } catch (e) {
         console.error('Failed to load stats:', e);
       }

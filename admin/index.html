@@ -2117,32 +2117,34 @@
         </div>
 
         <!-- Human Handoff Settings -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Human Handoff — Talk to Agent</h2>
-          </div>
-          <div class="card-body">
-            <div class="toggle-row">
-              <div>
-                <div class="toggle-label">Enable Handoff Button</div>
-                <div class="toggle-desc">Let users contact a human via WhatsApp, Call, or Email</div>
-              </div>
-              <div class="toggle-switch" id="toggle-handoff"
-                onclick="document.getElementById('toggle-handoff').classList.toggle('on')"></div>
+        <div style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <h2>Human Handoff — Talk to Agent</h2>
             </div>
-            <div class="form-row" style="margin-top:16px;">
-              <div class="form-group">
-                <label>WhatsApp Number (with country code)</label>
-                <input type="text" id="cfg-handoffWhatsapp" placeholder="+919876543210">
+            <div class="card-body">
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">Enable Handoff Button</div>
+                  <div class="toggle-desc">Let users contact a human via WhatsApp, Call, or Email</div>
+                </div>
+                <div class="toggle-switch" id="toggle-handoff"
+                  onclick="document.getElementById('toggle-handoff').classList.toggle('on')"></div>
+              </div>
+              <div class="form-row" style="margin-top:16px;">
+                <div class="form-group">
+                  <label>WhatsApp Number (with country code)</label>
+                  <input type="text" id="cfg-handoffWhatsapp" placeholder="+919876543210">
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="text" id="cfg-handoffPhone" placeholder="+919876543210">
+                </div>
               </div>
               <div class="form-group">
-                <label>Phone Number</label>
-                <input type="text" id="cfg-handoffPhone" placeholder="+919876543210">
+                <label>Support Email</label>
+                <input type="email" id="cfg-handoffEmail" placeholder="support@yourcompany.com">
               </div>
-            </div>
-            <div class="form-group">
-              <label>Support Email</label>
-              <input type="email" id="cfg-handoffEmail" placeholder="support@yourcompany.com">
             </div>
           </div>
         </div>

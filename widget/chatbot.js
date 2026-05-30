@@ -1763,6 +1763,17 @@
       }, 500);
       return;
     }
+
+    // Statement type — display message and immediately proceed to next node
+    if (node.type === 'statement') {
+      setTimeout(() => {
+        const qText = personalizeQuestion(node.config.question || node.label);
+        addMessage(qText, 'bot', {});
+        currentFlowNodeIndex++;
+        renderNextFlowNode();
+      }, 500);
+      return;
+    }
     
     setTimeout(() => {
       const qText = personalizeQuestion(node.config.question || node.label);

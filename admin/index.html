@@ -2498,6 +2498,9 @@
               <div class="flow-component-btn" onclick="addFlowNode('question', '❓ Question')">
                 <div class="icon">❓</div>Question
               </div>
+              <div class="flow-component-btn" onclick="addFlowNode('statement', '💬 Statement')">
+                <div class="icon">💬</div>Statement
+              </div>
               <div class="flow-component-btn" onclick="addFlowNode('single_choice', '🔘 Single Choice')">
                 <div class="icon">🔘</div>Single Choice
               </div>
@@ -4288,6 +4291,27 @@
       saveFlow(false).then(() => { openFlowPreview(); });
     }
 
+    function addNodeOption(nodeIndex) {
+      if (!flowNodes[nodeIndex].config) flowNodes[nodeIndex].config = {};
+      if (!flowNodes[nodeIndex].config.options) flowNodes[nodeIndex].config.options = [];
+      flowNodes[nodeIndex].config.options.push('New Option');
+      renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
+    }
+
+    function deleteNodeOption(nodeIndex, optIndex) {
+      if (!flowNodes[nodeIndex].config || !flowNodes[nodeIndex].config.options) return;
+      flowNodes[nodeIndex].config.options.splice(optIndex, 1);
+      renderFlowNodes();
+      saveFlow(false).then(() => { openFlowPreview(); });
+    }
+
+    function updateNodeOption(nodeIndex, optIndex, value) {
+      if (!flowNodes[nodeIndex].config || !flowNodes[nodeIndex].config.options) return;
+      flowNodes[nodeIndex].config.options[optIndex] = value.trim();
+      saveFlow(false).then(() => { openFlowPreview(); });
+    }
+
     function renderFlowNodes() {
       const container = document.getElementById('flow-nodes-list');
 
@@ -4305,7 +4329,21 @@
       flowNodes.forEach((node, i) => {
         let configHtml = '';
         if (node.type === 'single_choice' || node.type === 'multiple_choice') {
-          configHtml = `<input type="text" class="flow-node-input" placeholder="Options (separated by comma, semicolon, or |)" value="${(node.config.options || []).join(', ')}" onchange="updateNodeConfig(${i}, 'options', this.value.split(/[,;|]/).map(s=>s.trim()).filter(Boolean))">`;
+          const opts = node.config.options || [];
+          configHtml = `
+            <div style="margin-top: 8px;">
+              <label style="font-size:10px; font-weight:600; color:#888; display:block; margin-bottom:4px;">Choices / Options</label>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${opts.map((opt, optIndex) => `
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="text" class="flow-node-input" style="margin-top:0;" value="${opt}" onchange="updateNodeOption(${i}, ${optIndex}, this.value)" placeholder="Option #${optIndex + 1}">
+                    <button class="flow-node-btn delete" onclick="deleteNodeOption(${i}, ${optIndex})" style="padding: 7px 10px; flex-shrink: 0; background:rgba(239, 68, 68, 0.1); color:#f87171; border:none; border-radius:6px; cursor:pointer;" title="Delete Option" type="button">🗑️</button>
+                  </div>
+                `).join('')}
+                <button class="flow-node-btn" onclick="addNodeOption(${i})" style="padding:6px 12px; font-size:11px; align-self:flex-start; margin-top:2px; border:1px solid #6366f1; color:#a5b4fc; background:transparent; font-weight:600;" type="button">➕ Add Option</button>
+              </div>
+            </div>
+          `;
         } else if (node.type === 'website' || node.type === 'link') {
           configHtml = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
